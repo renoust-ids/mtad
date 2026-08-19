@@ -78,6 +78,15 @@ export const createMenu = () => {
         }
       },
     },
+    {
+      label: "Join CSV...",
+      accelerator: "CmdOrCtrl+J",
+      click: (item: MenuItem, focusedWindow: BrowserWindow | undefined) => {
+        if (focusedWindow) {
+          focusedWindow.webContents.send("start-csv-join");
+        }
+      },
+    },
 
     /*
     {

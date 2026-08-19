@@ -68,3 +68,27 @@
 - Generates: `SELECT ... FROM (leftSql) t1 {JOIN_TYPE} read_csv_auto('path', options) t2 ON ...`
 - Supports CAST to VARCHAR when forceStringCast=true
 - Supports nullstr option for DuckDB CSV reader
+
+---
+
+## Session: Step 2 - IPC & Menu (Electron Main)
+
+### [2026-08-19T13:15] Step 2.1 - Menu "Join CSV..."
+
+**Files Modified:**
+- `packages/tad-app/app/appMenu.ts`: Added "Join CSV..." menu item in `fileSubmenu` after "Export...". Accelerator `CmdOrCtrl+J`. Sends `start-csv-join` IPC message to focused window's renderer process.
+
+**Rationale:** Follows existing menu pattern (label + click handler sending webContents message). Uses `CmdOrCtrl+J` accelerator for quick access. Guard checks `focusedWindow` exists before sending.
+
+### [2026-08-19T13:20] Step 2.2 - IPC Handler for CSV File Selection
+
+**Files Modified:**
+- `packages/tad-app/app/main.ts`: Added `ipcMain.handle('dialog:selectCsvForJoin', ...)` in `appInit()`. Uses `dialog.showOpenDialog` with CSV/TSV filter. Returns selected file path or `null` if cancelled.
+
+**Rationale:** Follows existing IPC handler pattern (`ipcMain.handle` for async request/response). Dialog filters restrict to CSV/TSV files while allowing "All Files" fallback.
+
+### [2026-08-19T13:25] Step 2.3 - Verification
+
+**Command:** `npx tsc --noEmit --skipLibCheck` in `packages/tad-app`
+**Result:** All errors are pre-existing TS2307 (modules not found in node_modules). No new errors introduced.
+**Note:** Full webpack build blocked by pre-existing issues (Node v26.7.0 compatibility with lerna/yargs).

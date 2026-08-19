@@ -150,6 +150,20 @@ const appInit = (options: any) => {
   ipcMain.handle("newWindowFromDSPath", (event, dsPath) =>
     newWindowFromDSPath(dsPath)
   );
+  ipcMain.handle("dialog:selectCsvForJoin", async (event) => {
+    const result = await dialog.showOpenDialog({
+      title: "Select CSV to Join",
+      properties: ["openFile"],
+      filters: [
+        { name: "CSV Files", extensions: ["csv", "tsv"] },
+        { name: "All Files", extensions: ["*"] },
+      ],
+    });
+    if (result.canceled || result.filePaths.length === 0) {
+      return null;
+    }
+    return result.filePaths[0];
+  });
   appMenu.createMenu(); // log.log('appInit: done')
 };
 
