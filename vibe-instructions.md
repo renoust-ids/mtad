@@ -16,6 +16,18 @@ Tu es un développeur Full Stack Expert en TypeScript, React, Electron et requê
 5. **Tests Unitaires Requis** : Toute modification de la logique métier (`reltab`) doit être accompagnée de tests unitaires utilisant le framework de test du projet (ex: Jest).
 6. **Monorepo Workflow** : Les dépendances entre packages locaux doivent respecter le système Lerna.
 
+# Gestion de la Fenêtre de Contexte (Checkpointing)
+Pour éviter la saturation de ta mémoire contextuelle (context compression), tu dois opérer un "Handoff" entre chaque grande étape :
+1. **Sauvegarde de l'état :** À la fin de chaque étape (après le commit), crée ou mets à jour un fichier `STATE_HANDOFF.md` à la racine.
+2. **Contenu du Handoff :** Inscris-y de manière ultra-concise : 
+   - La branche active.
+   - Le hash ou message du dernier commit.
+   - Les fichiers clés qui ont été créés/modifiés (avec leur chemin exact).
+   - Les variables, types ou signatures de fonctions importants découverts (ex: la structure exacte de `viewParams` ou `QueryExp`).
+   - L'objectif exact de l'étape suivante.
+3. **Mise en pause :** Stoppe ton exécution et écris-moi **exclusivement** ce message : *"Checkpoint sauvegardé dans `STATE_HANDOFF.md`. Tu peux vider le contexte de notre conversation (Clear Chat) et me relancer pour l'étape suivante."*
+4. **Reprise (Nouvelle Session) :** Au démarrage d'une nouvelle session, si un fichier `STATE_HANDOFF.md` existe, tu DOIS le lire en priorité absolue avant de faire quoi que ce soit d'autre, afin de restaurer ton contexte de travail.
+
 # PROTOCOLE DE TRAÇABILITÉ ET DE VERSIONING
 
 **A. Journal de bord (Traceability)**
