@@ -24,6 +24,9 @@ import {
   GroupByQueryRep,
   JoinQueryRep,
   JoinType,
+  JoinCsvArgs,
+  JoinCsvQueryRep,
+  CsvJoinType,
   MapColumnsByIndexQueryRep,
   MapColumnsQueryRep,
   ProjectQueryRep,
@@ -56,7 +59,8 @@ type QueryOp =
   | "concat"
   | "sort"
   | "extend"
-  | "join";
+  | "join"
+  | "joinCsv";
 
 /*
  * generate a SQL literal for the given value based on its
@@ -156,6 +160,21 @@ export class QueryExp {
       on,
       rhs: rhs._rep,
       lhs: this._rep,
+    });
+  }
+
+  // join with a CSV file
+  joinCsv(
+    args: JoinCsvArgs,
+    rhsSchema: { [colId: string]: { displayName: string; columnType: string } },
+    rhsColumns: string[]
+  ): QueryExp {
+    return new QueryExp({
+      operator: "joinCsv",
+      args,
+      rhsSchema,
+      rhsColumns,
+      from: this._rep,
     });
   }
 
@@ -563,6 +582,20 @@ const joinQueryToJSAux = (
   return depth;
 };
 
+const joinCsvQueryToJSAux = (
+  dst: StringBuffer,
+  depth: number,
+  query: JoinCsvQueryRep
+): number => {
+  depth = queryToJSAux(dst, depth, query.from);
+  dst.push("\n");
+  ppOut(dst, depth, `.joinCsv(\n`);
+  ppOut(dst, depth + 1, `${JSON.stringify(query.args)},\n`);
+  ppOut(dst, depth + 1, `${JSON.stringify(query.rhsSchema)},\n`);
+  ppOut(dst, depth + 1, `${JSON.stringify(query.rhsColumns)})`);
+  return depth;
+};
+
 const queryToJSAux = (
   dst: StringBuffer,
   depth: number,
@@ -591,6 +624,8 @@ const queryToJSAux = (
       return extendQueryToJSAux(dst, depth, query);
     case "join":
       return joinQueryToJSAux(dst, depth, query);
+    case "joinCsv":
+      return joinCsvQueryToJSAux(dst, depth, query);
     default:
       const invalidQuery: never = query;
       throw new Error("queryToJSAux: No implementation for operator: " + query);
@@ -628,6 +663,9 @@ const queryGetLeafDepsAux = (acc: QueryLeafDepsMap, query: QueryRep) => {
     case "join":
       queryGetLeafDepsAux(acc, query.lhs);
       queryGetLeafDepsAux(acc, query.rhs);
+      break;
+    case "joinCsv":
+      queryGetLeafDepsAux(acc, query.from);
       break;
     default:
       const invalidQuery: never = query;

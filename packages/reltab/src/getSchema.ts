@@ -13,9 +13,10 @@ import {
   ConcatQueryRep,
   ExtendQueryRep,
   JoinQueryRep,
+  JoinCsvQueryRep,
   SqlQueryRep,
 } from "./QueryRep";
-import { Schema, ColumnMetadata } from "./Schema";
+import { Schema, ColumnMetadata, ColumnMetaMap } from "./Schema";
 import { ColumnExtendExp } from "./defs";
 import { LeafSchemaMap } from "./TableRep";
 import { ColumnType } from "./ColumnType";
@@ -307,6 +308,34 @@ const joinGetSchema = (
   return joinSchema;
 };
 
+const joinCsvGetSchema = (
+  dialect: SQLDialect,
+  tableMap: LeafSchemaMap,
+  { args, rhsSchema, rhsColumns, from }: JoinCsvQueryRep
+): Schema => {
+  const lhsSchema = queryGetSchema(dialect, tableMap, from);
+
+  const rhsCols = rhsColumns.filter((cid) => cid !== args.rightCol);
+
+  const rhsMeta: ColumnMetaMap = {};
+  for (const cid of rhsCols) {
+    const meta = rhsSchema[cid];
+    if (meta) {
+      rhsMeta[cid] = meta;
+    } else {
+      rhsMeta[cid] = { displayName: cid, columnType: "VARCHAR" };
+    }
+  }
+
+  const joinCols = [...lhsSchema.columns, ...rhsCols];
+  const joinMeta: ColumnMetaMap = {
+    ...lhsSchema.columnMetadata,
+    ...rhsMeta,
+  };
+
+  return new Schema(dialect, joinCols, joinMeta);
+};
+
 export const queryGetSchema = (
   dialect: SQLDialect,
   tableMap: LeafSchemaMap,
@@ -335,6 +364,8 @@ export const queryGetSchema = (
       return extendGetSchema(dialect, tableMap, query);
     case "join":
       return joinGetSchema(dialect, tableMap, query);
+    case "joinCsv":
+      return joinCsvGetSchema(dialect, tableMap, query);
     default:
       const invalidQuery: never = query;
       throw new Error(

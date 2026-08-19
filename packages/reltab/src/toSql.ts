@@ -13,6 +13,7 @@ import {
   SortQueryRep,
   ExtendQueryRep,
   JoinQueryRep,
+  JoinCsvQueryRep,
   SqlQueryRep,
 } from "./QueryRep";
 import {
@@ -25,6 +26,7 @@ import {
   SQLFromQuery,
   mkSubSelectList,
   SQLFromJoin,
+  SQLFromCsvJoin,
 } from "./SQLQuery";
 import { ppSQLQuery } from "./pp";
 import { defaultDialect, col, ColumnExtendExp } from "./defs";
@@ -495,6 +497,63 @@ const joinQueryToSql = (
   };
 };
 
+const joinCsvQueryToSql = (
+  dialect: SQLDialect,
+  tableMap: LeafSchemaMap,
+  query: JoinCsvQueryRep
+): SQLQueryAST => {
+  const { args, rhsColumns, rhsSchema, from } = query;
+  const lhsSql = unpagedQueryToSql(dialect, tableMap, from);
+
+  const lhsTblAlias = "t1";
+  const rhsTblAlias = "t2";
+
+  const lhsSchema = queryGetSchema(dialect, tableMap, from);
+
+  const lhsSelectCols: SQLSelectListItem[] = lhsSchema.columns.map((cid) =>
+    mkColSelItem(cid, lhsSchema.columnType(cid), lhsTblAlias)
+  );
+
+  const rhsCols = rhsColumns.filter(
+    (cid) => cid !== args.rightCol || !lhsSchema.columns.includes(args.rightCol)
+  );
+  const rhsSelectCols: SQLSelectListItem[] = rhsCols.map((cid) => ({
+    colExp: { expType: "ColRef", colName: cid, tblAlias: rhsTblAlias } as any,
+    colType: dialect.coreColumnTypes.string,
+  }));
+
+  const selectCols = [...lhsSelectCols, ...rhsSelectCols];
+
+  let readCsvOptions = "header=True";
+  if (args.nullString != null && args.nullString !== "") {
+    readCsvOptions += `, nullstr='${args.nullString}'`;
+  }
+
+  const fromClause: SQLFromCsvJoin = {
+    expType: "csvJoin",
+    joinType: args.joinType,
+    lhs: lhsSql,
+    lhsTblAlias,
+    rhsCsvPath: args.rightTablePath,
+    rhsTblAlias,
+    readCsvOptions,
+    leftCol: args.leftCol,
+    rightCol: args.rightCol,
+    forceStringCast: args.forceStringCast,
+  };
+
+  const retSel: SQLSelectAST = {
+    selectCols,
+    from: fromClause,
+    groupBy: [],
+    orderBy: [],
+  };
+
+  return {
+    selectStmts: [retSel],
+  };
+};
+
 export const unpagedQueryToSql = (
   dialect: SQLDialect,
   tableMap: LeafSchemaMap,
@@ -534,6 +593,9 @@ export const unpagedQueryToSql = (
       break;
     case "join":
       ret = joinQueryToSql(dialect, tableMap, query);
+      break;
+    case "joinCsv":
+      ret = joinCsvQueryToSql(dialect, tableMap, query);
       break;
     default:
       const invalidQuery: never = query;

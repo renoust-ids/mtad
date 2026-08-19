@@ -9,6 +9,7 @@ import {
   SQLQueryAST,
 } from "./SQLQuery";
 import { ColumnType } from "./ColumnType";
+import { CsvJoinType } from "./QueryRep";
 
 /*
  * not-so-pretty print a SQL query
@@ -108,6 +109,22 @@ const genAliasName = (): string => {
   return ret;
 };
 
+const csvJoinTypeToSql = (joinType: CsvJoinType): string => {
+  switch (joinType) {
+    case "inner":
+      return "INNER JOIN";
+    case "left":
+      return "LEFT JOIN";
+    case "right":
+      return "RIGHT JOIN";
+    case "outer":
+      return "FULL OUTER JOIN";
+    default:
+      const invalid: never = joinType;
+      throw new Error("csvJoinTypeToSql: unknown join type: " + invalid);
+  }
+};
+
 const ppSQLSelect = (
   dialect: SQLDialect,
   dst: StringBuffer,
@@ -140,6 +157,32 @@ const ppSQLSelect = (
       const qcols = ss.on.map(dialect.quoteCol);
       dst.push("USING (" + qcols.join(", ") + ")\n");
     }
+  } else if (fromVal.expType === "csvJoin") {
+    const {
+      joinType,
+      lhs,
+      lhsTblAlias,
+      rhsCsvPath,
+      rhsTblAlias,
+      readCsvOptions,
+      leftCol,
+      rightCol,
+      forceStringCast,
+    } = fromVal;
+    dst.push("(\n");
+    auxPPSQLQuery(dialect, dst, depth + 1, lhs);
+    dst.push(`) ${lhsTblAlias}\n`);
+    const joinKw = csvJoinTypeToSql(joinType);
+    const leftColRef = forceStringCast
+      ? `CAST(${lhsTblAlias}.${dialect.quoteCol(leftCol)} AS VARCHAR)`
+      : `${lhsTblAlias}.${dialect.quoteCol(leftCol)}`;
+    const rightColRef = forceStringCast
+      ? `CAST(${rhsTblAlias}.${dialect.quoteCol(rightCol)} AS VARCHAR)`
+      : `${rhsTblAlias}.${dialect.quoteCol(rightCol)}`;
+    dst.push(
+      `${joinKw} read_csv_auto('${rhsCsvPath}', ${readCsvOptions}) ${rhsTblAlias}\n`
+    );
+    dst.push(`ON ${leftColRef} = ${rightColRef}\n`);
   } else {
     dst.push("(\n");
     auxPPSQLQuery(dialect, dst, depth + 1, fromVal.query);

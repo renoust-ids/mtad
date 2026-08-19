@@ -1,4 +1,4 @@
-import { JoinType } from "./QueryRep";
+import { JoinType, CsvJoinType } from "./QueryRep";
 import { ValExp, ColumnExtendExp, col } from "./defs";
 import { FilterExp } from "./FilterExp";
 import { AggFn } from "./AggFn";
@@ -47,13 +47,25 @@ export type SQLFromJoin = {
   rhs: SQLQueryAST;
   rhsTblAlias: string;
 };
+export type SQLFromCsvJoin = {
+  expType: "csvJoin";
+  joinType: CsvJoinType;
+  lhs: SQLQueryAST;
+  lhsTblAlias: string;
+  rhsCsvPath: string;
+  rhsTblAlias: string;
+  readCsvOptions: string;
+  leftCol: string;
+  rightCol: string;
+  forceStringCast: boolean;
+};
 export type SQLFromQuery = {
   expType: "query";
   query: SQLQueryAST;
 };
 export type SQLSelectAST = {
   selectCols: Array<SQLSelectListItem>;
-  from: string | SQLFromQuery | SQLFromJoin;
+  from: string | SQLFromQuery | SQLFromJoin | SQLFromCsvJoin;
   on?: Array<string>;
   where?: FilterExp;
   groupBy: Array<string>;

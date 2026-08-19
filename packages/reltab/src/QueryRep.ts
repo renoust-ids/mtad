@@ -7,6 +7,7 @@ import { ColumnType } from "./ColumnType";
 import { AggFn } from "./AggFn";
 import { FilterExp } from "./FilterExp";
 import { ColumnExtendExp } from "./defs";
+import { ColumnMetaMap } from "./Schema";
 
 // An AggColSpec is either a column name (for default aggregation based on column type
 // or a pair of column name and AggFn
@@ -84,6 +85,25 @@ export interface JoinQueryRep {
   lhs: QueryRep;
 }
 
+export type CsvJoinType = "inner" | "left" | "right" | "outer";
+
+export interface JoinCsvArgs {
+  rightTablePath: string;
+  joinType: CsvJoinType;
+  leftCol: string;
+  rightCol: string;
+  forceStringCast: boolean;
+  nullString?: string;
+}
+
+export interface JoinCsvQueryRep {
+  operator: "joinCsv";
+  args: JoinCsvArgs;
+  rhsSchema: ColumnMetaMap;
+  rhsColumns: string[];
+  from: QueryRep;
+}
+
 export type QueryRep =
   | SqlQueryRep
   | TableQueryRep
@@ -95,7 +115,8 @@ export type QueryRep =
   | ConcatQueryRep
   | SortQueryRep
   | ExtendQueryRep
-  | JoinQueryRep;
+  | JoinQueryRep
+  | JoinCsvQueryRep;
 
 // A "leaf dependency" is either a SqlQuery or a table name
 export type QueryLeafDep = SqlQueryRep | TableQueryRep;
