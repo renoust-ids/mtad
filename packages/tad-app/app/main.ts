@@ -164,6 +164,21 @@ const appInit = (options: any) => {
     }
     return result.filePaths[0];
   });
+  ipcMain.handle("dialog:getCsvHeaders", async (event, csvPath: string) => {
+    try {
+      const content = fs.readFileSync(csvPath, "utf-8");
+      const firstLine = content.split("\n")[0];
+      const delimiter = csvPath.endsWith(".tsv") ? "\t" : ",";
+      const headers = firstLine
+        .split(delimiter)
+        .map((h) => h.trim().replace(/^"|"$/g, ""))
+        .filter((h) => h.length > 0);
+      return { columns: headers, types: {} };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new Error(`Failed to read CSV headers: ${msg}`);
+    }
+  });
   appMenu.createMenu(); // log.log('appInit: done')
 };
 

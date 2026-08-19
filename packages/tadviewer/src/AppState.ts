@@ -20,6 +20,32 @@ export const defaultParquetExportOptions: ParquetExportOptions = {
   compression: "snappy",
 };
 
+export type CsvJoinType = "inner" | "left" | "right" | "outer";
+
+export interface JoinCsvDialogState {
+  open: boolean;
+  csvPath: string | null;
+  leftColumns: string[];
+  rightColumns: string[];
+  leftCol: string;
+  rightCol: string;
+  joinType: CsvJoinType;
+  forceStringCast: boolean;
+  nullString: string;
+}
+
+const defaultJoinCsvDialogState: JoinCsvDialogState = {
+  open: false,
+  csvPath: null,
+  leftColumns: [],
+  rightColumns: [],
+  leftCol: "",
+  rightCol: "",
+  joinType: "inner",
+  forceStringCast: true,
+  nullString: "",
+};
+
 export interface AppStateProps {
   initialized: boolean; // Has main process initialization completed?
 
@@ -37,6 +63,8 @@ export interface AppStateProps {
 
   viewConfirmDialogOpen: boolean;
   viewConfirmSourcePath: DataSourcePath | null;
+
+  joinCsvDialog: JoinCsvDialogState;
 
   appLoadingTimer: Timer;
   activity: Activity;
@@ -56,6 +84,7 @@ const defaultAppStateProps: AppStateProps = {
   exportPercent: 0,
   viewConfirmDialogOpen: false,
   viewConfirmSourcePath: null,
+  joinCsvDialog: defaultJoinCsvDialogState,
   appLoadingTimer: new Timer(),
   activity: "None",
   showRecordCount: true,
@@ -77,6 +106,7 @@ export class AppState extends Immutable.Record(defaultAppStateProps) {
   public readonly exportPercent!: number;
   public readonly viewConfirmDialogOpen!: boolean;
   public readonly viewConfirmSourcePath!: DataSourcePath | null;
+  public readonly joinCsvDialog!: JoinCsvDialogState;
   public readonly appLoadingTimer!: Timer;
   public readonly activity!: Activity;
   public readonly showRecordCount!: boolean;

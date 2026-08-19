@@ -149,6 +149,17 @@ const init = async () => {
             parquetExportOptions,
           })
         }
+        onSelectCsvFile={async () => {
+          const result = await ipcRenderer.invoke("dialog:selectCsvForJoin");
+          return result as string | null;
+        }}
+        onGetCsvHeaders={async (csvPath: string) => {
+          const result = await ipcRenderer.invoke(
+            "dialog:getCsvHeaders",
+            csvPath
+          );
+          return result as { columns: string[]; types: Record<string, string> };
+        }}
       />
     );
     const tRender = performance.now();
@@ -219,6 +230,12 @@ const init = async () => {
     ipcRenderer.on("open-file", (event, req) => {
       const { openParams } = req;
       openFromOpenParams(openParams, stateRef);
+    });
+
+    ipcRenderer.on("start-csv-join", () => {
+      const curState = mutableGet(stateRef);
+      const leftColumns = curState.viewState?.baseSchema?.columns ?? [];
+      actions.openJoinCsvDialog(leftColumns, stateRef);
     });
 
     document.addEventListener("copy", function (e) {});

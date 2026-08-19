@@ -20,12 +20,14 @@ import {
 import { GridPane, OpenURLFn } from "./GridPane";
 import { Footer } from "./Footer";
 import { LoadingModal } from "./LoadingModal";
+import { JoinCsvDialog } from "./JoinCsvDialog";
 import * as actions from "../actions";
 import {
   AppState,
   ExportFormat,
   ParquetExportOptions,
   defaultParquetExportOptions,
+  CsvJoinType,
 } from "../AppState";
 import * as oneref from "oneref";
 import { useState } from "react";
@@ -63,6 +65,18 @@ export interface AppPaneBaseProps {
   ) => void;
   onCellClick?: (cell: CellClickData) => void;
   onSelectionChange?: (data: SelectionChangeData) => void;
+  onSelectCsvFile?: () => Promise<string | null>;
+  onGetCsvHeaders?: (
+    csvPath: string
+  ) => Promise<{ columns: string[]; types: Record<string, string> }>;
+  onJoinCsvConfirmed?: (joinArgs: {
+    csvPath: string;
+    joinType: CsvJoinType;
+    leftCol: string;
+    rightCol: string;
+    forceStringCast: boolean;
+    nullString: string;
+  }) => void;
 }
 
 export type AppPaneProps = AppPaneBaseProps & oneref.StateRefProps<AppState>;
@@ -407,7 +421,10 @@ export const AppPane: React.FunctionComponent<AppPaneProps> = ({
   onBrowseExportPath,
   onExportFile,
   onCellClick,
-  onSelectionChange
+  onSelectionChange,
+  onSelectCsvFile,
+  onGetCsvHeaders,
+  onJoinCsvConfirmed,
 }: AppPaneProps) => {
   const { activity, exportBeginDialogOpen } = appState;
   const dataSourceExpanded = activity === "DataSource";
@@ -504,6 +521,13 @@ export const AppPane: React.FunctionComponent<AppPaneProps> = ({
         newWindow={newWindow}
         appState={appState}
         stateRef={stateRef}
+      />
+      <JoinCsvDialog
+        appState={appState.joinCsvDialog}
+        stateRef={stateRef}
+        onSelectCsvFile={onSelectCsvFile ?? (async () => null)}
+        onGetCsvHeaders={onGetCsvHeaders ?? (async () => ({ columns: [], types: {} }))}
+        onJoinConfirmed={onJoinCsvConfirmed ?? (() => {})}
       />
     </div>
   );

@@ -92,3 +92,69 @@
 **Command:** `npx tsc --noEmit --skipLibCheck` in `packages/tad-app`
 **Result:** All errors are pre-existing TS2307 (modules not found in node_modules). No new errors introduced.
 **Note:** Full webpack build blocked by pre-existing issues (Node v26.7.0 compatibility with lerna/yargs).
+
+---
+
+## Session: Step 3 - Interface Utilisateur (React)
+
+### [2026-08-19T14:30] Step 3.1 - AppState Extension
+
+**Files Modified:**
+- `packages/tadviewer/src/AppState.ts`: Added `CsvJoinType` type alias, `JoinCsvDialogState` interface, `defaultJoinCsvDialogState`, `joinCsvDialog` field to `AppStateProps` and `AppState` class.
+
+**Rationale:** Follows existing pattern of dialog state in AppState (e.g. `exportBeginDialogOpen`). Uses a structured object instead of multiple boolean/string fields for better encapsulation.
+
+### [2026-08-19T14:35] Step 3.2 - Actions
+
+**Files Modified:**
+- `packages/tadviewer/src/actions.ts`: Added 8 actions: `openJoinCsvDialog`, `closeJoinCsvDialog`, `setJoinCsvPath`, `setJoinCsvLeftCol`, `setJoinCsvRightCol`, `setJoinCsvType`, `setJoinCsvForceStringCast`, `setJoinCsvNullString`.
+
+**Rationale:** Follows existing action pattern (immutable state updates via `update()`). Each action maps to a single field in `JoinCsvDialogState`.
+
+### [2026-08-19T14:40] Step 3.3 - JoinCsvDialog Component
+
+**Files Created:**
+- `packages/tadviewer/src/components/JoinCsvDialog.tsx`: BlueprintJS Dialog component with:
+  - CSV file selection (triggers IPC via `onSelectCsvFile` callback)
+  - Column selection dropdowns (left column from current view, right column from CSV)
+  - Join type selector (inner, left, right, outer)
+  - Null string input
+  - Force string cast checkbox
+  - Loading spinner during file read
+  - Error display
+
+**Rationale:** Follows ExportBeginDialog pattern. Uses callback props for IPC calls (no direct Electron dependency in tadviewer). Auto-opens file picker on dialog open if no CSV selected yet.
+
+### [2026-08-19T14:45] Step 3.4 - IPC Handler for CSV Headers
+
+**Files Modified:**
+- `packages/tad-app/app/main.ts`: Added `ipcMain.handle("dialog:getCsvHeaders")` handler that reads the first line of a CSV/TSV file and returns `{ columns: string[], types: {} }`.
+
+**Rationale:** Simple approach using `fs.readFileSync` + line splitting. Sufficient for header extraction. Uses tab delimiter for `.tsv` files. Strips quotes from header names.
+
+### [2026-08-19T14:50] Step 3.5 - IPC Listener & Wiring
+
+**Files Modified:**
+- `packages/tad-app/src/electronRenderMain.tsx`: 
+  - Added `ipcRenderer.on("start-csv-join")` listener that reads current view columns and calls `actions.openJoinCsvDialog()`.
+  - Added `onSelectCsvFile` prop (invokes `dialog:selectCsvForJoin` IPC).
+  - Added `onGetCsvHeaders` prop (invokes `dialog:getCsvHeaders` IPC).
+
+**Rationale:** Follows existing pattern (e.g. `open-export-begin-dialog`). Menu sends `start-csv-join`, renderer opens dialog.
+
+### [2026-08-19T14:55] Step 3.6 - AppPane Integration
+
+**Files Modified:**
+- `packages/tadviewer/src/components/AppPane.tsx`:
+  - Added `JoinCsvDialog` import.
+  - Added `onSelectCsvFile`, `onGetCsvHeaders`, `onJoinCsvConfirmed` to `AppPaneBaseProps`.
+  - Rendered `<JoinCsvDialog>` alongside existing dialogs.
+
+**Rationale:** Follows existing pattern of rendering dialog components inside AppPane. Callback props allow Electron-specific IPC to remain in tad-app.
+
+### [2026-08-19T15:00] Step 3.7 - Verification
+
+**Command:** `npx tsc --noEmit --skipLibCheck` on tadviewer and tad-app
+**Result:** No new errors introduced. All errors are pre-existing module resolution issues.
+
+**Note:** Full webpack build blocked by missing `recursive-copy-cli` and `webpack-cli` in this environment. TypeScript check confirms no type errors in new code.

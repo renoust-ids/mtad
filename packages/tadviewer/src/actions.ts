@@ -1,6 +1,11 @@
 import { ViewParams } from "./ViewParams";
 import { ViewState } from "./ViewState";
-import { AppState, ExportFormat } from "./AppState";
+import {
+  AppState,
+  ExportFormat,
+  CsvJoinType,
+  JoinCsvDialogState,
+} from "./AppState";
 import * as reltab from "reltab";
 import { Activity, ColumnListTypes } from "./components/defs";
 import { Path, PathTree } from "aggtree";
@@ -609,3 +614,107 @@ export const ensureDistinctColVals = (colId: string, stateRef: StateRef<AppState
   });
 };
 */
+
+// --- Join CSV Dialog Actions ---
+
+export const openJoinCsvDialog = (
+  leftColumns: string[],
+  stateRef: StateRef<AppState>
+) => {
+  update(stateRef, (s) =>
+    s.set("joinCsvDialog", {
+      open: true,
+      csvPath: null,
+      leftColumns,
+      rightColumns: [],
+      leftCol: "",
+      rightCol: "",
+      joinType: "inner" as CsvJoinType,
+      forceStringCast: true,
+      nullString: "",
+    } as JoinCsvDialogState)
+  );
+};
+
+export const closeJoinCsvDialog = (stateRef: StateRef<AppState>) => {
+  update(stateRef, (s) =>
+    s.set("joinCsvDialog", {
+      ...s.joinCsvDialog,
+      open: false,
+    } as JoinCsvDialogState)
+  );
+};
+
+export const setJoinCsvPath = (
+  csvPath: string,
+  rightColumns: string[],
+  stateRef: StateRef<AppState>
+) => {
+  update(stateRef, (s) =>
+    s.set("joinCsvDialog", {
+      ...s.joinCsvDialog,
+      csvPath,
+      rightColumns,
+    } as JoinCsvDialogState)
+  );
+};
+
+export const setJoinCsvLeftCol = (
+  col: string,
+  stateRef: StateRef<AppState>
+) => {
+  update(stateRef, (s) =>
+    s.set("joinCsvDialog", {
+      ...s.joinCsvDialog,
+      leftCol: col,
+    } as JoinCsvDialogState)
+  );
+};
+
+export const setJoinCsvRightCol = (
+  col: string,
+  stateRef: StateRef<AppState>
+) => {
+  update(stateRef, (s) =>
+    s.set("joinCsvDialog", {
+      ...s.joinCsvDialog,
+      rightCol: col,
+    } as JoinCsvDialogState)
+  );
+};
+
+export const setJoinCsvType = (
+  joinType: CsvJoinType,
+  stateRef: StateRef<AppState>
+) => {
+  update(stateRef, (s) =>
+    s.set("joinCsvDialog", {
+      ...s.joinCsvDialog,
+      joinType,
+    } as JoinCsvDialogState)
+  );
+};
+
+export const setJoinCsvForceStringCast = (
+  force: boolean,
+  stateRef: StateRef<AppState>
+) => {
+  update(stateRef, (s) =>
+    s.set("joinCsvDialog", {
+      ...s.joinCsvDialog,
+      forceStringCast: force,
+    } as JoinCsvDialogState)
+  );
+};
+
+export const setJoinCsvNullString = (
+  nullStr: string,
+  stateRef: StateRef<AppState>
+) => {
+  update(stateRef, (s) =>
+    s.set("joinCsvDialog", {
+      ...s.joinCsvDialog,
+      nullString: nullStr,
+    } as JoinCsvDialogState)
+  );
+};
