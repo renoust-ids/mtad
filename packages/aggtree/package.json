@@ -1,8 +1,8 @@
 {
   "name": "aggtree",
-  "version": "0.14.0",
+  "version": "0.0.1",
   "description": "pivot table built on top of reltab",
-  "author": "Antony Courtney <antony.courtney@gmail.com>",
+  "author": "Benjamin Renoust <renoust@ids.osaka-u.ac.jp>",
   "homepage": "https://github.com/antonycourtney/tad#readme",
   "license": "MIT",
   "main": "dist/aggtree.js",
@@ -34,7 +34,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/antonycourtney/tad.git"
+    "url": "https://github.com/renoust-ids/tad.git"
   },
   "bugs": {
     "url": "https://github.com/antonycourtney/tad/issues"

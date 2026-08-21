@@ -1,6 +1,6 @@
 {
   "name": "reltab-sqlite",
-  "version": "0.14.0",
+  "version": "0.0.1",
   "description": "sqlite driver for reltab",
   "main": "dist/reltab-sqlite.js",
   "types": "dist/reltab-sqlite.d.ts",
@@ -16,7 +16,7 @@
     "database",
     "sqlite"
   ],
-  "author": "Antony Courtney <antony@antonycourtney.com>",
+  "author": "Benjamin Renoust <renoust@ids.osaka-u.ac.jp>",
   "license": "MIT",
   "dependencies": {
     "@types/sqlite3": "^3.1.8",

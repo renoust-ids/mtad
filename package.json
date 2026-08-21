@@ -1,7 +1,7 @@
 {
-  "name": "tad",
-  "version": "0.14.0",
-  "description": "Lerna monorepo for Tabular data viewer libraries and apps",
+  "name": "mtad",
+  "version": "0.0.1",
+  "description": "MTad - Tabular data viewer monorepo",
   "overrides": {
     "ws": "8.18.1"
   },

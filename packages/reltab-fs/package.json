@@ -1,6 +1,6 @@
 {
   "name": "reltab-fs",
-  "version": "0.14.0",
+  "version": "0.0.1",
   "description": "filesystem datasource for reltab",
   "main": "dist/reltab-fs.js",
   "types": "dist/reltab-fs.d.ts",
@@ -17,7 +17,7 @@
     "database",
     "sqlite"
   ],
-  "author": "Antony Courtney <antony@antonycourtney.com>",
+  "author": "Benjamin Renoust <renoust@ids.osaka-u.ac.jp>",
   "license": "MIT",
   "dependencies": {
     "loglevel": "^1.8.0",

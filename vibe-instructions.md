@@ -45,6 +45,101 @@ Avant de commencer, crée un fichier `AGENT_DEV_LOG.md` à la racine. Pour **cha
 # MISSION ACTUELLE
 Intégrer une fonctionnalité de "Jointure de CSV" (Merge/Join CSV). Cette fonction doit permettre à l'utilisateur de charger un second CSV, de définir les clés de jointure, le type de jointure (INNER, LEFT, etc.), et de générer une nouvelle table affichée dans l'UI.
 
+# PROTOCOLE DE RELEASE (MTad)
+
+## Informations sur le projet
+- **Nom du produit** : MTad (application Electron)
+- **App ID** : `com.mtad.app`
+- **Version actuelle** : `0.0.1`
+- **Dépôt** : https://github.com/renoust-ids/tad
+- **Branche principale** : `main`
+- **Auteur** : Benjamin Renoust (from Antony Courtney)
+
+## Plateformes cibles
+| Plateforme | Format | Architecture | Commande electron-builder |
+|------------|--------|--------------|---------------------------|
+| macOS | DMG + ZIP | arm64 (Apple Silicon) | `--mac --arm64` |
+| macOS | DMG + ZIP | x64 (Intel) | `--mac --x64` |
+| Windows | EXE (NSIS) | x64 | `--win --x64` |
+| Linux | DEB | x64 | `--linux deb` |
+| Linux | RPM | x64 | `--linux rpm` |
+| Linux | TAR.BZ2 | x64 | `--linux tar.bz2` |
+
+## Workflow de release
+
+### 1. Préparation
+```bash
+# S'assurer d'être sur la dernière version de la branche
+git checkout main
+git pull origin main
+
+# Vérifier que les tests passent
+npx lerna bootstrap --force-local --hoist --no-ci
+cd packages/reltab && npm test
+```
+
+### 2. Mise à jour des versions
+```bash
+# Mettre à jour les versions dans tous les package.json
+# (utiliser le script ou éditer manuellement)
+python3 << 'EOF'
+import json, glob
+for f in ["package.json"] + glob.glob("packages/*/package.json"):
+    with open(f) as fh:
+        data = json.load(fh)
+    data["version"] = "0.0.1"  # Version cible
+    with open(f, "w") as fh:
+        json.dump(data, fh, indent=2)
+        fh.write("\n")
+EOF
+```
+
+### 3. Build local (test avant release)
+```bash
+# Build complet pour toutes les plateformes
+./build-dist.sh
+
+# Ou build spécifique
+cd packages/tad-app
+npx webpack --mode production
+npx electron-builder --mac --arm64 --x64 --publish=never
+```
+
+### 4. Publication GitHub (via CI)
+```bash
+# Créer et pusher un tag pour déclencher le CI
+git tag v0.0.1
+git push origin v0.0.1
+
+# Le workflow .github/workflows/build.yml se déclenchera automatiquement
+# et créera les artefacts pour toutes les plateformes
+```
+
+### 5. Téléchargement des artefacts
+1. Aller sur https://github.com/renoust-ids/tad/actions
+2. Cliquer sur le workflow "Build & Release" correspondant au tag
+3. Télécharger les artefacts dans la section "Artifacts" de chaque job
+
+## Fichiers de configuration
+- **electron-builder config** : `packages/tad-app/package.json` (section "build")
+- **Workflow CI** : `.github/workflows/build.yml`
+- **Script de build local** : `build-dist.sh`
+
+## Notes importantes
+- **Signature Apple** : Désactivée pour les builds internes (pas de certificat Developer ID)
+- **Notarization** : Ignorée si la variable `APPLEID` n'est pas définie
+- **Modules natifs** : DuckDB est compilé nativement pour chaque plateforme via le CI
+- **Taille des DMG** : ~1-2 GB (inclut DuckDB + node_modules)
+
+## Checklist de release
+- [ ] Version bumpée dans tous les package.json
+- [ ] Tests unitaires passent (`npm test` dans reltab)
+- [ ] Build production réussit (`npx webpack --mode production`)
+- [ ] Tag créé et pushé (`git tag v0.0.1 && git push origin v0.0.1`)
+- [ ] CI green sur GitHub Actions
+- [ ] Artefacts téléchargés et testés
+- [ ] Release draft créée sur GitHub
+
 # MISSION : JOINTURE DE CSV (Plan d'exécution pas à pas)
 
 L'objectif est d'ajouter un menu "File > Join CSV" permettant de fusionner un CSV externe avec la vue courante.

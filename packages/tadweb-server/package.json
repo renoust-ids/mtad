@@ -1,6 +1,6 @@
 {
   "name": "tadweb-server",
-  "version": "0.14.0",
+  "version": "0.0.1",
   "description": "ExpressJS based web server for Tad",
   "main": "dist/server.js",
   "scripts": {
@@ -22,7 +22,7 @@
     "webserver",
     "tad"
   ],
-  "author": "Antony Courtney <antony@antonycourtney.com>",
+  "author": "Benjamin Renoust <renoust@ids.osaka-u.ac.jp>",
   "license": "MIT",
   "dependencies": {
     "@types/command-line-args": "^5.2.0",

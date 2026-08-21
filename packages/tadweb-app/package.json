@@ -1,6 +1,6 @@
 {
   "name": "tadweb-app",
-  "version": "0.14.0",
+  "version": "0.0.1",
   "description": "Tabular data viewer web app",
   "main": "dist/tadweb.bundle.js",
   "scripts": {
@@ -22,7 +22,7 @@
     "sql",
     "database"
   ],
-  "author": "Antony Courtney <antony@antonycourtney.com>",
+  "author": "Benjamin Renoust <renoust@ids.osaka-u.ac.jp>",
   "license": "MIT",
   "dependencies": {
     "loglevel": "^1.8.0",

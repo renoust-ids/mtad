@@ -1,6 +1,6 @@
 {
   "name": "reltab-bigquery",
-  "version": "0.14.0",
+  "version": "0.0.1",
   "description": "Google BigQuery driver for reltab",
   "main": "dist/reltab-bigquery.js",
   "types": "dist/reltab-bigquery.d.ts",
@@ -17,7 +17,7 @@
     "database",
     "bigquery"
   ],
-  "author": "Antony Courtney <antony@antonycourtney.com>",
+  "author": "Benjamin Renoust <renoust@ids.osaka-u.ac.jp>",
   "license": "MIT",
   "dependencies": {
     "@google-cloud/bigquery": "5.9.3",

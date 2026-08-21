@@ -1,6 +1,6 @@
 {
   "name": "reltab-aws-athena",
-  "version": "0.14.0",
+  "version": "0.0.1",
   "description": "AWS Athena driver for reltab",
   "main": "dist/reltab-aws-athena.js",
   "types": "dist/reltab-aws-athena.d.ts",
@@ -19,7 +19,7 @@
     "athena",
     "presto"
   ],
-  "author": "Antony Courtney <antony@antonycourtney.com>",
+  "author": "Benjamin Renoust <renoust@ids.osaka-u.ac.jp>",
   "license": "MIT",
   "dependencies": {
     "athena-express": "^7.1.2",

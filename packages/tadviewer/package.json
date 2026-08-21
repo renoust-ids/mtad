@@ -1,6 +1,6 @@
 {
   "name": "tadviewer",
-  "version": "0.14.0",
+  "version": "0.0.1",
   "description": "Tabular data viewer library",
   "main": "dist/tadviewer.js",
   "types": "dist/tadviewer.d.ts",
@@ -22,7 +22,7 @@
     "sql",
     "database"
   ],
-  "author": "Antony Courtney <antony@antonycourtney.com>",
+  "author": "Benjamin Renoust <renoust@ids.osaka-u.ac.jp>",
   "license": "MIT",
   "dependencies": {
     "@blueprintjs/core": "4.12.0",
