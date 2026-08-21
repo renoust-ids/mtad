@@ -718,3 +718,67 @@ export const setJoinCsvNullString = (
     } as JoinCsvDialogState)
   );
 };
+
+export const confirmCsvJoin = async (
+  joinArgs: {
+    csvPath: string;
+    joinType: CsvJoinType;
+    leftCol: string;
+    rightCol: string;
+    forceStringCast: boolean;
+    nullString: string;
+  },
+  rightColumns: string[],
+  stateRef: StateRef<AppState>
+): Promise<void> => {
+  const appState = mutableGet(stateRef);
+  const { viewState } = appState;
+  if (!viewState || !viewState.baseQuery || !viewState.dbc) {
+    log.error("confirmCsvJoin: no active view to join onto");
+    return;
+  }
+
+  const { baseQuery, dbc } = viewState;
+
+  const rhsSchema: { [colId: string]: { displayName: string; columnType: string } } = {};
+  for (const cid of rightColumns) {
+    rhsSchema[cid] = { displayName: cid, columnType: "VARCHAR" };
+  }
+
+  const reltabArgs: reltab.JoinCsvArgs = {
+    rightTablePath: joinArgs.csvPath,
+    joinType: joinArgs.joinType,
+    leftCol: joinArgs.leftCol,
+    rightCol: joinArgs.rightCol,
+    forceStringCast: joinArgs.forceStringCast,
+    nullString: joinArgs.nullString || undefined,
+  };
+
+  const newBaseQuery = baseQuery.joinCsv(reltabArgs, rhsSchema, rightColumns);
+  const newBaseSchema = await aggtree.getBaseSchema(
+    dbc,
+    newBaseQuery,
+    appState.showRecordCount
+  );
+
+  const displayColumns = newBaseSchema.columns.slice();
+  const openPaths = new PathTree();
+  const initialViewParams = new ViewParams({
+    displayColumns,
+    openPaths,
+  });
+
+  const viewStateNew = new ViewState({
+    dbc,
+    dsPath: viewState.dsPath,
+    baseSchema: newBaseSchema,
+    baseQuery: newBaseQuery,
+    viewParams: initialViewParams,
+    initialViewParams,
+  });
+
+  await awaitableUpdate_(
+    stateRef,
+    (st: AppState): AppState => st.set("viewState", viewStateNew) as AppState
+  );
+};

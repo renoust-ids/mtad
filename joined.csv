@@ -1,0 +1,6 @@
+id,customer_id,product,amount,name,city
+101,1,Laptop,1200,Alice,Paris
+102,1,Mouse,25,Alice,Paris
+103,2,Keyboard,75,Bob,Lyon
+104,3,Monitor,300,Charlie,Marseille
+105,5,Ghost,999,,

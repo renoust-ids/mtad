@@ -26,7 +26,7 @@ Pour éviter la saturation de ta mémoire contextuelle (context compression), tu
    - Les variables, types ou signatures de fonctions importants découverts (ex: la structure exacte de `viewParams` ou `QueryExp`).
    - L'objectif exact de l'étape suivante.
 3. **Mise en pause :** Stoppe ton exécution et écris-moi **exclusivement** ce message : *"Checkpoint sauvegardé dans `STATE_HANDOFF.md`. Tu peux vider le contexte de notre conversation (Clear Chat) et me relancer pour l'étape suivante."*
-4. **Reprise (Nouvelle Session) :** Au démarrage d'une nouvelle session, si un fichier `STATE_HANDOFF.md` existe, tu DOIS le lire en priorité absolue avant de faire quoi que ce soit d'autre, afin de restaurer ton contexte de travail.
+4. **Reprise (Nouvelle Session) :** Au démarrage d'une nouvelle session, reprends connaissance du repository ainsi que du fichier vible-instructions.md, si un fichier `STATE_HANDOFF.md` existe, tu DOIS le lire en priorité absolue avant de faire quoi que ce soit d'autre, afin de restaurer ton contexte de travail.
 
 # PROTOCOLE DE TRAÇABILITÉ ET DE VERSIONING
 

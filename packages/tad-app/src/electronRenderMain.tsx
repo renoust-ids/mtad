@@ -10,6 +10,7 @@ import {
   AppPaneBaseProps,
   ExportFormat,
   ParquetExportOptions,
+  CsvJoinType,
 } from "tadviewer";
 import { PivotRequester } from "tadviewer";
 import { AppState } from "tadviewer";
@@ -159,6 +160,18 @@ const init = async () => {
             csvPath
           );
           return result as { columns: string[]; types: Record<string, string> };
+        }}
+        onJoinCsvConfirmed={async (joinArgs: {
+          csvPath: string;
+          joinType: CsvJoinType;
+          leftCol: string;
+          rightCol: string;
+          forceStringCast: boolean;
+          nullString: string;
+        }) => {
+          const curState = mutableGet(stateRef);
+          const rightColumns = curState.joinCsvDialog.rightColumns;
+          await actions.confirmCsvJoin(joinArgs, rightColumns, stateRef);
         }}
       />
     );

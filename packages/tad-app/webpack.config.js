@@ -13,6 +13,11 @@ function config(nodeEnv) {
     mode: nodeEnv,
     resolve: {
       extensions: [".webpack.js", ".web.js", ".js", ".ts", ".tsx"],
+      alias: {
+        react: path.resolve(__dirname, "../../node_modules/react"),
+        "react-dom": path.resolve(__dirname, "../../node_modules/react-dom"),
+        scheduler: path.resolve(__dirname, "../../node_modules/scheduler"),
+      },
     },
     output: {
       path: __dirname + "/dist/",

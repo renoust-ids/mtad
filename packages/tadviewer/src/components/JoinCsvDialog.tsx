@@ -8,8 +8,6 @@ import {
   InputGroup,
   HTMLSelect,
   Checkbox,
-  Text,
-  Intent,
   Spinner,
 } from "@blueprintjs/core";
 import { JoinCsvDialogState, CsvJoinType } from "../AppState";
@@ -72,9 +70,6 @@ export const JoinCsvDialog: React.FunctionComponent<JoinCsvDialogProps> = ({
       if (selectedPath) {
         const headers = await onGetCsvHeaders(selectedPath);
         actions.setJoinCsvPath(selectedPath, headers.columns, stateRef);
-        if (headers.columns.length > 0) {
-          actions.setJoinCsvRightCol(headers.columns[0], stateRef);
-        }
       } else {
         actions.closeJoinCsvDialog(stateRef);
       }
@@ -118,8 +113,8 @@ export const JoinCsvDialog: React.FunctionComponent<JoinCsvDialogProps> = ({
 
   const canConfirm = csvPath && leftCol && rightCol && !loading;
 
-  const leftColOptions = leftColumns.map((c) => ({ label: c, value: c }));
-  const rightColOptions = rightColumns.map((c) => ({ label: c, value: c }));
+  const leftColOptions = [{ label: "-- select column --", value: "" }, ...leftColumns.map((c) => ({ label: c, value: c }))];
+  const rightColOptions = [{ label: "-- select column --", value: "" }, ...rightColumns.map((c) => ({ label: c, value: c }))];
 
   const shortCsvPath = csvPath
     ? csvPath.split(/[/\\]/).pop() ?? csvPath
@@ -140,9 +135,9 @@ export const JoinCsvDialog: React.FunctionComponent<JoinCsvDialogProps> = ({
         )}
 
         {error && (
-          <Text intent={Intent.DANGER} style={{ marginBottom: 8 }}>
+          <p style={{ marginBottom: 8, color: "#cf4f39" }}>
             {error}
-          </Text>
+          </p>
         )}
 
         {!loading && (
