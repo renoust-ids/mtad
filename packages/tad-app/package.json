@@ -158,11 +158,9 @@
       ]
     },
     "mac": {
-      "hardenedRuntime": true,
+      "hardenedRuntime": false,
       "gatekeeperAssess": false,
       "category": "public.app-category.developer-tools",
-      "entitlements": "res/entitlements.mac.plist",
-      "entitlementsInherit": "res/entitlements.mac.plist",
       "target": [
         "zip",
         "dmg"

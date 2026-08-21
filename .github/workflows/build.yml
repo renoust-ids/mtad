@@ -1,0 +1,96 @@
+name: Build & Release
+
+on:
+  push:
+    branches: [main, joincsv]
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+      - run: npm install -g lerna
+      - run: lerna bootstrap --force-local --hoist --no-ci
+      - name: Build tadviewer
+        run: cd packages/tadviewer && npx webpack --mode production
+      - name: Build tad-app
+        run: cd packages/tad-app && npx webpack --mode production
+      - name: Package Mac (arm64 + x64)
+        run: cd packages/tad-app && npx electron-builder --mac --arm64 --x64 --publish=never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac-builds
+          path: |
+            packages/tad-app/dist/*.dmg
+            packages/tad-app/dist/*.zip
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+      - run: npm install -g lerna
+      - run: lerna bootstrap --force-local --hoist --no-ci
+      - name: Build tadviewer
+        run: cd packages/tadviewer && npx webpack --mode production
+      - name: Build tad-app
+        run: cd packages/tad-app && npx webpack --mode production
+      - name: Package Windows
+        run: cd packages/tad-app && npx electron-builder --win --publish=never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-builds
+          path: packages/tad-app/dist/*.exe
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+      - run: sudo apt-get update && sudo apt-get install -y rpm
+      - run: npm install -g lerna
+      - run: lerna bootstrap --force-local --hoist --no-ci
+      - name: Build tadviewer
+        run: cd packages/tadviewer && npx webpack --mode production
+      - name: Build tad-app
+        run: cd packages/tad-app && npx webpack --mode production
+      - name: Package Linux
+        run: cd packages/tad-app && npx electron-builder --linux deb rpm tar.bz2 --publish=never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-builds
+          path: |
+            packages/tad-app/dist/*.deb
+            packages/tad-app/dist/*.rpm
+            packages/tad-app/dist/*.tar.bz2
+
+  release:
+    needs: [build-mac, build-windows, build-linux]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            mac-builds/*
+            windows-builds/*
+            linux-builds/*
+          draft: true
+          generate_release_notes: true

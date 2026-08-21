@@ -9,10 +9,10 @@ exports.default = async function notarizing(context) {
   const appName = context.packager.appInfo.productFilename;
   const appleId = process.env.APPLEID;
   if (!appleId) {
-    console.error(
-      "notarize.js: APPLEID env var not set. Please set APPLEID and APPLEIDPASS env vars to your Apple ID and password"
+    console.warn(
+      "notarize.js: APPLEID env var not set — skipping notarization (internal build)"
     );
-    throw new Error("notarize: Apple ID credentials not set");
+    return;
   }
 
   return await notarize({
