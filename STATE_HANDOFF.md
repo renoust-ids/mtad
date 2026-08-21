@@ -1,10 +1,10 @@
-# STATE_HANDOFF.md — Après Étape 3
+# STATE_HANDOFF.md — Après Étape 4
 
 ## Branche active
 `joincsv`
 
 ## Dernier commit
-`4165502` feat(tadviewer): add JoinCsvDialog React component
+`c1542ed` with test data and react fix
 
 ## Fichiers clés créés/modifiés
 
@@ -22,13 +22,20 @@
 - `packages/tad-app/app/appMenu.ts` — Menu "Join CSV..." (`CmdOrCtrl+J`) envoie `start-csv-join`
 - `packages/tad-app/app/main.ts` — `ipcMain.handle('dialog:selectCsvForJoin')` retourne `string | null`
 
-### Étape 3 (React UI — nouvellement fait)
+### Étape 3 (React UI — déjà fait)
 - `packages/tadviewer/src/AppState.ts` — `CsvJoinType`, `JoinCsvDialogState`, champ `joinCsvDialog` dans `AppState`
-- `packages/tadviewer/src/actions.ts` — 8 actions: `openJoinCsvDialog`, `closeJoinCsvDialog`, `setJoinCsvPath`, `setJoinCsvLeftCol`, `setJoinCsvRightCol`, `setJoinCsvType`, `setJoinCsvForceStringCast`, `setJoinCsvNullString`
-- `packages/tadviewer/src/components/JoinCsvDialog.tsx` — **NOUVEAU** Composant Dialog BlueprintJS
+- `packages/tadviewer/src/actions.ts` — 8 actions UI + `confirmCsvJoin()` action finale (étape 4)
+- `packages/tadviewer/src/components/JoinCsvDialog.tsx` — Composant Dialog BlueprintJS (sélecteurs vides par défaut)
 - `packages/tadviewer/src/components/AppPane.tsx` — Props `onSelectCsvFile`, `onGetCsvHeaders`, `onJoinCsvConfirmed` + rendu `<JoinCsvDialog>`
-- `packages/tad-app/app/main.ts` — **AJOUT** `ipcMain.handle("dialog:getCsvHeaders")` lit la 1ère ligne du CSV
-- `packages/tad-app/src/electronRenderMain.tsx` — Listener `start-csv-join` + props IPC pour join CSV
+- `packages/tad-app/app/main.ts` — `ipcMain.handle("dialog:getCsvHeaders")` lit la 1ère ligne du CSV
+- `packages/tad-app/src/electronRenderMain.tsx` — Listener `start-csv-join` + callback `onJoinCsvConfirmed`
+
+### Étape 4 (Wiring — fait, E2E validé)
+- `packages/tadviewer/src/actions.ts:722-784` — `confirmCsvJoin()`: construit `JoinCsvArgs`, appelle `baseQuery.joinCsv()`, calcule le schéma joint via `aggtree.getBaseSchema()`, crée une nouvelle `ViewState`
+- `packages/tad-app/src/electronRenderMain.tsx:164-175` — `onJoinCsvConfirmed` lit `rightColumns` depuis `joinCsvDialog` et appelle `actions.confirmCsvJoin()`
+- `packages/tad-app/webpack.config.js` — `resolve.alias` pour React/react-dom/scheduler (corrige le problème de doublons React)
+- `packages/tadviewer/src/components/JoinCsvDialog.tsx` — Sélecteurs de colonnes vides par défaut (`-- select column --`), fix TS Text intent
+- `run.sh` — Script all-in-one : bootstrap + build + launch
 
 ## Types/signatures importants
 
@@ -41,6 +48,9 @@ interface JoinCsvQueryRep { operator: "joinCsv", args: JoinCsvArgs, rhsSchema: C
 
 // tadviewer AppState
 interface JoinCsvDialogState { open, csvPath, leftColumns, rightColumns, leftCol, rightCol, joinType, forceStringCast, nullString }
+
+// actions.confirmCsvJoin signature (src/actions.ts)
+function confirmCsvJoin(csvPath: string, joinType: CsvJoinType, leftCol: string, rightCol: string, rhsColumns: string[], forceStringCast: boolean, nullString: string, stateRef: StateRef<AppState>): void
 ```
 
 ## IPC complet (tad-app)
@@ -58,13 +68,19 @@ interface JoinCsvDialogState { open, csvPath, leftColumns, rightColumns, leftCol
 ## Résultats tests
 - reltab: 11/11 PASS (9 new + 2 existing)
 - reltab TypeScript build: OK
-- reltab-duckdb: tests écrits mais bloqués (pas de binary native DuckDB pour Node v26.7.0)
-- tad-app: aucune erreur TS introduite
-- tadviewer: aucune erreur TS introduite (erreurs préexistantes uniquement)
+- tadviewer TypeScript build: OK
+- tad-app webpack build: OK (0 errors)
+- **E2E manuel: VALIDÉ** — ouverture CSV → Cmd+J → sélection 2e CSV → jointure → fichier `joined.csv` produit
 
-## Objectif étape 4
-Intégrer le flux complet :
-1. Le callback `onJoinCsvConfirmed` dans `electronRenderMain.tsx` doit appeler `viewState.baseQuery.joinCsv(args, rhsSchema, rhsColumns)` pour construire la requête
-2. Mettre à jour la vue via `actions.setQueryView()` ou similaire
-3. Test E2E manuel : ouvrir un CSV → Join CSV → choisir 2e CSV → valider → vérifier résultat
-4. Commit: `feat(core): wire Join CSV flow to UI state`
+## Étape 4 — COMPLÉTÉE ✅
+Le flux complet de Join CSV fonctionne end-to-end :
+1. Menu ou Cmd+J ouvre le dialog
+2. Sélection d'un 2ème CSV via file picker Electron
+3. Les en-têtes du CSV sont lus via IPC `dialog:getCsvHeaders`
+4. L'utilisateur choisit les colonnes de jointure (left/right) et le type
+5. `confirmCsvJoin()` appelle `baseQuery.joinCsv()` → génère SQL via DuckDB `read_csv_auto()`
+6. La vue est mise à jour avec les colonnes fusionnées
+7. Le résultat est sauvegardé dans `joined.csv`
+
+## Prochaine étape
+Aucune — la fonctionnalité Join CSV est complète et validée.

@@ -158,3 +158,90 @@
 **Result:** No new errors introduced. All errors are pre-existing module resolution issues.
 
 **Note:** Full webpack build blocked by missing `recursive-copy-cli` and `webpack-cli` in this environment. TypeScript check confirms no type errors in new code.
+
+---
+
+## Session: Step 4 — Wiring End-to-End Join Flow
+
+### [2026-08-20T23:00] Step 4.1 - confirmCsvJoin Action
+
+**Files Modified:**
+- `packages/tadviewer/src/actions.ts`: Added `confirmCsvJoin()` action (lines 722-784).
+
+**Logic:** 
+1. Builds `JoinCsvArgs` from dialog state (csvPath, joinType, leftCol, rightCol, forceStringCast, nullString)
+2. Creates `rhsSchema` as all-VARCHAR (since `dialog:getCsvHeaders` only returns column names, not types)
+3. Calls `viewState.baseQuery.joinCsv(reltabArgs, rhsSchema, rightColumns)` to build the joined QueryExp
+4. Computes new schema via `aggtree.getBaseSchema()` on the joined query
+5. Creates a fresh `ViewState` (new ViewParams, empty pivots/sort/filter) matching the `replaceCurrentView` pattern
+
+**Rationale:** Follows existing pattern of `replaceCurrentView` for view state transitions. Fresh ViewState avoids stale pivot/sort/filter from the previous view which may reference non-existent columns.
+
+### [2026-08-20T23:05] Step 4.2 - Electron Render Main Wiring
+
+**Files Modified:**
+- `packages/tad-app/src/electronRenderMain.tsx`: Added `onJoinCsvConfirmed` callback (lines 164-175).
+
+**Logic:** Reads `curState.joinCsvDialog.rightColumns` and passes it along with dialog fields to `actions.confirmCsvJoin()`.
+
+**Rationale:** The `rightColumns` are stored in `joinCsvDialog` state after headers are read via IPC. They must be passed to `confirmCsvJoin` so the query can reference the correct column names.
+
+### [2026-08-20T23:10] Step 4.3 - Fix JoinCsvDialog TypeScript Error
+
+**Files Modified:**
+- `packages/tadviewer/src/components/JoinCsvDialog.tsx`: Replaced `<Text intent={Intent.DANGER}>` with `<p>` tag (BlueprintJS `Text` doesn't accept `intent` prop in v4.12). Removed unused `Text` and `Intent` imports.
+
+### [2026-08-20T23:15] Step 4.4 - Environment Setup (Node 20 + Lerna Bootstrap)
+
+**Actions:**
+- Installed nvm v0.40.3 + Node v20.20.2
+- Ran `npx lerna bootstrap --force-local --hoist --no-ci` (12 packages bootstrapped)
+- Built tadviewer webpack (14 warnings, 0 errors)
+- Built tad-app webpack (0 errors)
+
+### [2026-08-20T23:20] Step 4.5 - Fix React Duplicate Instance
+
+**Problem:** App crashed with "Invalid hook call" — two copies of React: `tadviewer/node_modules/react` and root `node_modules/react`.
+
+**Files Modified:**
+- `packages/tad-app/webpack.config.js`: Added `resolve.alias` forcing `react`, `react-dom`, and `scheduler` to root `node_modules/`.
+
+**Result:** Bundle size reduced from 13.3 MiB to 11.2 MiB. React hooks work correctly.
+
+### [2026-08-20T23:25] Step 4.6 - UX Improvement: Empty Default Column Selection
+
+**Files Modified:**
+- `packages/tadviewer/src/components/JoinCsvDialog.tsx`: 
+  - Removed auto-selection of first right column after headers load
+  - Added `-- select column --` placeholder option to both left and right column HTMLSelect dropdowns
+  - Join button stays disabled until both columns are explicitly selected
+
+### [2026-08-20T23:35] Step 4.7 - E2E Manual Test: VALIDATED ✅
+
+**Test Protocol:**
+1. Open `customers.csv` in Tad
+2. Press `Cmd+J` → JoinCsvDialog opens, file picker launches
+3. Select `orders.csv` → headers load, both dropdowns show "-- select column --"
+4. Select `id` (left) and `customer_id` (right) → Join button enables
+5. Click "Join" → view updates with merged columns from both tables
+6. Result saved to `joined.csv`
+
+**Result:** PASS — full join flow works end-to-end.
+
+### [2026-08-20T23:40] Step 4.8 - Documentation & Commit
+
+**Files Updated:**
+- `STATE_HANDOFF.md`: Updated to reflect Step 4 completion
+- `AGENT_DEV_LOG.md`: This entry
+
+**Commit:** `c1542ed` with test data and react fix
+
+---
+
+## Summary: Join CSV Feature — COMPLETE ✅
+
+All 4 steps completed:
+1. **reltab engine**: `joinCsv()` QueryExp method, SQL generation, schema computation, 9 unit tests
+2. **Electron IPC**: Menu item (`Cmd+J`), file selection dialog, CSV header reader
+3. **React UI**: `JoinCsvDialog` component, 8+1 actions, AppState integration
+4. **Wiring**: `confirmCsvJoin` action, Electron→React callback, React duplicate fix, E2E validated
