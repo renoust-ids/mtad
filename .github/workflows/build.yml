@@ -33,7 +33,8 @@ jobs:
       - name: Build tad-app
         run: cd packages/tad-app && npm run build-assets && npx webpack --mode production
       - name: Clean dist before packaging
-        run: cd packages/tad-app && rm -rf dist/mac dist/mac-arm64 dist/win dist/win-unpacked dist/linux dist/linux-unpacked dist/*.dmg dist/*.zip dist/*.blockmap dist/latest-*.yml
+        shell: bash
+        run: cd packages/tad-app && rm -rf dist/mac dist/mac-arm64 dist/win dist/win-unpacked dist/linux dist/linux-unpacked && rm -f dist/*.dmg dist/*.zip dist/*.blockmap dist/latest-*.yml 2>/dev/null; true
       - name: Package Mac (arm64 + x64)
         run: cd packages/tad-app && npx electron-builder --mac --arm64 --x64 --publish=never
       - uses: actions/upload-artifact@v4
@@ -68,7 +69,8 @@ jobs:
       - name: Build tad-app
         run: cd packages/tad-app && npm run build-assets && npx webpack --mode production
       - name: Clean dist before packaging
-        run: cd packages/tad-app && rm -rf dist/mac dist/mac-arm64 dist/win dist/win-unpacked dist/linux dist/linux-unpacked dist/*.dmg dist/*.zip dist/*.blockmap dist/latest-*.yml
+        shell: bash
+        run: cd packages/tad-app && rm -rf dist/mac dist/mac-arm64 dist/win dist/win-unpacked dist/linux dist/linux-unpacked && rm -f dist/*.dmg dist/*.zip dist/*.blockmap dist/latest-*.yml 2>/dev/null; true
       - name: Package Windows
         run: cd packages/tad-app && npx electron-builder --win --publish=never
       - uses: actions/upload-artifact@v4
@@ -102,7 +104,8 @@ jobs:
       - name: Build tad-app
         run: cd packages/tad-app && npm run build-assets && npx webpack --mode production
       - name: Clean dist before packaging
-        run: cd packages/tad-app && rm -rf dist/mac dist/mac-arm64 dist/win dist/win-unpacked dist/linux dist/linux-unpacked dist/*.dmg dist/*.zip dist/*.blockmap dist/latest-*.yml
+        shell: bash
+        run: cd packages/tad-app && rm -rf dist/mac dist/mac-arm64 dist/win dist/win-unpacked dist/linux dist/linux-unpacked && rm -f dist/*.dmg dist/*.zip dist/*.blockmap dist/latest-*.yml 2>/dev/null; true
       - name: Package Linux
         run: cd packages/tad-app && npx electron-builder --linux deb rpm tar.bz2 --publish=never
       - uses: actions/upload-artifact@v4
