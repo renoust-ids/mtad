@@ -1,44 +1,34 @@
 const path = require("path");
-const util = require("util");
-const exec = util.promisify(require("child_process").exec);
-const copy = require("recursive-copy");
+const fs = require("fs");
 
-//const WIN_SSL_DIR = '../../../openssl-1.1';
+// Local monorepo packages that may have nested symlinks to reltab.
+// asar doesn't support symlinks, so electron-builder resolves them into
+// duplicate copies, causing multiple reltab instances (provider not found).
+// This hook removes nested node_modules before packaging.
+const localPackages = [
+  "reltab-fs",
+  "aggtree",
+  "reltab-duckdb",
+  "reltab-bigquery",
+  "reltab-sqlite",
+  "reltab-aws-athena",
+  "reltab-snowflake",
+  "tadviewer",
+  "tadweb-app",
+  "tadweb-server",
+];
 
-async function afterPack(context) {
-  console.log("afterPack hook called:", context.packager.platform.name);
-  console.log('skipping OpenSSL bundling (no longer required by duckdb)');
-  /*
-  if (context.packager.platform.name === "mac") {
-    console.log("On Mac, running dylib-fixup script:");
-    const { appOutDir } = context;
-    const addonPath = path.join(
-      appOutDir,
-      "Tad.app/Contents/Resources/app.asar.unpacked/node_modules/duckdb/lib/binding/duckdb.node"
-    );
-    const { stdout, stderr } = await exec(
-      `./tools/dylib-fixup.sh ${addonPath}`
-    );
-    console.log(stdout);
-    console.error(stderr);
+async function beforePack(context) {
+  const projectDir = context.packager.projectDir;
+  const nodeModulesDir = path.join(projectDir, "node_modules");
+
+  for (const pkg of localPackages) {
+    const nestedNm = path.join(nodeModulesDir, pkg, "node_modules");
+    if (fs.existsSync(nestedNm)) {
+      console.log(`beforePack: removing ${pkg}/node_modules (nested reltab symlinks)`);
+      fs.rmSync(nestedNm, { recursive: true, force: true });
+    }
   }
-  if (context.packager.platform.name === "windows") {
-    const WIN_SSL_DIR = process.env.OPENSSL_ROOT_DIR;
-    console.log("On Windows, packaging OPENSSL dlls from ", WIN_SSL_DIR);
-    const { appOutDir } = context;
-    const duckDbTargetDir = path.join(
-      appOutDir,
-      "resources/app.asar.unpacked/node_modules/duckdb/lib/binding"
-    );
-    const sslBinDir = path.join(WIN_SSL_DIR, "bin");
-    const results = await copy(sslBinDir, duckDbTargetDir);
-    console.info(
-      "afterPack: Copied " +
-        results.length +
-        " files from SSL bin dir to target"
-    );
-  }
-  */
 }
 
-exports.default = afterPack;
+exports.default = beforePack;

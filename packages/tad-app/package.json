@@ -91,10 +91,9 @@
   "build": {
     "appId": "com.mtad.app",
     "asarUnpack": [
-      "**/*.node",
-      "**/*reltab*"
+      "**/*.node"
     ],
-    "afterPack": "./tools/afterPack.js",
+    "beforePack": "./tools/afterPack.js",
     "afterSign": "./tools/notarize.js",
     "buildNumber": "1",
     "directories": {
