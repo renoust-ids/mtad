@@ -33,7 +33,10 @@ cd packages/tad-app
 npm run build-assets
 npx webpack --mode production
 
-echo "=== Step 9: Package ==="
+echo "=== Step 9: Clean dist ==="
+rm -rf dist/mac dist/mac-arm64 dist/win dist/win-unpacked dist/linux dist/linux-unpacked dist/*.dmg dist/*.zip dist/*.blockmap dist/latest-*.yml 2>/dev/null || true
+
+echo "=== Step 10: Package ==="
 npx electron-builder --mac --arm64 --x64 --publish=never
 
 echo ""

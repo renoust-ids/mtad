@@ -110,6 +110,18 @@
     ],
     "files": [
       "dist/**/*",
+      "!dist/*.dmg",
+      "!dist/*.zip",
+      "!dist/*.blockmap",
+      "!dist/latest-*.yml",
+      "!dist/mac",
+      "!dist/mac-arm64",
+      "!dist/win-unpacked",
+      "!dist/linux-unpacked",
+      "!dist/win",
+      "!dist/linux",
+      "!dist/builder-debug.yml",
+      "!dist/builder-effective-config.yaml",
       "build",
       "node_modules"
     ],
