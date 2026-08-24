@@ -9,6 +9,7 @@ import electron, {
 } from "electron";
 
 const Menu = electron.Menu;
+const dialog = electron.dialog;
 const isDarwin = process.platform === "darwin";
 let appMenu: electron.Menu | null = null;
 const separatorMenuItem: MenuItemConstructorOptions = {
@@ -17,8 +18,18 @@ const separatorMenuItem: MenuItemConstructorOptions = {
 
 const aboutTadMenuItem = () => {
   return {
-    label: "About Tad",
-    role: "about",
+    label: "About MTad",
+    click: () => {
+      dialog.showMessageBox({
+        type: "info",
+        title: "About MTad",
+        message: "MTad",
+        detail:
+          "Version 0.0.1\n\nForked from TAD Version 31.0.1 (31.0.1)\nhttps://github.com/antonycourtney/tad",
+        buttons: ["OK"],
+        noLink: true,
+      });
+    },
   };
 };
 
@@ -32,7 +43,7 @@ const checkForUpdateMenuItem = () => {
 export const createMenu = () => {
   const fileSubmenu: MenuItemConstructorOptions[] = [
     {
-      label: "New Tad Window",
+      label: "New MTad Window",
       accelerator: "CmdOrCtrl+N",
       click: (item: MenuItem, focusedWindow: BrowserWindow | undefined) => {
         appWindow.newWindow(focusedWindow);
@@ -189,7 +200,7 @@ export const createMenu = () => {
 
   if (isDarwin) {
     template.unshift({
-      label: "Tad",
+      label: "MTad",
       // ignored on Mac OS; comes from plist
       submenu: [
         aboutTadMenuItem(),
