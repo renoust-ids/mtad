@@ -37,7 +37,7 @@
   "author": "Benjamin Renoust <renoust@ids.osaka-u.ac.jp>",
   "license": "MIT",
   "dependencies": {
-    "aggtree": "^0.12.0",
+    "aggtree": "0.0.1",
     "babel-cli": "^6.26.0",
     "babel-plugin-flow-to-typescript": "^0.6.0",
     "command-line-args": "^5.2.0",
@@ -50,12 +50,12 @@
     "oneref": "^0.9.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "reltab": "^0.12.0",
-    "reltab-bigquery": "^0.12.0",
-    "reltab-duckdb": "^0.12.0",
-    "reltab-fs": "^0.12.0",
+    "reltab": "0.0.1",
+    "reltab-bigquery": "0.0.1",
+    "reltab-duckdb": "0.0.1",
+    "reltab-fs": "0.0.1",
     "source-map-support": "^0.5.21",
-    "tadviewer": "^0.12.0"
+    "tadviewer": "0.0.1"
   },
   "devDependencies": {
     "@blueprintjs/icons": "^4.10.1",

@@ -30,8 +30,8 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.4.0",
-    "reltab": "^0.12.0",
-    "tadviewer": "^0.12.0"
+    "reltab": "0.0.1",
+    "tadviewer": "0.0.1"
   },
   "devDependencies": {
     "@types/react": "^18.0.15",
