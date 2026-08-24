@@ -22,10 +22,10 @@ jobs:
         run: cd packages/reltab && npx tsc -p tsconfig-build.json
       - name: Build aggtree
         run: cd packages/aggtree && npx tsc -p tsconfig-build.json
-      - name: Build reltab-fs
-        run: cd packages/reltab-fs && npx tsc -p tsconfig-build.json
       - name: Build reltab-duckdb
         run: cd packages/reltab-duckdb && npx tsc -p tsconfig-build.json
+      - name: Build reltab-fs
+        run: cd packages/reltab-fs && npx tsc -p tsconfig-build.json
       - name: Build reltab-bigquery
         run: cd packages/reltab-bigquery && npx tsc
       - name: Build tadviewer
@@ -55,10 +55,10 @@ jobs:
         run: cd packages/reltab && npx tsc -p tsconfig-build.json
       - name: Build aggtree
         run: cd packages/aggtree && npx tsc -p tsconfig-build.json
-      - name: Build reltab-fs
-        run: cd packages/reltab-fs && npx tsc -p tsconfig-build.json
       - name: Build reltab-duckdb
         run: cd packages/reltab-duckdb && npx tsc -p tsconfig-build.json
+      - name: Build reltab-fs
+        run: cd packages/reltab-fs && npx tsc -p tsconfig-build.json
       - name: Build reltab-bigquery
         run: cd packages/reltab-bigquery && npx tsc
       - name: Build tadviewer
@@ -87,10 +87,10 @@ jobs:
         run: cd packages/reltab && npx tsc -p tsconfig-build.json
       - name: Build aggtree
         run: cd packages/aggtree && npx tsc -p tsconfig-build.json
-      - name: Build reltab-fs
-        run: cd packages/reltab-fs && npx tsc -p tsconfig-build.json
       - name: Build reltab-duckdb
         run: cd packages/reltab-duckdb && npx tsc -p tsconfig-build.json
+      - name: Build reltab-fs
+        run: cd packages/reltab-fs && npx tsc -p tsconfig-build.json
       - name: Build reltab-bigquery
         run: cd packages/reltab-bigquery && npx tsc
       - name: Build tadviewer
