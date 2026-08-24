@@ -31,7 +31,7 @@ jobs:
       - name: Build tadviewer
         run: cd packages/tadviewer && npx webpack --mode production
       - name: Build tad-app
-        run: cd packages/tad-app && npx webpack --mode production
+        run: cd packages/tad-app && npm run build-assets && npx webpack --mode production
       - name: Package Mac (arm64 + x64)
         run: cd packages/tad-app && npx electron-builder --mac --arm64 --x64 --publish=never
       - uses: actions/upload-artifact@v4
@@ -64,7 +64,7 @@ jobs:
       - name: Build tadviewer
         run: cd packages/tadviewer && npx webpack --mode production
       - name: Build tad-app
-        run: cd packages/tad-app && npx webpack --mode production
+        run: cd packages/tad-app && npm run build-assets && npx webpack --mode production
       - name: Package Windows
         run: cd packages/tad-app && npx electron-builder --win --publish=never
       - uses: actions/upload-artifact@v4
@@ -96,7 +96,7 @@ jobs:
       - name: Build tadviewer
         run: cd packages/tadviewer && npx webpack --mode production
       - name: Build tad-app
-        run: cd packages/tad-app && npx webpack --mode production
+        run: cd packages/tad-app && npm run build-assets && npx webpack --mode production
       - name: Package Linux
         run: cd packages/tad-app && npx electron-builder --linux deb rpm tar.bz2 --publish=never
       - uses: actions/upload-artifact@v4
