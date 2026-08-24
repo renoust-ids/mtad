@@ -17,7 +17,11 @@ jobs:
           node-version: 20
           cache: 'npm'
       - run: npm install -g lerna@4
-      - run: lerna bootstrap --force-local --hoist --no-ci
+      - run: lerna bootstrap --force-local --hoist --no-ci --ignore-prepublish
+      - name: Build reltab
+        run: cd packages/reltab && npx tsc -p tsconfig-build.json
+      - name: Build aggtree
+        run: cd packages/aggtree && npx tsc -p tsconfig-build.json
       - name: Build tadviewer
         run: cd packages/tadviewer && npx webpack --mode production
       - name: Build tad-app
@@ -40,7 +44,11 @@ jobs:
           node-version: 20
           cache: 'npm'
       - run: npm install -g lerna@4
-      - run: lerna bootstrap --force-local --hoist --no-ci
+      - run: lerna bootstrap --force-local --hoist --no-ci --ignore-prepublish
+      - name: Build reltab
+        run: cd packages/reltab && npx tsc -p tsconfig-build.json
+      - name: Build aggtree
+        run: cd packages/aggtree && npx tsc -p tsconfig-build.json
       - name: Build tadviewer
         run: cd packages/tadviewer && npx webpack --mode production
       - name: Build tad-app
@@ -62,7 +70,11 @@ jobs:
           cache: 'npm'
       - run: sudo apt-get update && sudo apt-get install -y rpm
       - run: npm install -g lerna@4
-      - run: lerna bootstrap --force-local --hoist --no-ci
+      - run: lerna bootstrap --force-local --hoist --no-ci --ignore-prepublish
+      - name: Build reltab
+        run: cd packages/reltab && npx tsc -p tsconfig-build.json
+      - name: Build aggtree
+        run: cd packages/aggtree && npx tsc -p tsconfig-build.json
       - name: Build tadviewer
         run: cd packages/tadviewer && npx webpack --mode production
       - name: Build tad-app
