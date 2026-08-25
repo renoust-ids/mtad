@@ -44,8 +44,8 @@ echo "--- Cleaning dist/ of old build artifacts ---"
 rm -rf dist/mac dist/mac-arm64 dist/win dist/win-unpacked dist/linux dist/linux-unpacked dist/*.dmg dist/*.zip dist/*.blockmap dist/latest-*.yml 2>/dev/null || true
 
 # 6. Package with electron-builder (both arm64 + x64 for Mac)
-echo "--- Packaging with electron-builder (arm64 + x64) ---"
-npx electron-builder --mac --arm64 --x64 --publish=never
+echo "--- Packaging with electron-builder (arm64) ---"
+npx electron-builder --mac --arm64 --publish=never
 
 echo ""
 echo "=== Done ==="

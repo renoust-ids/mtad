@@ -261,7 +261,7 @@ const showUsage = () => {
 };
 
 const reportFatalError = (msg: string) => {
-  dialog.showErrorBox("Error starting Tad", msg);
+  dialog.showErrorBox("Error starting MTad", msg);
   app.quit();
 };
 
@@ -531,7 +531,7 @@ const main = () => {
       }
     );
 
-    app.setName("Tad");
+    app.setName("MTad");
     initApp(firstInstance)(process.argv, null);
   }
 };

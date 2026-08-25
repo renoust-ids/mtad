@@ -35,8 +35,8 @@ jobs:
       - name: Clean dist before packaging
         shell: bash
         run: cd packages/tad-app && rm -rf dist/mac dist/mac-arm64 dist/win dist/win-unpacked dist/linux dist/linux-unpacked && rm -f dist/*.dmg dist/*.zip dist/*.blockmap dist/latest-*.yml 2>/dev/null; true
-      - name: Package Mac (arm64 + x64)
-        run: cd packages/tad-app && npx electron-builder --mac --arm64 --x64 --publish=never
+      - name: Package Mac (arm64 only)
+        run: cd packages/tad-app && npx electron-builder --mac --arm64 --publish=never
       - uses: actions/upload-artifact@v4
         with:
           name: mac-builds
