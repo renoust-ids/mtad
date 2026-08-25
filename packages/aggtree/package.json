@@ -1,6 +1,6 @@
 {
   "name": "aggtree",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "pivot table built on top of reltab",
   "author": "Benjamin Renoust <renoust@ids.osaka-u.ac.jp>",
   "homepage": "https://github.com/antonycourtney/tad#readme",
@@ -16,7 +16,7 @@
   "dependencies": {
     "lodash": "^4.17.21",
     "loglevel": "^1.8.0",
-    "reltab": "0.0.1"
+    "reltab": "0.0.2"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",

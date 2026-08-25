@@ -1,6 +1,6 @@
 {
   "name": "reltab-fs",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "filesystem datasource for reltab",
   "main": "dist/reltab-fs.js",
   "types": "dist/reltab-fs.d.ts",
@@ -22,8 +22,8 @@
   "dependencies": {
     "loglevel": "^1.8.0",
     "pretty-hrtime": "^1.0.3",
-    "reltab": "0.0.1",
-    "reltab-duckdb": "0.0.1"
+    "reltab": "0.0.2",
+    "reltab-duckdb": "0.0.2"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",

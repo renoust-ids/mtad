@@ -1,6 +1,6 @@
 {
   "name": "mtad",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "MTad - Tabular data viewer monorepo",
   "overrides": {
     "ws": "8.18.1"

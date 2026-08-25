@@ -1,6 +1,6 @@
 {
   "name": "reltab-sqlite",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "sqlite driver for reltab",
   "main": "dist/reltab-sqlite.js",
   "types": "dist/reltab-sqlite.d.ts",
@@ -26,7 +26,7 @@
     "fast-csv": "^4.3.6",
     "gauge": "^4.0.0",
     "loglevel": "^1.8.0",
-    "reltab": "0.0.1",
+    "reltab": "0.0.2",
     "sqlite3": "^5.0.2",
     "through": "^2.3.8",
     "typed-promisify": "^0.4.0"

@@ -25,7 +25,7 @@ const aboutTadMenuItem = () => {
         title: "About MTad",
         message: "MTad",
         detail:
-          "Version 0.0.1\n\nForked from TAD Version 31.0.1 (31.0.1)\nhttps://github.com/antonycourtney/tad",
+          "Version 0.0.2\n\nForked from TAD Version 31.0.1 (31.0.1)\nhttps://github.com/antonycourtney/tad",
         buttons: ["OK"],
         noLink: true,
       });
