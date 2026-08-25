@@ -94,6 +94,7 @@
       "**/*.node"
     ],
     "beforePack": "./tools/afterPack.js",
+    "afterPack": "./tools/sign.js",
     "afterSign": "./tools/notarize.js",
     "buildNumber": "1",
     "directories": {
