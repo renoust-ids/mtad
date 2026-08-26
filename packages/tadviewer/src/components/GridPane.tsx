@@ -195,7 +195,9 @@ const GridPaneInternal: React.FunctionComponent<GridPaneProps> = ({
         rawValue: data.rawValue,
         columnKind: data.columnKind,
         sqlTypeName: data.sqlTypeName,
-        isAggregateRow: data.isPivot,
+        isAggregateRow: data.isAggregateRow,
+        isPivot: data.isPivot,
+        pivotDepth: data.pivotDepth,
         rowData: data.rowData,
       }, stateRef);
     },
@@ -249,6 +251,7 @@ const GridPaneInternal: React.FunctionComponent<GridPaneProps> = ({
         columnKind={editingCell?.columnKind ?? "string"}
         sqlTypeName={editingCell?.sqlTypeName}
         isAggregateRow={editingCell?.isAggregateRow ?? false}
+        isPivot={editingCell?.isPivot ?? false}
         onSave={handleEditSave}
         onCancel={handleEditCancel}
       />

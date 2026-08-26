@@ -891,9 +891,9 @@ export const commitCellEdit = async (
   let sql: string;
 
   // Pivot label editing: UPDATE table SET pivotColumn = newValue WHERE pivotColumn = oldValue
-  if (editState.isAggregateRow && editState.pivotDepth != null) {
+  if (editState.isAggregateRow && editState.isPivot) {
     const vpivots = state.viewState.viewParams.vpivots;
-    const pivotIndex = editState.pivotDepth - 1;
+    const pivotIndex = editState.pivotDepth! - 1;
     const pivotColumn = pivotIndex >= 0 ? vpivots[pivotIndex] : null;
     if (!pivotColumn) {
       console.error("commitCellEdit: could not determine pivot column for depth", editState.pivotDepth);
@@ -902,6 +902,26 @@ export const commitCellEdit = async (
     const oldValue = editState.rawValue;
     const oldValueStr = formatWhereValue(pivotColumn, oldValue).replace(/^"[^"]*" = /, "");
     sql = `UPDATE "${tableName}" SET "${pivotColumn}" = ${sqlValue} WHERE "${pivotColumn}" = ${oldValueStr}`;
+  } else if (editState.isAggregateRow && !editState.isPivot) {
+    // Aggregate cell editing: UPDATE table SET column = newValue WHERE pivotCol1 = val1 AND pivotCol2 = val2
+    const vpivots = state.viewState.viewParams.vpivots;
+    const depth = editState.pivotDepth ?? 1;
+    const groupByCols = vpivots.slice(0, depth);
+    if (groupByCols.length === 0) {
+      console.error("commitCellEdit: no group-by columns for aggregate row at depth", depth);
+      return;
+    }
+    const whereParts: string[] = [];
+    for (const col of groupByCols) {
+      const val = editState.rowData[col];
+      if (val === null || val === undefined) {
+        whereParts.push(`"${col}" IS NULL`);
+      } else {
+        whereParts.push(formatWhereValue(col, val));
+      }
+    }
+    const aggregateWhere = whereParts.join(" AND ");
+    sql = `UPDATE "${tableName}" SET "${editState.columnId}" = ${sqlValue} WHERE ${aggregateWhere}`;
   } else {
     sql = `UPDATE "${tableName}" SET "${editState.columnId}" = ${sqlValue} WHERE ${whereClause}`;
   }

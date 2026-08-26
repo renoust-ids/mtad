@@ -15,6 +15,8 @@ export interface CellEditState {
   readonly columnKind: ColumnKind;
   readonly sqlTypeName?: string;
   readonly isAggregateRow: boolean;
+  readonly isPivot: boolean;
+  readonly pivotDepth?: number;
   readonly rowData: { [columnId: string]: any };
 }
 

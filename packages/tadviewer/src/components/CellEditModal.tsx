@@ -11,6 +11,7 @@ interface CellEditModalProps {
   columnKind: ColumnKind;
   sqlTypeName?: string;
   isAggregateRow: boolean;
+  isPivot: boolean;
   onSave: (newValue: string) => void | Promise<void>;
   onCancel: () => void;
 }
@@ -23,6 +24,7 @@ export const CellEditModal: React.FC<CellEditModalProps> = ({
   columnKind,
   sqlTypeName,
   isAggregateRow,
+  isPivot,
   onSave,
   onCancel,
 }) => {
@@ -55,10 +57,14 @@ export const CellEditModal: React.FC<CellEditModalProps> = ({
       canOutsideClickClose={true}
     >
       <div className="bp4-dialog-body">
-        {isAggregateRow && (
-          <div className="bp4-callout bp4-intent-warning">
-            This is an aggregated/pivoted value. Editing is not available in
-            read-only mode.
+        {isAggregateRow && isPivot && (
+          <div className="bp4-callout bp4-intent-primary">
+            This will update the grouping value for all rows in this group.
+          </div>
+        )}
+        {isAggregateRow && !isPivot && (
+          <div className="bp4-callout bp4-intent-primary">
+            This will update all rows in this group to the new value.
           </div>
         )}
         <label className="bp4-label">
@@ -68,7 +74,6 @@ export const CellEditModal: React.FC<CellEditModalProps> = ({
             type="text"
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
-            disabled={isAggregateRow}
             autoFocus
           />
         </label>
@@ -84,7 +89,7 @@ export const CellEditModal: React.FC<CellEditModalProps> = ({
           <Button
             intent={Intent.PRIMARY}
             onClick={handleSave}
-            disabled={isAggregateRow || error !== null}
+            disabled={error !== null}
           >
             Save
           </Button>

@@ -727,3 +727,61 @@ Pivot label editing is now functional. Users can double-click the `_pivot` colum
 if (item && item._isLeaf && column.id === "_pivot") { return; }
 ```
 **Result**: Success — leaf rows no longer trigger the "could not determine pivot column" error
+
+---
+
+## Session: Aggregate Cell Editing
+
+### Date: 2026-08-26
+
+---
+
+### Step 1: Allow double-click on aggregate cells for non-leaf rows
+
+**Time**: 23:00
+**Files Modified**: `packages/tadviewer/src/components/DataGrid.tsx`
+**Action**: Simplified blocking logic — only system columns (`_`, `_id`, `_parentId`, `Rec`) and `_pivot` on leaf rows are blocked. Non-leaf rows can now edit aggregate cells (not just `_pivot` column). Added `isAggregateRow` to `CellEditStartData` interface and passed `!item?._isLeaf`.
+**Result**: Success
+
+---
+
+### Step 2: Update commitCellEdit for aggregate cell editing
+
+**Time**: 23:05
+**Files Modified**: `packages/tadviewer/src/actions.ts`
+**Action**: Updated `commitCellEdit` to handle three cases:
+1. Pivot label editing (`isAggregateRow && isPivot`): `UPDATE table SET pivotCol = val WHERE pivotCol = oldVal`
+2. Aggregate cell editing (`isAggregateRow && !isPivot`): `UPDATE table SET column = val WHERE pivotCol1 = val1 AND pivotCol2 = val2` (uses `vp.vpivots.slice(0, depth)` for group-by columns)
+3. Leaf cell editing: existing logic with all column values in WHERE clause
+
+Also fixed bug: `isAggregateRow` was incorrectly set to `data.isPivot` in GridPane.tsx — changed to `data.isAggregateRow`.
+**Result**: Success
+
+---
+
+### Step 3: Update CellEditModal for aggregate cell editing UX
+
+**Time**: 23:10
+**Files Modified**:
+- `packages/tadviewer/src/components/CellEditModal.tsx` — added `isPivot` prop, shows different messages for pivot label vs aggregate cell editing
+- `packages/tadviewer/src/components/GridPane.tsx` — passes `isPivot` to CellEditModal
+- `packages/tadviewer/src/ViewState.ts` — added `isPivot` to `CellEditState` interface
+**Result**: Success
+
+---
+
+### Step 4: Build and verify
+
+**Time**: 23:15
+**Commands**:
+- `cd packages/tad-app && npx webpack --mode production` — Success (13654ms)
+**Result**: Build successful
+
+---
+
+### Summary
+
+Aggregate cell editing is now functional. Users can double-click any aggregate cell on a non-leaf row (pivot row) to edit the value. Saving sets all underlying rows in the group to the new value:
+- Pivot label editing: `UPDATE table SET pivotColumn = newValue WHERE pivotColumn = oldValue`
+- Aggregate cell editing: `UPDATE table SET column = newValue WHERE groupCol1 = val1 AND groupCol2 = val2`
+- WHERE clause uses `vp.vpivots.slice(0, depth)` to identify the group (only group-by columns, not aggregates)
