@@ -4,7 +4,19 @@ import { QueryView } from "./QueryView";
 import { PagedDataView } from "./PagedDataView";
 import { Timer } from "./Timer";
 import * as reltab from "reltab";
-import { DataSourcePath } from "reltab";
+import { ColumnKind, DataSourcePath } from "reltab";
+
+export interface CellEditState {
+  readonly row: number;
+  readonly col: number;
+  readonly columnId: string;
+  readonly value: any;
+  readonly rawValue: any;
+  readonly columnKind: ColumnKind;
+  readonly sqlTypeName?: string;
+  readonly isAggregateRow: boolean;
+  readonly rowData: { [columnId: string]: any };
+}
 
 /**
  * Immutable representation of all state associated
@@ -28,6 +40,7 @@ export interface ViewStateProps {
   dataView: PagedDataView | undefined | null;
 
   delayedCalcMode: boolean; // If true, don't recalc from view params until user hits "apply"
+  editingCell: CellEditState | null;
 }
 
 const defaultViewStateProps: ViewStateProps = {
@@ -43,6 +56,7 @@ const defaultViewStateProps: ViewStateProps = {
   queryView: null,
   dataView: null,
   delayedCalcMode: true,
+  editingCell: null,
 };
 
 export class ViewState
@@ -61,4 +75,5 @@ export class ViewState
   public readonly queryView!: QueryView | undefined | null;
   public readonly dataView!: PagedDataView | undefined | null;
   public readonly delayedCalcMode!: boolean;
+  public readonly editingCell!: CellEditState | null;
 }

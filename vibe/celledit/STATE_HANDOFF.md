@@ -6,7 +6,7 @@
 - **Branche `master`** : `e179af3` (v0.0.2, merged from joincsv)
 - **Remote `origin`** : `https://github.com/renoust-ids/tad.git` (fork)
 - **Remote `upstream`** : `https://github.com/antonycourtney/tad.git` (original)
-- **Working tree** : propre (juste `vibe-instructions.md` modifié en staged mais non commit)
+- **Working tree** : propre (vibe-instructions.md modifié en staged mais non commit)
 
 ## Projet
 - **Nom** : MTad (fork de Tad, visualiseur de données tabulaires)
@@ -95,12 +95,20 @@ AppState.viewState.baseQuery (QueryExp)
 ```
 
 ## Prochaine étape
-**Commencer Step 1** (vibe/celledit/step1.md) :
-1. Ajouter `grid.onDblClick.subscribe()` dans `DataGrid.tsx` (dans `createGrid()`)
-2. Créer `packages/tadviewer/src/components/CellEditModal.tsx` avec BlueprintJS `<Dialog>`
-3. Câbler dans `GridPane.tsx` avec état local temporaire
-4. Build : `cd packages/tadviewer && npx webpack --mode production`
-5. Test : `./run.sh` → double-cliquer sur une cellule → modale s'ouvre
+**Step 4** (vibe/celledit/step4.md) — Pivot awareness :
+1. Détecter si la ligne éditée est une ligne agrégat (`_isLeaf === false`)
+2. Afficher un message informatif pour les valeurs pivotées
+3. Désactiver le bouton Save pour les lignes agrégat
+4. Build et test
+5. Commit : `feat(tadviewer): add pivot awareness to CellEditModal`
+
+## Fichiers modifiés (Step 3)
+| Fichier | Modification |
+|---------|-------------|
+| `packages/tadviewer/src/ViewState.ts` | Added `CellEditState` interface, `editingCell` field |
+| `packages/tadviewer/src/actions.ts` | Added `startCellEdit`, `commitCellEdit`, `cancelCellEdit` actions |
+| `packages/tadviewer/src/components/GridPane.tsx` | Removed local state, use global `viewState.editingCell` |
+| `vibe/celledit/AGENT_DEV_LOG.md` | Step 3 dev log entry |
 
 ## Commandes utiles
 ```bash

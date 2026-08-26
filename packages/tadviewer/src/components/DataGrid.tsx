@@ -16,7 +16,7 @@ import * as he from "he";
 import { useRef, useState } from "react";
 import ReactDOM from "react-dom/client";
 import * as reltab from "reltab";
-import { ColumnType, NumericColumnHistogramData } from "reltab";
+import { ColumnKind, ColumnType, NumericColumnHistogramData } from "reltab";
 import * as SlickGrid from "slickgrid-es6";
 import {
   VictoryAxis,
@@ -36,6 +36,18 @@ const { CellRangeSelector, CellSelectionModel, CellCopyManager, AutoTooltips } =
   Plugins;
 
 export type OpenURLFn = (url: string) => void;
+
+export interface CellEditStartData {
+  row: number;
+  col: number;
+  columnId: string;
+  value: any;
+  rawValue: any;
+  columnKind: ColumnKind;
+  sqlTypeName?: string;
+  isPivot: boolean;
+  rowData: { [columnId: string]: any };
+}
 
 let divCounter = 0;
 
@@ -355,6 +367,7 @@ const createGrid = (
     onGridClick,
     onGridSelectionChange,
     onSetColumnOrder,
+    onCellEditStart,
     sortKey,
     clipboard,
     openURL,
@@ -485,6 +498,49 @@ const createGrid = (
   };
 
   grid.onClick.subscribe(handleGridClick);
+
+  grid.onDblClick.subscribe((_event: Event, data: any) => {
+    const currentDataView = grid.getData();
+    const item = currentDataView.getItem(data.row);
+    const columns = grid.getColumns();
+    const column = columns[data.cell];
+
+    // Exclude system columns
+    if (["_", "_id", "_parentId", "Rec"].includes(column.id)) {
+      return;
+    }
+
+    // Exclude aggregate rows (non-leaf)
+    if (item && !item._isLeaf) {
+      return;
+    }
+
+    const value = item ? item[column.id] : null;
+    const colType = currentDataView.schema?.columnType(column.id);
+    const formattedValue = colType ? colType.stringRender(value) : String(value ?? "");
+    
+    // Extract row data (excluding metadata columns), store raw values
+    const rowData: { [columnId: string]: any } = {};
+    if (item) {
+      for (const key of Object.keys(item)) {
+        if (!key.startsWith('_') && key !== 'Rec') {
+          rowData[key] = item[key];
+        }
+      }
+    }
+    
+    onCellEditStart?.({
+      row: data.row,
+      col: data.cell,
+      columnId: column.id,
+      value: formattedValue,
+      rawValue: value,
+      columnKind: colType?.kind ?? "string",
+      sqlTypeName: colType?.sqlTypeName,
+      isPivot: column.id === "_pivot",
+      rowData,
+    });
+  });
 
   grid.onColumnsReordered.subscribe((e: any, args: any) => {
     const cols = grid.getColumns();
@@ -678,6 +734,7 @@ export interface DataGridProps {
     items: any[][]
   ) => void;
   onSetColumnOrder?: (displayColumns: string[]) => void;
+  onCellEditStart?: (data: CellEditStartData) => void;
   openURL: OpenURLFn;
   embedded: boolean;
 }

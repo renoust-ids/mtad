@@ -5,10 +5,11 @@ import { useRef } from "react";
 import * as reltab from "reltab";
 import { AppState } from "../AppState";
 import { DataRow } from "../PagedDataView";
-import { ViewState } from "../ViewState";
+import { ViewState, CellEditState } from "../ViewState";
 import * as actions from "../actions";
 import * as util from "../util";
-import { DataGrid, DataGridProps } from "./DataGrid";
+import { CellEditStartData, DataGrid, DataGridProps } from "./DataGrid";
+import { CellEditModal } from "./CellEditModal";
 import { SimpleClipboard } from "./SimpleClipboard";
 
 import { CellClickData } from "./CellClickData";
@@ -182,6 +183,36 @@ const GridPaneInternal: React.FunctionComponent<GridPaneProps> = ({
 
   const isPivoted = viewParams.vpivots.length > 0;
 
+  const editingCell = viewState.editingCell;
+
+  const handleEditStart = React.useCallback(
+    (data: CellEditStartData) => {
+      actions.startCellEdit({
+        row: data.row,
+        col: data.col,
+        columnId: data.columnId,
+        value: data.value,
+        rawValue: data.rawValue,
+        columnKind: data.columnKind,
+        sqlTypeName: data.sqlTypeName,
+        isAggregateRow: data.isPivot,
+        rowData: data.rowData,
+      }, stateRef);
+    },
+    [stateRef]
+  );
+
+  const handleEditSave = React.useCallback(
+    async (newValue: string) => {
+      await actions.commitCellEdit(newValue, stateRef);
+    },
+    [stateRef]
+  );
+
+  const handleEditCancel = React.useCallback(() => {
+    actions.cancelCellEdit(stateRef);
+  }, [stateRef]);
+
   const dataGridProps: DataGridProps = {
     dataView,
     showColumnHistograms,
@@ -199,6 +230,7 @@ const GridPaneInternal: React.FunctionComponent<GridPaneProps> = ({
     onGridClick,
     onGridSelectionChange,
     onSetColumnOrder,
+    onCellEditStart: handleEditStart,
     sortKey,
     isPivoted,
     clipboard,
@@ -206,7 +238,22 @@ const GridPaneInternal: React.FunctionComponent<GridPaneProps> = ({
     embedded,
   };
 
-  return <DataGrid {...dataGridProps} />;
+  return (
+    <>
+      <DataGrid {...dataGridProps} />
+      <CellEditModal
+        isOpen={editingCell !== null}
+        columnId={editingCell?.columnId ?? ""}
+        columnDisplayName={editingCell?.columnId ?? ""}
+        currentValue={editingCell?.value}
+        columnKind={editingCell?.columnKind ?? "string"}
+        sqlTypeName={editingCell?.sqlTypeName}
+        isAggregateRow={editingCell?.isAggregateRow ?? false}
+        onSave={handleEditSave}
+        onCancel={handleEditCancel}
+      />
+    </>
+  );
 };
 
 // TODO: It might be better to move this memoization down a level into DataGrid,

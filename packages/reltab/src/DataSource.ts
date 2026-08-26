@@ -104,6 +104,12 @@ export interface DataSourceConnection {
 
   // display name for this connection
   getDisplayName(): Promise<string>;
+
+  // Execute raw SQL (for DML/DDL like UPDATE, INSERT, DELETE)
+  execSql(sql: string): Promise<void>;
+
+  // Get SQL string for a query (for materialization, etc.)
+  getSqlForQuery(query: QueryExp): Promise<string>;
 }
 
 /**
@@ -251,6 +257,10 @@ export class DbDataSource implements DataSourceConnection {
   // display name for this connection
   getDisplayName(): Promise<string> {
     return this.db.getDisplayName();
+  }
+
+  async execSql(sql: string): Promise<void> {
+    await this.db.runSqlQuery(sql);
   }
 }
 
