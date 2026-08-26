@@ -46,6 +46,7 @@ export interface CellEditStartData {
   columnKind: ColumnKind;
   sqlTypeName?: string;
   isPivot: boolean;
+  pivotDepth?: number;
   rowData: { [columnId: string]: any };
 }
 
@@ -510,8 +511,12 @@ const createGrid = (
       return;
     }
 
-    // Exclude aggregate rows (non-leaf)
-    if (item && !item._isLeaf) {
+    // Exclude aggregate rows (non-leaf) — except for the _pivot column on non-leaf rows
+    if (item && !item._isLeaf && column.id !== "_pivot") {
+      return;
+    }
+    // Exclude leaf rows for the _pivot column (no pivot column to update)
+    if (item && item._isLeaf && column.id === "_pivot") {
       return;
     }
 
@@ -538,6 +543,7 @@ const createGrid = (
       columnKind: colType?.kind ?? "string",
       sqlTypeName: colType?.sqlTypeName,
       isPivot: column.id === "_pivot",
+      pivotDepth: column.id === "_pivot" ? item?._depth : undefined,
       rowData,
     });
   });

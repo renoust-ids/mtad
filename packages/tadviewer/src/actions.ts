@@ -888,7 +888,23 @@ export const commitCellEdit = async (
     sqlValue = newValue;
   }
 
-  const sql = `UPDATE "${tableName}" SET "${editState.columnId}" = ${sqlValue} WHERE ${whereClause}`;
+  let sql: string;
+
+  // Pivot label editing: UPDATE table SET pivotColumn = newValue WHERE pivotColumn = oldValue
+  if (editState.isAggregateRow && editState.pivotDepth != null) {
+    const vpivots = state.viewState.viewParams.vpivots;
+    const pivotIndex = editState.pivotDepth - 1;
+    const pivotColumn = pivotIndex >= 0 ? vpivots[pivotIndex] : null;
+    if (!pivotColumn) {
+      console.error("commitCellEdit: could not determine pivot column for depth", editState.pivotDepth);
+      return;
+    }
+    const oldValue = editState.rawValue;
+    const oldValueStr = formatWhereValue(pivotColumn, oldValue).replace(/^"[^"]*" = /, "");
+    sql = `UPDATE "${tableName}" SET "${pivotColumn}" = ${sqlValue} WHERE "${pivotColumn}" = ${oldValueStr}`;
+  } else {
+    sql = `UPDATE "${tableName}" SET "${editState.columnId}" = ${sqlValue} WHERE ${whereClause}`;
+  }
   
   console.log(`[CellEdit] Executing: ${sql}`);
 

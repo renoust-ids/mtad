@@ -631,3 +631,99 @@ Fixed CSV export to use column-type-aware formatting via `stringRender`. Dates a
 ### Summary
 
 Fusion CSV now materializes the result into a new DuckDB table, making all columns (including fused ones) editable. The `commitCellEdit` action also filters `rowData` to only include columns from the target table, preventing SQL errors for any remaining edge cases.
+
+---
+
+## Session: Pivot Label Editing
+
+### Date: 2026-08-26
+
+---
+
+### Step 1: Allow double-click on _pivot column for aggregate rows
+
+**Time**: 10:00
+**Files Modified**: `packages/tadviewer/src/components/DataGrid.tsx`
+**Action**: Changed the aggregate row blocking logic to allow editing the `_pivot` column:
+- Added `pivotDepth?: number` to `CellEditStartData` interface
+- Modified block: `if (item && !item._isLeaf && column.id !== "_pivot") { return; }`
+- Passes `pivotDepth: item?._depth` when editing pivot column
+**Result**: Success
+
+---
+
+### Step 2: Add pivotDepth to CellEditState
+
+**Time**: 10:05
+**Files Modified**: `packages/tadviewer/src/ViewState.ts`
+**Action**: Added `pivotDepth?: number` field to `CellEditState` interface
+**Result**: Success
+
+---
+
+### Step 3: Pass pivotDepth through GridPane
+
+**Time**: 10:10
+**Files Modified**: `packages/tadviewer/src/components/GridPane.tsx`
+**Action**: Added `pivotDepth: data.pivotDepth` to `actions.startCellEdit` call
+**Result**: Success
+
+---
+
+### Step 4: Implement pivot label UPDATE SQL
+
+**Time**: 10:15
+**Files Modified**: `packages/tadviewer/src/actions.ts`
+**Action**: Updated `commitCellEdit` to handle pivot label editing:
+- When `isAggregateRow` is true and `pivotDepth` is defined, uses `viewParams.vpivots[pivotDepth]` to get the pivot column name
+- Generates SQL: `UPDATE table SET pivotColumn = newValue WHERE pivotColumn = oldValue`
+- Uses `formatWhereValue` to properly format the old value
+**Result**: Success
+
+---
+
+### Step 5: Update CellEditModal for pivot editing
+
+**Time**: 10:20
+**Files Modified**: `packages/tadviewer/src/components/CellEditModal.tsx`
+**Action**: Changed modal behavior for pivot column editing:
+- Replaced warning callout with informational message: "This will update the grouping value for all rows in this group."
+- Removed `disabled={isAggregateRow}` from input field
+- Removed `isAggregateRow` from Save button disabled condition
+**Result**: Success
+
+---
+
+### Step 6: Build and verify
+
+**Time**: 10:25
+**Commands**:
+- `cd packages/tad-app && npx webpack --mode production` — Success (12280ms)
+**Result**: Build successful
+
+---
+
+### Summary
+
+Pivot label editing is now functional. Users can double-click the `_pivot` column on aggregate rows to edit the grouping value. Saving updates all underlying rows in that group with the new value.
+
+---
+
+### Step 7: Fix pivot depth indexing
+
+**Time**: 22:40
+**Files Modified**: `packages/tadviewer/src/actions.ts`
+**Action**: Fixed pivot column lookup — `_depth` is 1-based (`depth = path.length + 1`) while `vpivots` is 0-indexed. Changed `vpivots[editState.pivotDepth]` to `vpivots[editState.pivotDepth - 1]`.
+**Result**: Success
+
+---
+
+### Step 8: Block pivot editing on leaf rows
+
+**Time**: 22:50
+**Files Modified**: `packages/tadviewer/src/components/DataGrid.tsx`
+**Action**: Added guard to prevent editing `_pivot` column on leaf rows (which have `_isLeaf === true` and no matching pivot column):
+```
+if (item && item._isLeaf && column.id === "_pivot") { return; }
+```
+**Result**: Success — leaf rows no longer trigger the "could not determine pivot column" error
