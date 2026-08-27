@@ -2,11 +2,11 @@
 
 ## État Git
 - **Branche active** : `feat/celledit`
-- **Dernier commit** : `612a5f8` docs(celledit): add planning docs for cell editing feature
+- **Dernier commit** : `a8bd965` feat(celledit): simplify context menu labels by row type
 - **Branche `master`** : `e179af3` (v0.0.2, merged from joincsv)
 - **Remote `origin`** : `https://github.com/renoust-ids/tad.git` (fork)
 - **Remote `upstream`** : `https://github.com/antonycourtney/tad.git` (original)
-- **Working tree** : propre (vibe-instructions.md modifié en staged mais non commit)
+- **Working tree** : propre
 
 ## Projet
 - **Nom** : MTad (fork de Tad, visualiseur de données tabulaires)
@@ -17,7 +17,13 @@
 - **Branches** : `master`, `joincsv` (merged), `feat/celledit` (active)
 
 ## Fonctionnalité en cours : Cell Editing (Édition de cellule)
-**Phase 1 : UI/UX read-only** — pas d'écriture dans la source de données
+
+### Status: Fully functional
+- Double-click on cells opens edit modal with type validation
+- Pivot label editing (aggregate `_pivot` column)
+- Aggregate cell editing (non-pivot columns on aggregate rows)
+- Column rename via header right-click context menu
+- Cell right-click context menu with "Edit" (leaf) / "Edit all" (aggregate)
 
 ### Concept
 - Double-clic sur une cellule → modale BlueprintJS avec champ de saisie
@@ -52,9 +58,26 @@
   - `createGrid()` (ligne ~343) : crée l'instance SlickGrid, abonne les events
   - `mkSlickColMap()` (ligne ~165) : construit les colonnes + formatters
   - `handleGridClick` (ligne ~477) : handler single-click
-  - **Pas de `onDblClick`** — à ajouter dans `createGrid()`
-  - Imports SlickGrid : `CellRangeSelector`, `CellSelectionModel`, `CellCopyManager`, `AutoTooltips`
-  - `onCellEditStart` : nouvelle prop à ajouter
+  - `grid.onContextMenu` : right-click context menu for cell editing
+  - `grid.onDblClick` : double-click opens CellEditModal
+  - `onCellEditStart` : prop callback for cell edit initiation
+  - `onColumnRename` : prop callback for column rename via header context menu
+
+### SlickGrid Event System (Critical)
+
+The SlickGrid `Event.notify` function calls handlers as `handler.call(scope, event, args)`:
+- **1st param** = jQuery event (DOM event)
+- **2nd param** = args object (e.g., `{grid: self}`)
+
+**Different from `onClick`/`onDblClick`**: These events pass `{row, cell, grid}` as args, but `onContextMenu` only passes `{grid: self}`.
+
+**Getting cell coordinates from context menu**:
+```typescript
+grid.onContextMenu.subscribe((event: any, _args: any) => {
+  const cellInfo = grid.getCellFromEvent(event); // Extracts {row, cell} from DOM
+  // cellInfo.row, cellInfo.cell are the coordinates
+});
+```
 
 ### Colonnes système
 - `_pivot` : colonne arbre (expand/collapse), renderer `groupCellFormatter`
@@ -67,11 +90,11 @@
 - `Scalar` : `bigint | number | string | boolean | null`
 
 ### État (oneref / Immutable.js)
-- `packages/tadviewer/src/ViewState.ts` : record Immutable.js, contient `viewParams`, `dataView`, `queryView`, etc.
+- `packages/tadviewer/src/ViewState.ts` : record Immutable.js, contient `viewParams`, `dataView`, `queryView`, `editingCell`
 - `packages/tadviewer/src/AppState.ts` : contient `viewState`
 - `packages/tadviewer/src/actions.ts` : fonctions `StateTransformer` = `(state) => state`
 - Mutation : `update(stateRef, transformer)`
-- **`editingCell`** : champ à ajouter dans `ViewState` (type `CellEditState | null`)
+- `editingCell` : `CellEditState | null` with `isPivot`, `isAggregateRow`, `pivotDepth`
 
 ### Formattage cellules
 - `packages/tadviewer/src/TextFormatOptions.ts` : formatter pour `string`
@@ -80,9 +103,10 @@
 
 ### Pivots
 - `packages/tadviewer/src/PivotRequester.ts` : construit l'arbre de pivot
-- `_isLeaf = depth > nPivots` (ligne ~56)
-- Lignes non-feuille : CSS `grid-aggregate-row`
-- `viewParams.vpivots.length > 0` = pivot actif
+  - `_isLeaf = depth > nPivots` (ligne ~56)
+  - Lignes non-feuille : CSS `grid-aggregate-row`
+  - `viewParams.vpivots.length > 0` = pivot actif
+  - `_depth` is 1-based while `vpivots` is 0-indexed → `vpivots[depth - 1]`
 
 ### Data flow
 ```
@@ -94,21 +118,13 @@ AppState.viewState.baseQuery (QueryExp)
           → SlickGrid appelle les formatters
 ```
 
-## Prochaine étape
-**Step 4** (vibe/celledit/step4.md) — Pivot awareness :
-1. Détecter si la ligne éditée est une ligne agrégat (`_isLeaf === false`)
-2. Afficher un message informatif pour les valeurs pivotées
-3. Désactiver le bouton Save pour les lignes agrégat
-4. Build et test
-5. Commit : `feat(tadviewer): add pivot awareness to CellEditModal`
-
-## Fichiers modifiés (Step 3)
-| Fichier | Modification |
-|---------|-------------|
-| `packages/tadviewer/src/ViewState.ts` | Added `CellEditState` interface, `editingCell` field |
-| `packages/tadviewer/src/actions.ts` | Added `startCellEdit`, `commitCellEdit`, `cancelCellEdit` actions |
-| `packages/tadviewer/src/components/GridPane.tsx` | Removed local state, use global `viewState.editingCell` |
-| `vibe/celledit/AGENT_DEV_LOG.md` | Step 3 dev log entry |
+### Cell Edit SQL Generation
+- Leaf rows: `UPDATE table SET col = val WHERE naturalKey = key`
+- Pivot labels: `UPDATE table SET pivotCol = newVal WHERE pivotCol = oldVal`
+- Aggregate cells: `UPDATE table SET col = val WHERE groupCol1 = v1 AND groupCol2 = v2`
+  - WHERE uses `vpivots.slice(0, depth)` for group-by columns only
+- Column rename: `ALTER TABLE RENAME COLUMN oldName TO newName`
+- After edit: refresh via `viewParams` reference change triggers PivotRequester re-fetch
 
 ## Commandes utiles
 ```bash
@@ -116,15 +132,15 @@ AppState.viewState.baseQuery (QueryExp)
 export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" && nvm use 20
 npx lerna bootstrap --force-local --hoist --no-ci
 
-# Build reltab + tadviewer
+# Build reltab
 cd packages/reltab && npx tsc -p tsconfig-build.json
-cd ../../packages/tadviewer && npx webpack --mode production
 
-# Build tad-app
-cd ../tad-app && npm run build-assets && npx webpack --mode production
+# Build tadviewer + tad-app
+cd packages/tadviewer && npx webpack --mode production
+cd ../tad-app && npx webpack --mode production
 
 # Lancer en dev
-./run.sh
+./run.sh --reltab
 
 # Tests reltab
 cd packages/reltab && npm test
@@ -137,8 +153,13 @@ cd packages/tad-app && npx electron-builder --mac dir --arm64 --publish=never
 tail -f ~/Library/Logs/mtad/main.log
 ```
 
-## Checklist de release v0.0.3 (quand la feature sera prête)
-- [ ] Code commité sur `feat/celledit`
+## Checklist de release v0.0.3
+- [x] Double-click cell editing
+- [x] Column type validation
+- [x] Pivot label editing (aggregate rows)
+- [x] Aggregate cell editing
+- [x] Column rename via header context menu
+- [x] Cell right-click context menu
 - [ ] Tests unitaires reltab passent
 - [ ] Build production réussit
 - [ ] Test E2E dans app packaged

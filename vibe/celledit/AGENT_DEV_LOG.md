@@ -860,3 +860,68 @@ Aggregate cell editing is now functional. Users can double-click any aggregate c
 ### Summary
 
 Column rename is now functional. Users can double-click on a column header to open a rename dialog. Saving executes `ALTER TABLE RENAME COLUMN` in DuckDB and updates all ViewParams references (displayColumns, vpivots, sortKey, aggMap) to use the new column name. The schema cache is invalidated so subsequent queries use the updated column name.
+
+---
+
+## Session: Cell Right-Click Context Menu
+
+### Date: 2026-08-27
+
+---
+
+### Goal
+
+Add right-click context menu on cells for editing, with appropriate labels based on row type.
+
+### Key Technical Findings
+
+#### SlickGrid `onContextMenu` event signature
+
+The `onContextMenu` event fires with **different data** than `onClick`/`onDblClick`:
+
+- `onClick` / `onDblClick`: handler receives `(eventData, event)` where `eventData = {row, cell, grid}`
+- `onContextMenu`: handler receives `(event, args)` where `event` = jQuery event, `args = {grid: self}`
+
+The SlickGrid `trigger` function calls `evt.notify(args, e, self)`, and `Event.notify` calls `handler.call(scope, event, args)`. So:
+- **1st param** to handler = jQuery event (not args)
+- **2nd param** to handler = args `{grid: self}` (not event)
+
+This means you **cannot** use `data.row` / `data.cell` from the event args — they don't exist.
+
+#### Getting cell coordinates from context menu
+
+Use `grid.getCellFromEvent(event)` to extract `{row, cell}` from the DOM event target. This is the standard SlickGrid API for extracting cell position from any DOM event.
+
+### Changes Made
+
+#### `DataGrid.tsx`
+
+1. **`handleGridClick` guard** (line ~498): Added `if (!col || !item) return;` to prevent crashes when SlickGrid fires `onClick` during context menu teardown.
+
+2. **`grid.onContextMenu` handler** (line ~551): New handler that:
+   - Calls `event.preventDefault()` to suppress browser context menu
+   - Uses `grid.getCellFromEvent(event)` to get cell coordinates
+   - Excludes system columns (`_`, `_id`, `_parentId`, `Rec`)
+   - Excludes `_pivot` on leaf rows
+   - Shows single menu item: **"Edit all"** for aggregate rows, **"Edit"** for leaf rows
+   - Positions menu at mouse coordinates via `event.originalEvent.clientX/clientY`
+   - Auto-closes on outside click
+
+### Menu Behavior
+
+| Row Type | Cell Column | Menu Item |
+|----------|-------------|-----------|
+| Aggregate | `_pivot` | "Edit all" |
+| Aggregate | Any other | "Edit all" |
+| Leaf | Any editable | "Edit" |
+
+### Commits
+
+- `d4ba732` — feat(celledit): add right-click context menu for cell editing
+- `a8bd965` — feat(celledit): simplify context menu labels by row type
+
+### Build & Test
+
+- `cd packages/tadviewer && npx webpack --mode production` — Success
+- `cd packages/tad-app && npx webpack --mode production` — Success
+- Test: `./run.sh --reltab` — Context menu works, no crashes
