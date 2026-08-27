@@ -555,21 +555,44 @@ const createGrid = (
     onSetColumnOrder?.(displayColIds);
   });
 
-  // Column header double-click for renaming
-  const headerContainer = grid.getHeaderRow()?.parentElement;
-  if (headerContainer) {
-    headerContainer.addEventListener("dblclick", (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      const headerEl = target.closest(".slick-header-column");
-      if (!headerEl) return;
-      const colIndex = headerEl.getAttribute("data-col");
-      if (colIndex === null) return;
-      const columns = grid.getColumns();
-      const column = columns[parseInt(colIndex, 10)];
-      if (!column || column.id.startsWith("_") || column.id === "Rec") return;
+  // Column header right-click context menu for renaming
+  grid.onHeaderContextMenu.subscribe((e: Event, args: any) => {
+    e.preventDefault();
+    const column = args.column;
+    if (!column || column.id.startsWith("_") || column.id === "Rec") return;
+
+    // Remove any existing context menu
+    const existing = document.getElementById("col-header-ctx-menu");
+    if (existing) existing.remove();
+
+    const menu = document.createElement("div");
+    menu.id = "col-header-ctx-menu";
+    menu.className = "bp4-menu";
+    menu.style.position = "fixed";
+    menu.style.zIndex = "9999";
+    menu.style.left = `${(e as MouseEvent).clientX}px`;
+    menu.style.top = `${(e as MouseEvent).clientY}px`;
+
+    const renameItem = document.createElement("div");
+    renameItem.className = "bp4-menu-item";
+    renameItem.textContent = "Rename";
+    renameItem.addEventListener("click", () => {
+      menu.remove();
       onColumnRename?.(column.id);
     });
-  }
+    menu.appendChild(renameItem);
+
+    document.body.appendChild(menu);
+
+    // Close menu on outside click
+    const closeMenu = (ev: MouseEvent) => {
+      if (!menu.contains(ev.target as Node)) {
+        menu.remove();
+        document.removeEventListener("click", closeMenu);
+      }
+    };
+    setTimeout(() => document.addEventListener("click", closeMenu), 0);
+  });
 
   // load the first page
   grid.onViewportChanged.notify();
