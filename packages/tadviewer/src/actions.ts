@@ -993,7 +993,9 @@ export const renameColumn = async (
     );
 
     // Re-fetch the table schema after rename (DbDataSource cache was invalidated)
-    const newSchema = await dbc.getTableSchema(tableName);
+    // Note: dbc.getTableSchema() returns plain JSON via remote transport (no Schema methods).
+    // Instead, change the baseQuery reference to trigger PivotRequester to re-fetch
+    // through the normal pipeline which properly constructs Schema objects.
 
     // Update ViewParams to replace old column name with new name
     update(stateRef, (st: AppState) => {
@@ -1025,10 +1027,14 @@ export const renameColumn = async (
         .set("sortKey", replaceInSortKey(vp.sortKey))
         .set("aggMap", replaceInAggMap(vp.aggMap)) as ViewParams;
 
+      // Change baseQuery reference to trigger PivotRequester to re-fetch
+      // with fresh Schema (with proper methods) from the normal pipeline
+      const newBQ = reltab.tableQuery(tableName);
+
       return st.update("viewState", (vs) =>
         vs!
           .set("viewParams", newVP)
-          .set("baseSchema", newSchema) as ViewState
+          .set("baseQuery", newBQ) as ViewState
       );
     });
   } catch (err) {
