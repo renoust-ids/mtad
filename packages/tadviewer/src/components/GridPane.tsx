@@ -344,6 +344,20 @@ const GridPaneInternal: React.FunctionComponent<GridPaneProps> = ({
     [stateRef]
   );
 
+  const handleDeleteAggregateRows = React.useCallback(
+    async (item: any, depth: number) => {
+      await actions.deleteAllAggregateRows(item, depth, stateRef);
+    },
+    [stateRef]
+  );
+
+  const handleDuplicateAggregateRows = React.useCallback(
+    async (item: any, depth: number) => {
+      await actions.duplicateAllAggregateRows(item, depth, stateRef);
+    },
+    [stateRef]
+  );
+
   const dataGridProps: DataGridProps = {
     dataView,
     showColumnHistograms,
@@ -367,6 +381,9 @@ const GridPaneInternal: React.FunctionComponent<GridPaneProps> = ({
     onColumnDuplicate: handleColumnDuplicate,
     onDeleteRows: handleDeleteRows,
     onDuplicateRows: handleDuplicateRows,
+    onDeleteAggregateRows: handleDeleteAggregateRows,
+    onDuplicateAggregateRows: handleDuplicateAggregateRows,
+    vpivots: viewParams.vpivots,
     sortKey,
     isPivoted,
     clipboard,

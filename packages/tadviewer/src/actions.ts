@@ -1261,3 +1261,92 @@ export const duplicateRows = async (
     console.error("[DuplicateRows] Error duplicating rows:", err);
   }
 };
+
+// --- Aggregate Row Operations ---
+
+export const deleteAllAggregateRows = async (
+  item: any,
+  depth: number,
+  stateRef: StateRef<AppState>
+): Promise<void> => {
+  const state = mutableGet(stateRef);
+  const { dbc, baseQuery, viewParams } = state.viewState;
+  if (!dbc || !baseQuery) {
+    console.error("deleteAllAggregateRows: no database connection or baseQuery");
+    return;
+  }
+
+  const getTableName = (rep: any): string | null => {
+    if (!rep) return null;
+    if (rep.tableName) return rep.tableName;
+    if (rep.from) return getTableName(rep.from);
+    return null;
+  };
+  const tableName = getTableName((baseQuery as any)._rep);
+  if (!tableName) {
+    console.error("deleteAllAggregateRows: could not find table name");
+    return;
+  }
+
+  try {
+    // Build WHERE from pivot columns: vpivots[0..depth-1]
+    const pivotCols = viewParams.vpivots.slice(0, depth);
+    const whereParts = pivotCols.map((col: string) => `"${col}" = ${formatSqlValue(item[col])}`);
+    const whereClause = whereParts.join(" AND ");
+
+    await dbc.deleteRows(tableName, whereClause);
+    console.log(`[DeleteAllAggregate] Deleted aggregate rows for depth ${depth} in "${tableName}"`);
+
+    // Trigger data refresh
+    update(stateRef, (st: AppState) => {
+      const vp = st.viewState.viewParams;
+      const newVP = vp.set("displayColumns", vp.displayColumns.slice()) as ViewParams;
+      return st.update("viewState", (vs) => vs!.set("viewParams", newVP) as ViewState);
+    });
+  } catch (err) {
+    console.error("[DeleteAllAggregate] Error deleting aggregate rows:", err);
+  }
+};
+
+export const duplicateAllAggregateRows = async (
+  item: any,
+  depth: number,
+  stateRef: StateRef<AppState>
+): Promise<void> => {
+  const state = mutableGet(stateRef);
+  const { dbc, baseQuery, viewParams } = state.viewState;
+  if (!dbc || !baseQuery) {
+    console.error("duplicateAllAggregateRows: no database connection or baseQuery");
+    return;
+  }
+
+  const getTableName = (rep: any): string | null => {
+    if (!rep) return null;
+    if (rep.tableName) return rep.tableName;
+    if (rep.from) return getTableName(rep.from);
+    return null;
+  };
+  const tableName = getTableName((baseQuery as any)._rep);
+  if (!tableName) {
+    console.error("duplicateAllAggregateRows: could not find table name");
+    return;
+  }
+
+  try {
+    const pivotCols = viewParams.vpivots.slice(0, depth);
+    const whereParts = pivotCols.map((col: string) => `"${col}" = ${formatSqlValue(item[col])}`);
+    const whereClause = whereParts.join(" AND ");
+
+    await dbc.duplicateRows(tableName, whereClause);
+    console.log(`[DuplicateAllAggregate] Duplicated aggregate rows for depth ${depth} in "${tableName}"`);
+
+    // Trigger data refresh
+    update(stateRef, (st: AppState) => {
+      const vp = st.viewState.viewParams;
+      const newVP = vp.set("displayColumns", vp.displayColumns.slice()) as ViewParams;
+      return st.update("viewState", (vs) => vs!.set("viewParams", newVP) as ViewState);
+    });
+  } catch (err) {
+    console.error("[DuplicateAllAggregate] Error duplicating aggregate rows:", err);
+  }
+};

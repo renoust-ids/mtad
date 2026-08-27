@@ -394,6 +394,9 @@ const createGrid = (
     onColumnDuplicate,
     onDeleteRows,
     onDuplicateRows,
+    onDeleteAggregateRows,
+    onDuplicateAggregateRows,
+    vpivots,
     sortKey,
     clipboard,
     openURL,
@@ -686,6 +689,31 @@ const createGrid = (
     });
     menu.appendChild(dupRowsItem);
 
+    // Aggregate-only items
+    if (isAggregate) {
+      const sep2 = document.createElement("div");
+      sep2.className = "bp4-menu-divider";
+      menu.appendChild(sep2);
+
+      const delAggItem = document.createElement("div");
+      delAggItem.className = "bp4-menu-item";
+      delAggItem.textContent = "Delete All Aggregate Rows";
+      delAggItem.addEventListener("click", () => {
+        menu.remove();
+        onDeleteAggregateRows?.(item, item._depth);
+      });
+      menu.appendChild(delAggItem);
+
+      const dupAggItem = document.createElement("div");
+      dupAggItem.className = "bp4-menu-item";
+      dupAggItem.textContent = "Duplicate All Aggregate Rows";
+      dupAggItem.addEventListener("click", () => {
+        menu.remove();
+        onDuplicateAggregateRows?.(item, item._depth);
+      });
+      menu.appendChild(dupAggItem);
+    }
+
     document.body.appendChild(menu);
 
     // Close menu on outside click
@@ -953,6 +981,9 @@ export interface DataGridProps {
   onColumnDuplicate?: (columnId: string) => void;
   onDeleteRows?: (rowDataList: { [columnId: string]: any }[]) => void;
   onDuplicateRows?: (rowDataList: { [columnId: string]: any }[]) => void;
+  onDeleteAggregateRows?: (item: any, depth: number) => void;
+  onDuplicateAggregateRows?: (item: any, depth: number) => void;
+  vpivots?: string[];
   openURL: OpenURLFn;
   embedded: boolean;
 }
