@@ -371,6 +371,8 @@ const createGrid = (
     onSetColumnOrder,
     onCellEditStart,
     onColumnRename,
+    onColumnDelete,
+    onColumnDuplicate,
     sortKey,
     clipboard,
     openURL,
@@ -671,6 +673,24 @@ const createGrid = (
     });
     menu.appendChild(renameItem);
 
+    const deleteItem = document.createElement("div");
+    deleteItem.className = "bp4-menu-item";
+    deleteItem.textContent = "Delete";
+    deleteItem.addEventListener("click", () => {
+      menu.remove();
+      onColumnDelete?.(column.id);
+    });
+    menu.appendChild(deleteItem);
+
+    const duplicateItem = document.createElement("div");
+    duplicateItem.className = "bp4-menu-item";
+    duplicateItem.textContent = "Duplicate";
+    duplicateItem.addEventListener("click", () => {
+      menu.remove();
+      onColumnDuplicate?.(column.id);
+    });
+    menu.appendChild(duplicateItem);
+
     document.body.appendChild(menu);
 
     // Close menu on outside click
@@ -869,6 +889,8 @@ export interface DataGridProps {
   onSetColumnOrder?: (displayColumns: string[]) => void;
   onCellEditStart?: (data: CellEditStartData) => void;
   onColumnRename?: (columnId: string) => void;
+  onColumnDelete?: (columnId: string) => void;
+  onColumnDuplicate?: (columnId: string) => void;
   openURL: OpenURLFn;
   embedded: boolean;
 }

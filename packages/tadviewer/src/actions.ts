@@ -1044,3 +1044,108 @@ export const renameColumn = async (
     console.error("[ColumnRename] Error renaming column:", err);
   }
 };
+
+// --- Column Delete Action ---
+
+export const deleteColumn = async (
+  tableName: string,
+  columnName: string,
+  stateRef: StateRef<AppState>
+): Promise<void> => {
+  const state = mutableGet(stateRef);
+  const { dbc } = state.viewState;
+  if (!dbc) {
+    console.error("deleteColumn: no database connection");
+    return;
+  }
+
+  try {
+    await dbc.deleteColumn(tableName, columnName);
+    console.log(`[ColumnDelete] Deleted column "${columnName}" from table "${tableName}"`);
+
+    const appState = mutableGet(stateRef);
+    const showRecordCount = appState.showRecordCount;
+    const vp = appState.viewState.viewParams;
+
+    // Re-fetch schema
+    const newBQ = reltab.tableQuery(tableName);
+    const newBaseSchema = await aggtree.getBaseSchema(dbc, newBQ, showRecordCount);
+
+    // Remove column from ViewParams arrays
+    const removeFromArr = (arr: string[]): string[] =>
+      arr.filter((c) => c !== columnName);
+
+    const newVP = vp
+      .set("displayColumns", removeFromArr(vp.displayColumns))
+      .set("vpivots", removeFromArr(vp.vpivots))
+      .set("sortKey", vp.sortKey.filter(([col]) => col !== columnName))
+      .set("aggMap", (() => {
+        const m = { ...vp.aggMap };
+        delete m[columnName];
+        return m;
+      })()) as ViewParams;
+
+    update(stateRef, (st: AppState) =>
+      st.update("viewState", (vs) =>
+        vs!
+          .set("viewParams", newVP)
+          .set("baseQuery", newBQ)
+          .set("baseSchema", newBaseSchema) as ViewState
+      )
+    );
+  } catch (err) {
+    console.error("[ColumnDelete] Error deleting column:", err);
+  }
+};
+
+// --- Column Duplicate Action ---
+
+export const duplicateColumn = async (
+  tableName: string,
+  sourceColumn: string,
+  newColumn: string,
+  stateRef: StateRef<AppState>
+): Promise<void> => {
+  const state = mutableGet(stateRef);
+  const { dbc } = state.viewState;
+  if (!dbc) {
+    console.error("duplicateColumn: no database connection");
+    return;
+  }
+
+  try {
+    await dbc.duplicateColumn(tableName, sourceColumn, newColumn);
+    console.log(`[ColumnDuplicate] Duplicated column "${sourceColumn}" as "${newColumn}" in table "${tableName}"`);
+
+    const appState = mutableGet(stateRef);
+    const showRecordCount = appState.showRecordCount;
+    const vp = appState.viewState.viewParams;
+
+    // Re-fetch schema
+    const newBQ = reltab.tableQuery(tableName);
+    const newBaseSchema = await aggtree.getBaseSchema(dbc, newBQ, showRecordCount);
+
+    // Add new column after source in displayColumns
+    const newDisplayCols = [...vp.displayColumns];
+    const srcIdx = newDisplayCols.indexOf(sourceColumn);
+    if (srcIdx >= 0) {
+      newDisplayCols.splice(srcIdx + 1, 0, newColumn);
+    } else {
+      newDisplayCols.push(newColumn);
+    }
+
+    const newVP = vp
+      .set("displayColumns", newDisplayCols) as ViewParams;
+
+    update(stateRef, (st: AppState) =>
+      st.update("viewState", (vs) =>
+        vs!
+          .set("viewParams", newVP)
+          .set("baseQuery", newBQ)
+          .set("baseSchema", newBaseSchema) as ViewState
+      )
+    );
+  } catch (err) {
+    console.error("[ColumnDuplicate] Error duplicating column:", err);
+  }
+};

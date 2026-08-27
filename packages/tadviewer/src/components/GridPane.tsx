@@ -3,7 +3,7 @@ import { mutableGet, StateRef } from "oneref";
 import * as React from "react";
 import { useRef } from "react";
 import * as reltab from "reltab";
-import { Dialog, Button, Intent } from "@blueprintjs/core";
+import { Dialog, Button, Intent, Alert } from "@blueprintjs/core";
 import { AppState } from "../AppState";
 import { DataRow } from "../PagedDataView";
 import { ViewState, CellEditState } from "../ViewState";
@@ -258,6 +258,77 @@ const GridPaneInternal: React.FunctionComponent<GridPaneProps> = ({
     setRenameState((s) => ({ ...s, isOpen: false }));
   }, []);
 
+  // Column delete confirmation state
+  const [deleteState, setDeleteState] = React.useState<{
+    isOpen: boolean;
+    columnId: string;
+  }>({ isOpen: false, columnId: "" });
+
+  const handleColumnDelete = React.useCallback((columnId: string) => {
+    setDeleteState({ isOpen: true, columnId });
+  }, []);
+
+  const handleDeleteConfirm = React.useCallback(async () => {
+    const { columnId } = deleteState;
+    const baseQuery = viewState.baseQuery as any;
+    const getTableName = (rep: any): string | null => {
+      if (!rep) return null;
+      if (rep.tableName) return rep.tableName;
+      if (rep.from) return getTableName(rep.from);
+      return null;
+    };
+    const tableName = getTableName(baseQuery?._rep);
+    if (!tableName) {
+      console.error("deleteColumn: could not find table name");
+      setDeleteState({ isOpen: false, columnId: "" });
+      return;
+    }
+    await actions.deleteColumn(tableName, columnId, stateRef);
+    setDeleteState({ isOpen: false, columnId: "" });
+  }, [deleteState, viewState.baseQuery, stateRef]);
+
+  const handleDeleteCancel = React.useCallback(() => {
+    setDeleteState({ isOpen: false, columnId: "" });
+  }, []);
+
+  // Column duplicate state
+  const [duplicateState, setDuplicateState] = React.useState<{
+    isOpen: boolean;
+    sourceColumn: string;
+    newColumn: string;
+  }>({ isOpen: false, sourceColumn: "", newColumn: "" });
+
+  const handleColumnDuplicate = React.useCallback((columnId: string) => {
+    setDuplicateState({ isOpen: true, sourceColumn: columnId, newColumn: `${columnId}_2` });
+  }, []);
+
+  const handleDuplicateSave = React.useCallback(async () => {
+    const { sourceColumn, newColumn } = duplicateState;
+    if (!newColumn.trim() || newColumn === sourceColumn) {
+      setDuplicateState({ isOpen: false, sourceColumn: "", newColumn: "" });
+      return;
+    }
+    const baseQuery = viewState.baseQuery as any;
+    const getTableName = (rep: any): string | null => {
+      if (!rep) return null;
+      if (rep.tableName) return rep.tableName;
+      if (rep.from) return getTableName(rep.from);
+      return null;
+    };
+    const tableName = getTableName(baseQuery?._rep);
+    if (!tableName) {
+      console.error("duplicateColumn: could not find table name");
+      setDuplicateState({ isOpen: false, sourceColumn: "", newColumn: "" });
+      return;
+    }
+    await actions.duplicateColumn(tableName, sourceColumn, newColumn.trim(), stateRef);
+    setDuplicateState({ isOpen: false, sourceColumn: "", newColumn: "" });
+  }, [duplicateState, viewState.baseQuery, stateRef]);
+
+  const handleDuplicateCancel = React.useCallback(() => {
+    setDuplicateState({ isOpen: false, sourceColumn: "", newColumn: "" });
+  }, []);
+
   const dataGridProps: DataGridProps = {
     dataView,
     showColumnHistograms,
@@ -277,6 +348,8 @@ const GridPaneInternal: React.FunctionComponent<GridPaneProps> = ({
     onSetColumnOrder,
     onCellEditStart: handleEditStart,
     onColumnRename: handleColumnRename,
+    onColumnDelete: handleColumnDelete,
+    onColumnDuplicate: handleColumnDuplicate,
     sortKey,
     isPivoted,
     clipboard,
@@ -326,6 +399,50 @@ const GridPaneInternal: React.FunctionComponent<GridPaneProps> = ({
               disabled={!renameState.newName.trim() || renameState.newName === renameState.columnId}
             >
               Rename
+            </Button>
+          </div>
+        </div>
+      </Dialog>
+      <Alert
+        isOpen={deleteState.isOpen}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        intent={Intent.DANGER}
+        confirmButtonText="Yes, Delete"
+        cancelButtonText="Cancel"
+      >
+        <p>
+          Are you sure you want to delete column <strong>"{deleteState.columnId}"</strong>?
+          This will drop all its content.
+        </p>
+      </Alert>
+      <Dialog
+        isOpen={duplicateState.isOpen}
+        title="Duplicate Column"
+        onClose={handleDuplicateCancel}
+        canOutsideClickClose={true}
+      >
+        <div className="bp4-dialog-body">
+          <label className="bp4-label">
+            New name for duplicate of "{duplicateState.sourceColumn}":
+            <input
+              className="bp4-input bp4-fill"
+              type="text"
+              value={duplicateState.newColumn}
+              onChange={(e) => setDuplicateState((s) => ({ ...s, newColumn: e.target.value }))}
+              autoFocus
+            />
+          </label>
+        </div>
+        <div className="bp4-dialog-footer">
+          <div className="bp4-dialog-footer-actions">
+            <Button onClick={handleDuplicateCancel}>Cancel</Button>
+            <Button
+              intent={Intent.PRIMARY}
+              onClick={handleDuplicateSave}
+              disabled={!duplicateState.newColumn.trim() || duplicateState.newColumn === duplicateState.sourceColumn}
+            >
+              Duplicate
             </Button>
           </div>
         </div>
