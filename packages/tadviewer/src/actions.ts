@@ -992,6 +992,9 @@ export const renameColumn = async (
       `[ColumnRename] Renamed column "${oldName}" to "${newName}" in table "${tableName}"`
     );
 
+    // Re-fetch the table schema after rename (DbDataSource cache was invalidated)
+    const newSchema = await dbc.getTableSchema(tableName);
+
     // Update ViewParams to replace old column name with new name
     update(stateRef, (st: AppState) => {
       const vp = st.viewState.viewParams;
@@ -1023,7 +1026,9 @@ export const renameColumn = async (
         .set("aggMap", replaceInAggMap(vp.aggMap)) as ViewParams;
 
       return st.update("viewState", (vs) =>
-        vs!.set("viewParams", newVP) as ViewState
+        vs!
+          .set("viewParams", newVP)
+          .set("baseSchema", newSchema) as ViewState
       );
     });
   } catch (err) {
