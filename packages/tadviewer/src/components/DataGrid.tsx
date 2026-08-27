@@ -353,6 +353,25 @@ function escapeTabs(cellData: any): any {
   return cellData;
 }
 
+// Extract unique row indices from SlickGrid selection ranges
+function getUniqueRowsFromRanges(ranges: any[], grid: any): number[] {
+  const rowSet = new Set<number>();
+  if (!ranges || ranges.length === 0) {
+    // No selection — use the right-clicked row
+    const activeCell = grid.getActiveCell();
+    if (activeCell) {
+      rowSet.add(activeCell.row);
+    }
+  } else {
+    for (const range of ranges) {
+      for (let r = range.fromRow; r <= range.toRow; r++) {
+        rowSet.add(r);
+      }
+    }
+  }
+  return Array.from(rowSet).sort((a, b) => a - b);
+}
+
 /* Create grid from the specified set of columns */
 const createGrid = (
   containerId: string,
@@ -373,6 +392,8 @@ const createGrid = (
     onColumnRename,
     onColumnDelete,
     onColumnDuplicate,
+    onDeleteRows,
+    onDuplicateRows,
     sortKey,
     clipboard,
     openURL,
@@ -625,6 +646,45 @@ const createGrid = (
       onCellEditStart?.(cellEditData);
     });
     menu.appendChild(menuItem);
+
+    // Add separator
+    const sep1 = document.createElement("div");
+    sep1.className = "bp4-menu-divider";
+    menu.appendChild(sep1);
+
+    // Delete Rows item
+    const deleteRowsItem = document.createElement("div");
+    deleteRowsItem.className = "bp4-menu-item";
+    deleteRowsItem.textContent = "Delete Rows";
+    deleteRowsItem.addEventListener("click", () => {
+      menu.remove();
+      // Get selected rows from selection model
+      const ranges = grid.getSelectionModel().getSelectedRanges();
+      const selectedRows = getUniqueRowsFromRanges(ranges, grid);
+      // Get data for each selected row
+      const dv = grid.getData();
+      const rowDataList = selectedRows
+        .map((rowIdx: number) => dv.getItem(rowIdx))
+        .filter((item: any) => item);
+      onDeleteRows?.(rowDataList);
+    });
+    menu.appendChild(deleteRowsItem);
+
+    // Duplicate Rows item
+    const dupRowsItem = document.createElement("div");
+    dupRowsItem.className = "bp4-menu-item";
+    dupRowsItem.textContent = "Duplicate Rows";
+    dupRowsItem.addEventListener("click", () => {
+      menu.remove();
+      const ranges = grid.getSelectionModel().getSelectedRanges();
+      const selectedRows = getUniqueRowsFromRanges(ranges, grid);
+      const dv = grid.getData();
+      const rowDataList = selectedRows
+        .map((rowIdx: number) => dv.getItem(rowIdx))
+        .filter((item: any) => item);
+      onDuplicateRows?.(rowDataList);
+    });
+    menu.appendChild(dupRowsItem);
 
     document.body.appendChild(menu);
 
@@ -891,6 +951,8 @@ export interface DataGridProps {
   onColumnRename?: (columnId: string) => void;
   onColumnDelete?: (columnId: string) => void;
   onColumnDuplicate?: (columnId: string) => void;
+  onDeleteRows?: (rowDataList: { [columnId: string]: any }[]) => void;
+  onDuplicateRows?: (rowDataList: { [columnId: string]: any }[]) => void;
   openURL: OpenURLFn;
   embedded: boolean;
 }

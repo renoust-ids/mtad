@@ -1149,3 +1149,115 @@ export const duplicateColumn = async (
     console.error("[ColumnDuplicate] Error duplicating column:", err);
   }
 };
+
+// --- Row Operations ---
+
+const EXCLUDE_COLS = ["Rec", "_id", "_parentId", "_depth", "_isOpen", "_pivot", "_isLeaf"];
+
+const formatSqlValue = (val: any): string => {
+  if (val === null || val === undefined) return "NULL";
+  if (typeof val === "number") return String(val);
+  if (typeof val === "boolean") return val ? "TRUE" : "FALSE";
+  if (val instanceof Date) return `'${val.toISOString()}'`;
+  if (typeof val === "string") {
+    const escaped = val.replace(/'/g, "''");
+    return `'${escaped}'`;
+  }
+  return `'${String(val)}'`;
+};
+
+const buildRowWhere = (rowData: { [columnId: string]: any }): string => {
+  const parts = Object.entries(rowData)
+    .filter(([k]) => !EXCLUDE_COLS.includes(k))
+    .map(([k, v]) => `"${k}" = ${formatSqlValue(v)}`);
+  return parts.join(" AND ");
+};
+
+const buildMultiRowWhere = (rowDataList: { [columnId: string]: any }[]): string => {
+  if (rowDataList.length === 0) return "1=0";
+  if (rowDataList.length === 1) return buildRowWhere(rowDataList[0]);
+  const clauses = rowDataList.map((rd) => `(${buildRowWhere(rd)})`);
+  return clauses.join(" OR ");
+};
+
+// --- Delete Rows Action ---
+
+export const deleteRows = async (
+  rowDataList: { [columnId: string]: any }[],
+  stateRef: StateRef<AppState>
+): Promise<void> => {
+  const state = mutableGet(stateRef);
+  const { dbc, baseQuery } = state.viewState;
+  if (!dbc || !baseQuery) {
+    console.error("deleteRows: no database connection or baseQuery");
+    return;
+  }
+
+  const getTableName = (rep: any): string | null => {
+    if (!rep) return null;
+    if (rep.tableName) return rep.tableName;
+    if (rep.from) return getTableName(rep.from);
+    return null;
+  };
+  const tableName = getTableName((baseQuery as any)._rep);
+  if (!tableName) {
+    console.error("deleteRows: could not find table name");
+    return;
+  }
+
+  try {
+    const whereClause = buildMultiRowWhere(rowDataList);
+    await dbc.deleteRows(tableName, whereClause);
+    console.log(`[DeleteRows] Deleted ${rowDataList.length} row(s) from "${tableName}"`);
+
+    // Trigger data refresh
+    update(stateRef, (st: AppState) => {
+      const vp = st.viewState.viewParams;
+      const newVP = vp.set("displayColumns", vp.displayColumns.slice()) as ViewParams;
+      return st.update("viewState", (vs) => vs!.set("viewParams", newVP) as ViewState);
+    });
+  } catch (err) {
+    console.error("[DeleteRows] Error deleting rows:", err);
+  }
+};
+
+// --- Duplicate Rows Action ---
+
+export const duplicateRows = async (
+  rowDataList: { [columnId: string]: any }[],
+  stateRef: StateRef<AppState>
+): Promise<void> => {
+  const state = mutableGet(stateRef);
+  const { dbc, baseQuery } = state.viewState;
+  if (!dbc || !baseQuery) {
+    console.error("duplicateRows: no database connection or baseQuery");
+    return;
+  }
+
+  const getTableName = (rep: any): string | null => {
+    if (!rep) return null;
+    if (rep.tableName) return rep.tableName;
+    if (rep.from) return getTableName(rep.from);
+    return null;
+  };
+  const tableName = getTableName((baseQuery as any)._rep);
+  if (!tableName) {
+    console.error("duplicateRows: could not find table name");
+    return;
+  }
+
+  try {
+    const whereClause = buildMultiRowWhere(rowDataList);
+    await dbc.duplicateRows(tableName, whereClause);
+    console.log(`[DuplicateRows] Duplicated ${rowDataList.length} row(s) in "${tableName}"`);
+
+    // Trigger data refresh
+    update(stateRef, (st: AppState) => {
+      const vp = st.viewState.viewParams;
+      const newVP = vp.set("displayColumns", vp.displayColumns.slice()) as ViewParams;
+      return st.update("viewState", (vs) => vs!.set("viewParams", newVP) as ViewState);
+    });
+  } catch (err) {
+    console.error("[DuplicateRows] Error duplicating rows:", err);
+  }
+};

@@ -329,6 +329,21 @@ const GridPaneInternal: React.FunctionComponent<GridPaneProps> = ({
     setDuplicateState({ isOpen: false, sourceColumn: "", newColumn: "" });
   }, []);
 
+  // Row operations from cell selection
+  const handleDeleteRows = React.useCallback(
+    async (rowDataList: { [columnId: string]: any }[]) => {
+      await actions.deleteRows(rowDataList, stateRef);
+    },
+    [stateRef]
+  );
+
+  const handleDuplicateRows = React.useCallback(
+    async (rowDataList: { [columnId: string]: any }[]) => {
+      await actions.duplicateRows(rowDataList, stateRef);
+    },
+    [stateRef]
+  );
+
   const dataGridProps: DataGridProps = {
     dataView,
     showColumnHistograms,
@@ -350,6 +365,8 @@ const GridPaneInternal: React.FunctionComponent<GridPaneProps> = ({
     onColumnRename: handleColumnRename,
     onColumnDelete: handleColumnDelete,
     onColumnDuplicate: handleColumnDuplicate,
+    onDeleteRows: handleDeleteRows,
+    onDuplicateRows: handleDuplicateRows,
     sortKey,
     isPivoted,
     clipboard,
