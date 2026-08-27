@@ -992,10 +992,16 @@ export const renameColumn = async (
       `[ColumnRename] Renamed column "${oldName}" to "${newName}" in table "${tableName}"`
     );
 
-    // Re-fetch the table schema after rename (DbDataSource cache was invalidated)
-    // Note: dbc.getTableSchema() returns plain JSON via remote transport (no Schema methods).
-    // Instead, change the baseQuery reference to trigger PivotRequester to re-fetch
-    // through the normal pipeline which properly constructs Schema objects.
+    const appState = mutableGet(stateRef);
+    const showRecordCount = appState.showRecordCount;
+
+    // Re-fetch the baseQuery and baseSchema after rename.
+    const newBQ = reltab.tableQuery(tableName);
+    const newBaseSchema = await aggtree.getBaseSchema(
+      dbc,
+      newBQ,
+      showRecordCount
+    );
 
     // Update ViewParams to replace old column name with new name
     update(stateRef, (st: AppState) => {
@@ -1027,14 +1033,11 @@ export const renameColumn = async (
         .set("sortKey", replaceInSortKey(vp.sortKey))
         .set("aggMap", replaceInAggMap(vp.aggMap)) as ViewParams;
 
-      // Change baseQuery reference to trigger PivotRequester to re-fetch
-      // with fresh Schema (with proper methods) from the normal pipeline
-      const newBQ = reltab.tableQuery(tableName);
-
       return st.update("viewState", (vs) =>
         vs!
           .set("viewParams", newVP)
-          .set("baseQuery", newBQ) as ViewState
+          .set("baseQuery", newBQ)
+          .set("baseSchema", newBaseSchema) as ViewState
       );
     });
   } catch (err) {
