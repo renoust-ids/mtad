@@ -378,7 +378,7 @@ ipcMain.on("export-file", async (event: IpcMainEvent, exportFileReq: any) => {
   if (!win) {
     return;
   }
-  const { exportFormat, exportPath, parquetExportOptions } = exportFileReq;
+  const { exportFormat, exportPath, parquetExportOptions, exportVisibleOnly, exportColumnOrder, displayColumns } = exportFileReq;
   const queryStr: string = await getFilterQuery(win);
   const req = reltab.deserializeQueryReq(queryStr);
   const { query, filterRowCount } = req;
@@ -388,7 +388,10 @@ ipcMain.on("export-file", async (event: IpcMainEvent, exportFileReq: any) => {
     exportPath,
     filterRowCount,
     query,
-    parquetExportOptions
+    parquetExportOptions,
+    exportVisibleOnly,
+    exportColumnOrder,
+    displayColumns
   );
 });
 

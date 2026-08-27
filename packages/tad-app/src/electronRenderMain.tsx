@@ -142,12 +142,18 @@ const init = async () => {
         onExportFile={(
           exportFormat: ExportFormat,
           exportPath: string,
-          parquetExportOptions: ParquetExportOptions
+          parquetExportOptions: ParquetExportOptions,
+          exportVisibleOnly: boolean,
+          exportColumnOrder: boolean,
+          displayColumns: string[]
         ) =>
           ipcRenderer.send("export-file", {
             exportFormat,
             exportPath,
             parquetExportOptions,
+            exportVisibleOnly,
+            exportColumnOrder,
+            displayColumns,
           })
         }
         onSelectCsvFile={async () => {

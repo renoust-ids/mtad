@@ -16,6 +16,7 @@ import {
   HTMLSelect,
   Text,
   Collapse,
+  Checkbox,
 } from "@blueprintjs/core";
 import { GridPane, OpenURLFn } from "./GridPane";
 import { Footer } from "./Footer";
@@ -61,7 +62,10 @@ export interface AppPaneBaseProps {
   onExportFile?: (
     exportFormat: ExportFormat,
     exportPath: string,
-    parquetExportOptions: ParquetExportOptions
+    parquetExportOptions: ParquetExportOptions,
+    exportVisibleOnly: boolean,
+    exportColumnOrder: boolean,
+    displayColumns: string[]
   ) => void;
   onCellClick?: (cell: CellClickData) => void;
   onSelectionChange?: (data: SelectionChangeData) => void;
@@ -228,7 +232,10 @@ type ExportBeginDialogProps = oneref.StateRefProps<AppState> & {
   onExportFile?: (
     exportFormat: ExportFormat,
     exportPath: string,
-    parquetExportOptions: ParquetExportOptions
+    parquetExportOptions: ParquetExportOptions,
+    exportVisibleOnly: boolean,
+    exportColumnOrder: boolean,
+    displayColumns: string[]
   ) => void;
 };
 
@@ -308,6 +315,30 @@ const ExportBeginDialog: React.FunctionComponent<ExportBeginDialogProps> = ({
             ]}
           />
         </FormGroup>
+        <FormGroup label="Export Options">
+          <Checkbox
+            checked={appState.exportVisibleOnly}
+            onChange={(e) =>
+              actions.setExportVisibleOnly(
+                (e.target as HTMLInputElement).checked,
+                stateRef
+              )
+            }
+          >
+            Export visible columns only
+          </Checkbox>
+          <Checkbox
+            checked={appState.exportColumnOrder}
+            onChange={(e) =>
+              actions.setExportColumnOrder(
+                (e.target as HTMLInputElement).checked,
+                stateRef
+              )
+            }
+          >
+            Export in displayed column order
+          </Checkbox>
+        </FormGroup>
         <FormGroup label="Export To File" labelFor="export-path">
           <InputGroup
             id="export-path"
@@ -334,7 +365,14 @@ const ExportBeginDialog: React.FunctionComponent<ExportBeginDialogProps> = ({
             elementRef={exportButtonRef}
             onClick={() => {
               actions.setExportBeginDialogOpen(false, stateRef);
-              onExportFile?.(exportFormat, exportPath, parquetExportOptions);
+              onExportFile?.(
+                exportFormat,
+                exportPath,
+                parquetExportOptions,
+                appState.exportVisibleOnly,
+                appState.exportColumnOrder,
+                appState.viewState?.viewParams?.displayColumns ?? []
+              );
             }}
           >
             Export

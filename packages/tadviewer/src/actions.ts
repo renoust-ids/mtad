@@ -524,6 +524,20 @@ export const setExportProgress = (
   update(stateRef, (s) => s.set("exportPercent", percentComplete) as AppState);
 };
 
+export const setExportVisibleOnly = (
+  visibleOnly: boolean,
+  stateRef: StateRef<AppState>
+) => {
+  update(stateRef, (s) => s.set("exportVisibleOnly", visibleOnly) as AppState);
+};
+
+export const setExportColumnOrder = (
+  columnOrder: boolean,
+  stateRef: StateRef<AppState>
+) => {
+  update(stateRef, (s) => s.set("exportColumnOrder", columnOrder) as AppState);
+};
+
 export const setFilter = (
   fe: reltab.FilterExp,
   stateRef: StateRef<AppState>

@@ -60,6 +60,8 @@ export interface AppStateProps {
   exportPath: string;
   exportPathBaseName: string;
   exportPercent: number;
+  exportVisibleOnly: boolean;
+  exportColumnOrder: boolean;
 
   viewConfirmDialogOpen: boolean;
   viewConfirmSourcePath: DataSourcePath | null;
@@ -82,6 +84,8 @@ const defaultAppStateProps: AppStateProps = {
   exportPath: "",
   exportPathBaseName: "",
   exportPercent: 0,
+  exportVisibleOnly: true,
+  exportColumnOrder: true,
   viewConfirmDialogOpen: false,
   viewConfirmSourcePath: null,
   joinCsvDialog: defaultJoinCsvDialogState,
@@ -104,6 +108,8 @@ export class AppState extends Immutable.Record(defaultAppStateProps) {
   public readonly exportPath!: string;
   public readonly exportPathBaseName!: string;
   public readonly exportPercent!: number;
+  public readonly exportVisibleOnly!: boolean;
+  public readonly exportColumnOrder!: boolean;
   public readonly viewConfirmDialogOpen!: boolean;
   public readonly viewConfirmSourcePath!: DataSourcePath | null;
   public readonly joinCsvDialog!: JoinCsvDialogState;
