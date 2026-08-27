@@ -370,6 +370,7 @@ const createGrid = (
     onGridSelectionChange,
     onSetColumnOrder,
     onCellEditStart,
+    onColumnRename,
     sortKey,
     clipboard,
     openURL,
