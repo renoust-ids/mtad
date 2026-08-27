@@ -117,6 +117,22 @@ export interface DataSourceConnection {
     oldName: string,
     newName: string
   ): Promise<void>;
+
+  // Delete a column from a table
+  deleteColumn(tableName: string, columnName: string): Promise<void>;
+
+  // Duplicate a column in a table (adds newColumn with same values as sourceColumn)
+  duplicateColumn(
+    tableName: string,
+    sourceColumn: string,
+    newColumn: string
+  ): Promise<void>;
+
+  // Delete rows matching a WHERE clause
+  deleteRows(tableName: string, whereClause: string): Promise<void>;
+
+  // Duplicate rows matching a WHERE clause (INSERT INTO ... SELECT * FROM ... WHERE)
+  duplicateRows(tableName: string, whereClause: string): Promise<void>;
 }
 
 /**
@@ -281,6 +297,36 @@ export class DbDataSource implements DataSourceConnection {
     const leafDep = { operator: "table", tableName } as const;
     const leafKey = JSON.stringify(leafDep);
     delete this.tableMap[leafKey];
+  }
+
+  async deleteColumn(tableName: string, columnName: string): Promise<void> {
+    const sql = `ALTER TABLE "${tableName}" DROP COLUMN "${columnName}"`;
+    await this.db.runSqlQuery(sql);
+    const leafDep = { operator: "table", tableName } as const;
+    const leafKey = JSON.stringify(leafDep);
+    delete this.tableMap[leafKey];
+  }
+
+  async duplicateColumn(
+    tableName: string,
+    sourceColumn: string,
+    newColumn: string
+  ): Promise<void> {
+    const sql = `ALTER TABLE "${tableName}" ADD COLUMN "${newColumn}" AS "${sourceColumn}"`;
+    await this.db.runSqlQuery(sql);
+    const leafDep = { operator: "table", tableName } as const;
+    const leafKey = JSON.stringify(leafDep);
+    delete this.tableMap[leafKey];
+  }
+
+  async deleteRows(tableName: string, whereClause: string): Promise<void> {
+    const sql = `DELETE FROM "${tableName}" WHERE ${whereClause}`;
+    await this.db.runSqlQuery(sql);
+  }
+
+  async duplicateRows(tableName: string, whereClause: string): Promise<void> {
+    const sql = `INSERT INTO "${tableName}" SELECT * FROM "${tableName}" WHERE ${whereClause}`;
+    await this.db.runSqlQuery(sql);
   }
 }
 
