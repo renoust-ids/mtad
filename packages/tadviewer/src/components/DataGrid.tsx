@@ -714,6 +714,45 @@ const createGrid = (
       menu.appendChild(dupAggItem);
     }
 
+    // Copy items (available for all rows)
+    const sep3 = document.createElement("div");
+    sep3.className = "bp4-menu-divider";
+    menu.appendChild(sep3);
+
+    const copyCellsItem = document.createElement("div");
+    copyCellsItem.className = "bp4-menu-item";
+    copyCellsItem.textContent = "Copy (cells)";
+    copyCellsItem.addEventListener("click", () => {
+      menu.remove();
+      const ranges = grid.getSelectionModel().getSelectedRanges();
+      if (ranges && ranges.length > 0) {
+        copySelectedRange(ranges[0]);
+      }
+    });
+    menu.appendChild(copyCellsItem);
+
+    const copyRowsItem = document.createElement("div");
+    copyRowsItem.className = "bp4-menu-item";
+    copyRowsItem.textContent = "Copy (rows)";
+    copyRowsItem.addEventListener("click", () => {
+      menu.remove();
+      const ranges = grid.getSelectionModel().getSelectedRanges();
+      const selectedRows = getUniqueRowsFromRanges(ranges, grid);
+      // Get visible non-metadata columns
+      const visibleCols = grid.getColumns().filter(
+        (c: any) => !c.id.startsWith("_") && c.id !== "Rec"
+      );
+      const dv = grid.getData();
+      // Build TSV with header
+      const header = visibleCols.map((c: any) => c.name).join("\t");
+      const rows = selectedRows.map((rowIdx: number) => {
+        const item = dv.getItem(rowIdx);
+        return visibleCols.map((c: any) => escapeTabs(item[c.id])).join("\t");
+      });
+      clipboard.writeText([header, ...rows].join("\r\n"));
+    });
+    menu.appendChild(copyRowsItem);
+
     document.body.appendChild(menu);
 
     // Close menu on outside click
