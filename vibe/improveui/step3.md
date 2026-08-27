@@ -1,45 +1,57 @@
-# ÉTAPE 3 : Context Menu Ligne - Delete & Duplicate
+# ÉTAPE 3 : Context Menu Cellules - Delete/Duplicate Rows
 
 ## Objectif
-Ajouter les options "Delete Row" et "Duplicate Row" au context menu des cellules.
+Ajouter "Delete Rows" et "Duplicate Rows" au context menu des cellules, opérant sur les lignes contenant des cellules sélectionnées.
+
+## Sélection active
+Le grid utilise un **CellSelectionModel** (pas de RowSelectionModel). Quand l'utilisateur sélectionne des cellules, `onSelectedRangesChanged` fournit des ranges `{fromCell, toCell, fromRow, toRow}`. Pour obtenir les lignes sélectionnées, on extrait les row indices uniques de tous les ranges.
 
 ## Fonctionnalités
 
-### Delete Row
-- Clic sur "Delete Row" → Dialogue de confirmation
-- Message: "Are you sure you want to delete this row?"
-- Boutons: "Yes" / "Cancel"
-- Construction WHERE clause: Colonnes non-métadonnées (Rec, _id, _parentId, _depth, _isOpen, _pivot)
-- Exécution: `dbc.deleteRow(tableName, whereClause)`
+### Delete Rows
+- Extraire les rows uniques depuis `selectionModel.getSelectedRanges()`
+- Confirmation: "Are you sure you want to delete {n} row(s)?"
+- Pour chaque ligne: construire WHERE clause (colonnes non-métadonnées)
+- Optionnel: `DELETE FROM WHERE row_id IN (val1, val2, ...)` pour optimiser
+- Execute: `dbc.deleteRows(tableName, whereClause)`
 - Refresh: Re-fetch data
 
-### Duplicate Row
-- Clic sur "Duplicate Row" → Exécute directement (pas de confirmation)
-- Construction WHERE clause: Même logique que Delete
-- Exécution: `dbc.duplicateRow(tableName, whereClause)`
+### Duplicate Rows
+- Extraire les rows uniques depuis les ranges
+- Pas de confirmation
+- Pour chaque ligne: construire WHERE clause
+- Execute: `dbc.duplicateRows(tableName, whereClause)`
 - Refresh: Re-fetch data
 
-## Distinguer Aggregate vs Leaf
-- **Leaf rows** (`_isLeaf === true`): "Delete Row" et "Duplicate Row" disponibles
-- **Aggregate rows** (`_isLeaf === false`): Ces items ne sont PAS affichés (seront dans Étape 4)
-
-## WHERE clause
+## WHERE clause (par ligne)
 ```typescript
-// Exclure les colonnes métadonnées
-const excludeColumns = ["Rec", "_id", "_parentId", "_depth", "_isOpen", "_pivot", "_isLeaf"];
-const whereParts = Object.entries(rowData)
-  .filter(([key]) => !excludeColumns.includes(key))
-  .map(([key, val]) => `"${key}" = ${formatSqlValue(val)}`);
-const whereClause = whereParts.join(" AND ");
+const excludeCols = ["Rec", "_id", "_parentId", "_depth", "_isOpen", "_pivot", "_isLeaf"];
+function buildRowWhere(rowData: any): string {
+  return Object.entries(rowData)
+    .filter(([k]) => !excludeCols.includes(k))
+    .map(([k, v]) => `"${k}" = ${formatSqlValue(v)}`)
+    .join(" AND ");
+}
+// Combiner pour plusieurs lignes: WHERE (clause1) OR (clause2) OR ...
+```
+
+## Context Menu Items (pour cellules, tout type de ligne)
+```
+Edit / Edit all      (existant)
+─ separator ─
+Delete Rows          (nouveau)
+Duplicate Rows       (nouveau)
+─ separator ─
+Copy (cells)         (Étape 5)
+Copy (rows)          (Étape 5)
 ```
 
 ## Fichiers à modifier
-1. `packages/tadviewer/src/components/DataGrid.tsx` - Context menu items
-2. `packages/tadviewer/src/components/GridPane.tsx` - Dialog state + callbacks
-3. `packages/tadviewer/src/actions.ts` - Actions deleteRow, duplicateRow
+1. `packages/tadviewer/src/components/DataGrid.tsx` — Context menu items, getSelectedRanges()
+2. `packages/tadviewer/src/components/GridPane.tsx` — Callbacks
+3. `packages/tadviewer/src/actions.ts` — Actions deleteRows, duplicateRows
 
 ## Validation
-- Build tadviewer: `cd packages/tadviewer && npx webpack --mode production`
-- Test: Right-click leaf row → Delete/Duplicate fonctionne
-- Test: Right-click aggregate row → Ces items ne sont pas affichés
-- Commit: `feat(tadviewer): add row delete and duplicate to context menu`
+- Build: `cd packages/tadviewer && npx webpack --mode production`
+- Test: Select range of cells → right-click → Delete Rows / Duplicate Rows
+- Commit: `feat(tadviewer): add delete/duplicate rows from cell selection`

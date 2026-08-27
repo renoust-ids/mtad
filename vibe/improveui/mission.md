@@ -1,35 +1,42 @@
-# MISSION : UI IMPROVEMENTS
+# Mission: UI Improvements - Context Menus & Export
 
-Améliorer l'interface utilisateur de MTad avec des fonctionnalités de manipulation de colonnes/lignes et des options d'export.
+## Objectif
+Améliorer les context menus de MTad avec des opérations de manipulation de colonnes, lignes et cellules, et ajouter des options d'export.
 
-### Fonctionnalités à implémenter
+## Fonctionnalités
 
-#### 1. Context Menu Colonne
-- **Supprimer colonne** : `ALTER TABLE ... DROP COLUMN` avec confirmation ("Yes"/"Cancel")
-- **Dupliquer colonne** : `ALTER TABLE ... ADD COLUMN new_col AS old_col` avec nom éditable (suffixe `_2` par défaut)
+### Context Menu Colonne
+- **Rename** (existant)
+- **Delete Column** : `ALTER TABLE ... DROP COLUMN` avec confirmation
+- **Duplicate Column** : `ALTER TABLE ... ADD COLUMN new_col AS old_col` avec nom éditable (suffixe `_2`)
 
-#### 2. Context Menu Ligne
-- **Supprimer ligne** : `DELETE FROM ... WHERE` avec confirmation
-- **Dupliquer ligne** : `INSERT INTO ... SELECT * FROM ... WHERE` pour copier une ligne
+### Context Menu Cellules (tout type de sélection)
+- **Edit / Edit all** (existant)
+- **Delete Rows** : Supprime toutes les lignes contenant des cellules sélectionnées
+- **Duplicate Rows** : Duplique toutes les lignes contenant des cellules sélectionnées
+- **Copy (cells)** : Copie uniquement les valeurs des cellules sélectionnées (TSV) — équivalent Cmd+C
+- **Copy (rows)** : Copie toutes les colonnes visibles des lignes sélectionnées (TSV)
 
-#### 3. Context Menu Lignes Agrégées
-- **Supprimer toutes les lignes agrégées** : `DELETE FROM ... WHERE` pour toutes les lignes du groupe
-- **Dupliquer toutes les lignes agrégées** : `INSERT INTO ... SELECT * FROM ... WHERE` pour toutes les lignes du groupe
+### Context Menu Lignes Agrégées
+- **Delete All Aggregate Rows** : Supprime toutes les lignes du groupe agrégé
+- **Duplicate All Aggregate Rows** : Duplique toutes les lignes du groupe agrégé
 
-#### 4. Export Interface
-- **Checkbox "Visible columns only"** : Exporter uniquement les colonnes avec `show` cochée (défaut: true)
-- **Checkbox "Column order"** : Exporter dans l'ordre affiché (défaut: true)
+### Export Interface
+- **Visible Columns Only** : Checkbox, défaut=true
+- **Column Order** : Checkbox, défaut=true
 
-### Contraintes techniques
-- Backend: DuckDB via `execSql()` pour toutes les opérations DDL/DML
-- Validation: `DataSourceConnection` interface + `DbDataSource` impl + remote transport
-- UI: BlueprintJS Dialog pour confirmations et saisie de nom
-- Refresh: Re-fetch schema et data après chaque opération
-- Commit: Un commit par étape, message conventionnel `feat(tadviewer): ...` ou `feat(reltab): ...`
+## Contraintes techniques
+- Backend: DuckDB via `execSql()` pour DDL/DML
+- Sélection: CellSelectionModel existant — extraire les lignes des ranges sélectionnés
+- Clipboard: `SimpleClipboard.writeText()` existant — étendre pour Copy (rows)
+- UI: BlueprintJS Alert/Dialog
+- Refresh: Re-fetch schema + data après opérations
 
-### Étapes
-1. Backend: Ajouter méthodes à DataSourceConnection
-2. Context Menu Colonne: Delete & Duplicate
-3. Context Menu Ligne: Delete & Duplicate
-4. Context Menu Lignes Agrégées: Delete all & Duplicate all
-5. Export Interface: Options de colonnes visibles et ordre
+## Steps
+1. Backend DataSourceConnection methods
+2. Column context menu: Delete & Duplicate
+3. Row operations from cell selection: Delete/Duplicate Rows
+4. Aggregate row operations: Delete All / Duplicate All
+5. Cell/Row copy operations in context menu
+6. Export: Visible columns + order checkboxes
+7. Build & E2E testing

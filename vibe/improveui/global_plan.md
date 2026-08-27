@@ -1,61 +1,70 @@
 # Plan de réalisation : UI Improvements
 
 ## Objectif global
-Ajouter des fonctionnalités de manipulation de colonnes/lignes via les context menus et améliorer l'interface d'export avec des options de filtrage et d'ordre des colonnes.
+Améliorer les context menus de MTad pour la manipulation de colonnes, lignes et cellules, et ajouter des options d'export.
 
 ## Architecture cible
 
 ```
-Context Menu Colonne
-    ├── Delete Column → DELETE COLUMN DDL → execSql()
-    └── Duplicate Column → ADD COLUMN DDL → execSql()
+Context Menu Colonne (onHeaderContextMenu)
+    ├── Rename (existant)
+    ├── Delete Column → ALTER TABLE DROP COLUMN → execSql()
+    └── Duplicate Column → ALTER TABLE ADD COLUMN AS → execSql()
 
-Context Menu Ligne
-    ├── Delete Row → DELETE FROM WHERE → execSql()
-    └── Duplicate Row → INSERT INTO SELECT WHERE → execSql()
+Context Menu Cellules (onContextMenu)
+    ├── Edit / Edit all (existant)
+    ├── Delete Rows → DELETE FROM WHERE row IN (selected rows) → execSql()
+    ├── Duplicate Rows → INSERT INTO SELECT * WHERE row IN (selected rows) → execSql()
+    ├── Copy (cells) → clipboard.writeText(TSV) ← cellules sélectionnées uniquement
+    └── Copy (rows) → clipboard.writeText(TSV) ← toutes colonnes visibles des lignes sélectionnées
 
-Context Menu Lignes Agrégées
-    ├── Delete All Aggregate Rows → DELETE FROM WHERE → execSql()
-    └── Duplicate All Aggregate Rows → INSERT INTO SELECT WHERE → execSql()
+Context Menu Lignes Agrégées (onContextMenu, _isLeaf === false)
+    ├── Edit all (existant)
+    ├── Delete All Aggregate Rows → DELETE FROM WHERE pivotCols match → execSql()
+    └── Duplicate All Aggregate Rows → INSERT INTO SELECT * WHERE pivotCols match → execSql()
 
-Export Interface
-    ├── Visible Columns Only → Filtrer displayColumns
-    └── Column Order → Utiliser displayColumns order
+Export Interface (ExportBeginDialog)
+    ├── Visible Columns Only (checkbox, défaut=true)
+    └── Column Order (checkbox, défaut=true)
 ```
 
 ## Fichiers concernés
 
 | Package | Fichier | Modification |
 |---------|---------|-------------|
-| reltab | `src/DataSource.ts` | Nouvelles méthodes: deleteColumn, duplicateColumn, deleteRow, duplicateRow, deleteAllAggregateRows, duplicateAllAggregateRows |
-| reltab | `src/remote/Connection.ts` | Request interfaces + RemoteDataSourceConnection methods |
-| reltab | `src/remote/server.ts` | Server handlers pour les nouvelles opérations |
-| tadviewer | `src/actions.ts` | Nouvelles actions: deleteColumn, duplicateColumn, deleteRow, duplicateRow, deleteAllAggregateRows, duplicateAllAggregateRows |
-| tadviewer | `src/components/DataGrid.tsx` | Context menu colonnes: Delete, Duplicate. Context menu cellules: Delete Row, Duplicate Row, Delete All, Duplicate All |
-| tadviewer | `src/components/GridPane.tsx` | State dialogs + callbacks pour colonnes et lignes |
-| tadviewer | `src/components/AppPane.tsx` | Export dialog: checkboxes Visible Columns Only, Column Order |
-| tadviewer | `src/AppState.ts` | Nouveaux champs: exportVisibleOnly, exportColumnOrder |
+| reltab | `src/DataSource.ts` | deleteColumn, duplicateColumn, deleteRows, duplicateRows |
+| reltab | `src/remote/Connection.ts` | Request interfaces + Remote methods |
+| reltab | `src/remote/server.ts` | Server handlers |
+| tadviewer | `src/actions.ts` | Actions: deleteColumn, duplicateColumn, deleteRows, duplicateRows, copyRows |
+| tadviewer | `src/components/DataGrid.tsx` | Context menus enrichis + copy rows logic |
+| tadviewer | `src/components/GridPane.tsx` | Dialog state + callbacks |
+| tadviewer | `src/components/AppPane.tsx` | Export checkboxes |
+| tadviewer | `src/AppState.ts` | exportVisibleOnly, exportColumnOrder |
 
 ## Étapes
 
-### Étape 1: Backend - DataSourceConnection methods
-- Ajouter les signatures de méthode à l'interface DataSourceConnection
-- Implémenter dans DbDataSource avec raw SQL
-- Wire through remote transport (Connection.ts + server.ts)
+### Step 1: Backend DataSourceConnection methods
+- deleteColumn, duplicateColumn, deleteRows, duplicateRows
+- Wire through remote transport
 
-### Étape 2: Context Menu Colonne - Delete & Duplicate
-- Ajouter Delete Column avec confirmation
-- Ajouter Duplicate Column avec dialogue de nom
+### Step 2: Column context menu: Delete & Duplicate
+- Delete Column with confirmation
+- Duplicate Column with name dialog
 
-### Étape 3: Context Menu Ligne - Delete & Duplicate
-- Ajouter Delete Row avec confirmation
-- Ajouter Duplicate Row
-- Gérer aggregate vs leaf rows
+### Step 3: Row operations from cell selection
+- Delete Rows: identifies rows from cell selection ranges
+- Duplicate Rows: copies full rows
 
-### Étape 4: Context Menu Lignes Agrégées
-- Ajouter Delete All Aggregate Rows
-- Ajouter Duplicate All Aggregate Rows
+### Step 4: Aggregate row operations
+- Delete All Aggregate Rows
+- Duplicate All Aggregate Rows
 
-### Étape 5: Export Interface
-- Ajouter checkbox Visible Columns Only
-- Ajouter checkbox Column Order
+### Step 5: Cell/Row copy in context menu
+- Copy (cells): clipboard TSV of selected cells
+- Copy (rows): clipboard TSV of all visible columns for selected rows
+
+### Step 6: Export interface options
+- Visible Columns Only checkbox
+- Column Order checkbox
+
+### Step 7: Build & E2E testing

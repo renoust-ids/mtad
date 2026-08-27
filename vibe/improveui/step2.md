@@ -1,34 +1,39 @@
 # ÉTAPE 2 : Context Menu Colonne - Delete & Duplicate
 
 ## Objectif
-Ajouter les options "Delete" et "Duplicate" au context menu des colonnes avec confirmation et dialogue de nom.
+Ajouter "Delete" et "Duplicate" au context menu des colonnes (header right-click).
 
 ## Fonctionnalités
 
 ### Delete Column
-- Clic sur "Delete" → Dialogue de confirmation BlueprintJS
-- Message: "Are you sure you want to delete column 'X'? This will drop all its content."
-- Boutons: "Yes" (exécute) / "Cancel" (annule)
-- Exécution: `dbc.deleteColumn(tableName, columnName)`
+- Right-click header → "Delete"
+- Confirmation Alert: "Are you sure you want to delete column 'X'? This will drop all its content."
+- Buttons: "Yes" / "Cancel"
+- Execute: `dbc.deleteColumn(tableName, columnName)`
+- Update ViewParams: remove from displayColumns, vpivots, sortKey, aggMap
 - Refresh: Re-fetch schema + data
 
 ### Duplicate Column
-- Clic sur "Duplicate" → Dialogue avec input pour le nom
-- Nom par défaut: `${columnName}_2`
-- Validation: Nom unique, pas de caractères spéciaux
-- Exécution: `dbc.duplicateColumn(tableName, columnName, newName)`
+- Right-click header → "Duplicate"
+- Dialog with input, default: `${columnName}_2`
+- Validation: Unique name in schema
+- Execute: `dbc.duplicateColumn(tableName, columnName, newName)`
+- Update ViewParams: add to displayColumns after original
 - Refresh: Re-fetch schema + data
 
-## Fichiers à modifier
-1. `packages/tadviewer/src/components/DataGrid.tsx` - Context menu items
-2. `packages/tadviewer/src/components/GridPane.tsx` - Dialog state + callbacks
-3. `packages/tadviewer/src/actions.ts` - Actions deleteColumn, duplicateColumn
+## Context Menu Items (after changes)
+```
+Rename          (existant)
+Delete          (nouveau)
+Duplicate       (nouveau)
+```
 
-## UI BlueprintJS
-- `<Alert>` pour confirmation delete
-- `<Dialog>` avec `<InputGroup>` pour duplicate name
+## Fichiers à modifier
+1. `packages/tadviewer/src/components/DataGrid.tsx` — Context menu DOM
+2. `packages/tadviewer/src/components/GridPane.tsx` — Dialog state
+3. `packages/tadviewer/src/actions.ts` — Actions deleteColumn, duplicateColumn
 
 ## Validation
-- Build tadviewer: `cd packages/tadviewer && npx webpack --mode production`
-- Test: Right-click colonne → Delete/Duplicate fonctionne
+- Build: `cd packages/tadviewer && npx webpack --mode production`
+- Test: Right-click header → Rename/Delete/Duplicate work
 - Commit: `feat(tadviewer): add column delete and duplicate to context menu`
