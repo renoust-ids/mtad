@@ -614,26 +614,15 @@ const createGrid = (
     menu.style.left = `${(event.originalEvent ?? event).clientX}px`;
     menu.style.top = `${(event.originalEvent ?? event).clientY}px`;
 
-    const editItem = document.createElement("div");
-    editItem.className = "bp4-menu-item";
-    editItem.textContent = "Edit";
-    editItem.addEventListener("click", () => {
+    const menuItem = document.createElement("div");
+    menuItem.className = "bp4-menu-item";
+    // Aggregate rows always say "Edit all"; leaf rows say "Edit"
+    menuItem.textContent = isAggregate ? "Edit all" : "Edit";
+    menuItem.addEventListener("click", () => {
       menu.remove();
       onCellEditStart?.(cellEditData);
     });
-    menu.appendChild(editItem);
-
-    // Show "Edit all" for pivot cells on aggregate rows (same behavior as double-click)
-    if (isPivotCell && isAggregate) {
-      const editAllItem = document.createElement("div");
-      editAllItem.className = "bp4-menu-item";
-      editAllItem.textContent = "Edit all";
-      editAllItem.addEventListener("click", () => {
-        menu.remove();
-        onCellEditStart?.(cellEditData);
-      });
-      menu.appendChild(editAllItem);
-    }
+    menu.appendChild(menuItem);
 
     document.body.appendChild(menu);
 
