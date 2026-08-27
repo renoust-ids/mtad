@@ -4,7 +4,7 @@
 - **Branche active** : `feat/celledit`
 - **Dernier commit** : `a8bd965` feat(celledit): simplify context menu labels by row type
 - **Branche `master`** : `e179af3` (v0.0.2, merged from joincsv)
-- **Remote `origin`** : `https://github.com/renoust-ids/tad.git` (fork)
+- **Remote `origin`** : `https://github.com/renoust-ids/mtad.git` (fork)
 - **Remote `upstream`** : `https://github.com/antonycourtney/tad.git` (original)
 - **Working tree** : propre
 
@@ -12,7 +12,7 @@
 - **Nom** : MTad (fork de Tad, visualiseur de données tabulaires)
 - **App ID** : `com.mtad.app`
 - **Version** : `0.0.2`
-- **Repo** : https://github.com/renoust-ids/tad
+- **Repo** : https://github.com/renoust-ids/mtad
 - **Monorepo Lerna v4**, Node v20
 - **Branches** : `master`, `joincsv` (merged), `feat/celledit` (active)
 

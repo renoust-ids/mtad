@@ -52,7 +52,7 @@ Intégrer une fonctionnalité de "Jointure de CSV" (Merge/Join CSV). Cette fonct
 - **Nom du produit** : MTad (application Electron)
 - **App ID** : `com.mtad.app`
 - **Version actuelle** : `0.0.1`
-- **Dépôt** : https://github.com/renoust-ids/tad
+- **Dépôt** : https://github.com/renoust-ids/mtad
 - **Branche principale** : `main`
 - **Auteur** : Benjamin Renoust (from Antony Courtney)
 
@@ -117,7 +117,7 @@ git push origin v0.0.1
 ```
 
 ### 5. Téléchargement des artefacts
-1. Aller sur https://github.com/renoust-ids/tad/actions
+1. Aller sur https://github.com/renoust-ids/mtad/actions
 2. Cliquer sur le workflow "Build & Release" correspondant au tag
 3. Télécharger les artefacts dans la section "Artifacts" de chaque job
 

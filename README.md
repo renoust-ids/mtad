@@ -70,7 +70,7 @@ For pre-packaged releases of the original Tad, see [The Tad Landing Page](http:/
 
 ```bash
 # Clone the repository
-git clone https://github.com/renoust-ids/tad.git
+git clone https://github.com/renoust-ids/mtad.git
 cd tad
 
 # Install dependencies and build
