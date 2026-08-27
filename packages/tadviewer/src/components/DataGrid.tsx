@@ -554,6 +554,22 @@ const createGrid = (
     onSetColumnOrder?.(displayColIds);
   });
 
+  // Column header double-click for renaming
+  const headerContainer = grid.getHeaderRow()?.parentElement;
+  if (headerContainer) {
+    headerContainer.addEventListener("dblclick", (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const headerEl = target.closest(".slick-header-column");
+      if (!headerEl) return;
+      const colIndex = headerEl.getAttribute("data-col");
+      if (colIndex === null) return;
+      const columns = grid.getColumns();
+      const column = columns[parseInt(colIndex, 10)];
+      if (!column || column.id.startsWith("_") || column.id === "Rec") return;
+      onColumnRename?.(column.id);
+    });
+  }
+
   // load the first page
   grid.onViewportChanged.notify();
 
@@ -739,6 +755,7 @@ export interface DataGridProps {
   ) => void;
   onSetColumnOrder?: (displayColumns: string[]) => void;
   onCellEditStart?: (data: CellEditStartData) => void;
+  onColumnRename?: (columnId: string) => void;
   openURL: OpenURLFn;
   embedded: boolean;
 }

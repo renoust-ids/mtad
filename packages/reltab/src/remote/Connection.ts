@@ -53,6 +53,12 @@ export interface DbConnGetSqlForQueryRequest {
   queryStr: string;
 }
 
+export interface DbConnRenameColumnRequest {
+  tableName: string;
+  oldName: string;
+  newName: string;
+}
+
 export type EngineReq<T> = { engine: DataSourceId; req: T };
 
 // remote invoke a DataSourceConnection member function, using DataSourceId to
@@ -197,6 +203,20 @@ class RemoteDataSourceConnection implements DataSourceConnection {
       this.tconn,
       this.sourceId,
       "getSqlForQuery",
+      req
+    ).then(decodeResult);
+  }
+
+  async renameColumn(
+    tableName: string,
+    oldName: string,
+    newName: string
+  ): Promise<void> {
+    const req: DbConnRenameColumnRequest = { tableName, oldName, newName };
+    await invokeDbFunctionRaw(
+      this.tconn,
+      this.sourceId,
+      "renameColumn",
       req
     ).then(decodeResult);
   }

@@ -785,3 +785,78 @@ Aggregate cell editing is now functional. Users can double-click any aggregate c
 - Pivot label editing: `UPDATE table SET pivotColumn = newValue WHERE pivotColumn = oldValue`
 - Aggregate cell editing: `UPDATE table SET column = newValue WHERE groupCol1 = val1 AND groupCol2 = val2`
 - WHERE clause uses `vp.vpivots.slice(0, depth)` to identify the group (only group-by columns, not aggregates)
+
+---
+
+## Session: Column Rename
+
+### Date: 2026-08-26
+
+---
+
+### Step 1: Add renameColumn to DataSourceConnection interface
+
+**Time**: 23:30
+**Files Modified**: `packages/reltab/src/DataSource.ts`
+**Action**: Added `renameColumn(tableName, oldName, newName): Promise<void>` to `DataSourceConnection` interface and implemented in `DbDataSource` class. Implementation uses `ALTER TABLE "tableName" RENAME COLUMN "oldName" TO "newName"` and invalidates the cached schema for the table.
+**Result**: Success
+
+---
+
+### Step 2: Add renameColumn to remote layer
+
+**Time**: 23:35
+**Files Modified**:
+- `packages/reltab/src/remote/Connection.ts` — added `DbConnRenameColumnRequest` interface and `renameColumn` method on `RemoteDataSourceConnection`
+- `packages/reltab/src/remote/server.ts` — added `dbConnRenameColumn` handler, `handleDbConnRenameColumn` wrapper, registered `"DataSourceConnection.renameColumn"` transport handler
+**Result**: Success
+
+---
+
+### Step 3: Add renameColumn action in actions.ts
+
+**Time**: 23:40
+**Files Modified**: `packages/tadviewer/src/actions.ts`
+**Action**: Added `renameColumn(tableName, oldName, newName, stateRef)` action that:
+- Executes `dbc.renameColumn(tableName, oldName, newName)`
+- Updates ViewParams: replaces old column name with new name in `displayColumns`, `vpivots`, `sortKey`, and `aggMap`
+- Triggers data refresh via PivotRequester
+**Result**: Success
+
+---
+
+### Step 4: Add column header double-click handler in DataGrid.tsx
+
+**Time**: 23:45
+**Files Modified**: `packages/tadviewer/src/components/DataGrid.tsx`
+**Action**: Added double-click handler on `.slick-header-column` elements. On double-click, extracts column ID from `data-col` attribute and calls `onColumnRename` callback. Excludes system columns (`_`, `Rec`).
+**Result**: Success
+
+---
+
+### Step 5: Add rename column dialog in GridPane.tsx
+
+**Time**: 23:50
+**Files Modified**: `packages/tadviewer/src/components/GridPane.tsx`
+**Action**: Added BlueprintJS Dialog for column rename:
+- State: `renameState` with `isOpen`, `columnId`, `newName`
+- Handler: `handleColumnRename` opens dialog, `handleRenameSave` calls `actions.renameColumn`, `handleRenameCancel` closes dialog
+- Dialog shows current column name and input for new name
+- Save button disabled if name is empty or unchanged
+**Result**: Success
+
+---
+
+### Step 6: Build and verify
+
+**Time**: 23:55
+**Commands**:
+- `cd packages/reltab && npx tsc -p tsconfig-build.json` — Success
+- `cd packages/tad-app && npx webpack --mode production` — Success (12298ms)
+**Result**: Build successful
+
+---
+
+### Summary
+
+Column rename is now functional. Users can double-click on a column header to open a rename dialog. Saving executes `ALTER TABLE RENAME COLUMN` in DuckDB and updates all ViewParams references (displayColumns, vpivots, sortKey, aggMap) to use the new column name. The schema cache is invalidated so subsequent queries use the updated column name.

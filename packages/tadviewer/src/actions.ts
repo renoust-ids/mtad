@@ -970,3 +970,63 @@ export const cancelCellEdit = (
     )
   );
 };
+
+// --- Column Rename Action ---
+
+export const renameColumn = async (
+  tableName: string,
+  oldName: string,
+  newName: string,
+  stateRef: StateRef<AppState>
+): Promise<void> => {
+  const state = mutableGet(stateRef);
+  const { dbc } = state.viewState;
+  if (!dbc) {
+    console.error("renameColumn: no database connection");
+    return;
+  }
+
+  try {
+    await dbc.renameColumn(tableName, oldName, newName);
+    console.log(
+      `[ColumnRename] Renamed column "${oldName}" to "${newName}" in table "${tableName}"`
+    );
+
+    // Update ViewParams to replace old column name with new name
+    update(stateRef, (st: AppState) => {
+      const vp = st.viewState.viewParams;
+      if (!vp) return st;
+
+      // Helper to replace column name in an array
+      const replaceInArr = (arr: string[]): string[] =>
+        arr.map((c) => (c === oldName ? newName : c));
+
+      // Helper to replace column name in sortKey
+      const replaceInSortKey = (sortKey: Array<[string, boolean]>): Array<[string, boolean]> =>
+        sortKey.map(([col, asc]) => [col === oldName ? newName : col, asc]);
+
+      // Helper to replace column name in aggMap
+      const replaceInAggMap = (aggMap: { [cid: string]: reltab.AggFn }): { [cid: string]: reltab.AggFn } => {
+        if (aggMap[oldName] !== undefined) {
+          const newAggMap = { ...aggMap };
+          newAggMap[newName] = newAggMap[oldName];
+          delete newAggMap[oldName];
+          return newAggMap;
+        }
+        return aggMap;
+      };
+
+      const newVP = vp
+        .set("displayColumns", replaceInArr(vp.displayColumns))
+        .set("vpivots", replaceInArr(vp.vpivots))
+        .set("sortKey", replaceInSortKey(vp.sortKey))
+        .set("aggMap", replaceInAggMap(vp.aggMap)) as ViewParams;
+
+      return st.update("viewState", (vs) =>
+        vs!.set("viewParams", newVP) as ViewState
+      );
+    });
+  } catch (err) {
+    console.error("[ColumnRename] Error renaming column:", err);
+  }
+};
