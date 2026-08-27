@@ -494,8 +494,8 @@ const createGrid = (
     // log.info("onGridClick: ", e, args);
     const columns = grid.getColumns();
     const col = columns[args.cell];
-    // log.info("onGridClick: column: ", col);
     var item = grid.getDataItem(args.row);
+    if (!col || !item) return;
 
     onGridClick?.(args.row, args.cell, item, col.id, item[col.id]);
   };
@@ -545,6 +545,106 @@ const createGrid = (
       isAggregateRow: !item?._isLeaf,
       rowData,
     });
+  });
+
+  // Cell right-click context menu for editing
+  grid.onContextMenu.subscribe((event: any, _args: any) => {
+    event.preventDefault();
+    const cellInfo = grid.getCellFromEvent(event);
+    if (!cellInfo) return;
+
+    const currentDataView = grid.getData();
+    const item = currentDataView.getItem(cellInfo.row);
+    const columns = grid.getColumns();
+    const column = columns[cellInfo.cell];
+    if (!column || !item) return;
+
+    // Exclude system columns
+    if (["_", "_id", "_parentId", "Rec"].includes(column.id)) {
+      return;
+    }
+
+    // Exclude _pivot column on leaf rows (no pivot column to update)
+    if (item._isLeaf && column.id === "_pivot") {
+      return;
+    }
+
+    // Remove any existing context menu
+    const existing = document.getElementById("cell-ctx-menu");
+    if (existing) existing.remove();
+
+    const value = item ? item[column.id] : null;
+    const colType = currentDataView.schema?.columnType(column.id);
+    const formattedValue = colType
+      ? colType.stringRender(value)
+      : String(value ?? "");
+
+    // Extract row data (excluding metadata columns), store raw values
+    const rowData: { [columnId: string]: any } = {};
+    if (item) {
+      for (const key of Object.keys(item)) {
+        if (!key.startsWith("_") && key !== "Rec") {
+          rowData[key] = item[key];
+        }
+      }
+    }
+
+    const isPivotCell = column.id === "_pivot";
+    const isAggregate = item && !item._isLeaf;
+
+    const cellEditData: CellEditStartData = {
+      row: cellInfo.row,
+      col: cellInfo.cell,
+      columnId: column.id,
+      value: formattedValue,
+      rawValue: value,
+      columnKind: colType?.kind ?? "string",
+      sqlTypeName: colType?.sqlTypeName,
+      isPivot: isPivotCell,
+      pivotDepth: item?._depth,
+      isAggregateRow: isAggregate,
+      rowData,
+    };
+
+    const menu = document.createElement("div");
+    menu.id = "cell-ctx-menu";
+    menu.className = "bp4-menu";
+    menu.style.position = "fixed";
+    menu.style.zIndex = "9999";
+    menu.style.left = `${(event.originalEvent ?? event).clientX}px`;
+    menu.style.top = `${(event.originalEvent ?? event).clientY}px`;
+
+    const editItem = document.createElement("div");
+    editItem.className = "bp4-menu-item";
+    editItem.textContent = "Edit";
+    editItem.addEventListener("click", () => {
+      menu.remove();
+      onCellEditStart?.(cellEditData);
+    });
+    menu.appendChild(editItem);
+
+    // Show "Edit all" for pivot cells on aggregate rows (same behavior as double-click)
+    if (isPivotCell && isAggregate) {
+      const editAllItem = document.createElement("div");
+      editAllItem.className = "bp4-menu-item";
+      editAllItem.textContent = "Edit all";
+      editAllItem.addEventListener("click", () => {
+        menu.remove();
+        onCellEditStart?.(cellEditData);
+      });
+      menu.appendChild(editAllItem);
+    }
+
+    document.body.appendChild(menu);
+
+    // Close menu on outside click
+    const closeMenu = (ev: MouseEvent) => {
+      if (!menu.contains(ev.target as Node)) {
+        menu.remove();
+        document.removeEventListener("click", closeMenu);
+      }
+    };
+    setTimeout(() => document.addEventListener("click", closeMenu), 0);
   });
 
   grid.onColumnsReordered.subscribe((e: any, args: any) => {
