@@ -312,8 +312,11 @@ export class DbDataSource implements DataSourceConnection {
     sourceColumn: string,
     newColumn: string
   ): Promise<void> {
-    const sql = `ALTER TABLE "${tableName}" ADD COLUMN "${newColumn}" AS "${sourceColumn}"`;
-    await this.db.runSqlQuery(sql);
+    // Two-step approach: add column, then copy values
+    const addSql = `ALTER TABLE "${tableName}" ADD COLUMN "${newColumn}" VARCHAR`;
+    await this.db.runSqlQuery(addSql);
+    const updateSql = `UPDATE "${tableName}" SET "${newColumn}" = "${sourceColumn}"`;
+    await this.db.runSqlQuery(updateSql);
     const leafDep = { operator: "table", tableName } as const;
     const leafKey = JSON.stringify(leafDep);
     delete this.tableMap[leafKey];

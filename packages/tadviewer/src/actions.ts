@@ -1166,7 +1166,7 @@ export const duplicateColumn = async (
 
 // --- Row Operations ---
 
-const EXCLUDE_COLS = ["Rec", "_id", "_parentId", "_depth", "_isOpen", "_pivot", "_isLeaf"];
+const EXCLUDE_COLS = ["Rec", "_id", "_parentId"];
 
 const formatSqlValue = (val: any): string => {
   if (val === null || val === undefined) return "NULL";
@@ -1182,7 +1182,7 @@ const formatSqlValue = (val: any): string => {
 
 const buildRowWhere = (rowData: { [columnId: string]: any }): string => {
   const parts = Object.entries(rowData)
-    .filter(([k]) => !EXCLUDE_COLS.includes(k))
+    .filter(([k]) => !EXCLUDE_COLS.includes(k) && !k.startsWith("_"))
     .map(([k, v]) => `"${k}" = ${formatSqlValue(v)}`);
   return parts.join(" AND ");
 };
