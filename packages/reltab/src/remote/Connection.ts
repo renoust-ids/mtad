@@ -45,6 +45,20 @@ export interface DbConnGetTableNameRequest {
   path: DataSourcePath;
 }
 
+export interface DbConnExecSqlRequest {
+  sql: string;
+}
+
+export interface DbConnGetSqlForQueryRequest {
+  queryStr: string;
+}
+
+export interface DbConnRenameColumnRequest {
+  tableName: string;
+  oldName: string;
+  newName: string;
+}
+
 export type EngineReq<T> = { engine: DataSourceId; req: T };
 
 // remote invoke a DataSourceConnection member function, using DataSourceId to
@@ -63,6 +77,22 @@ async function invokeDbFunction<T>(
   // We could be more precise and try to only pass results from evalQuery through
   // this, but should be harmless to use this for everything:
   const ret = deserializeTableRepStr(retStr);
+  return ret;
+}
+
+// remote invoke for non-table results (e.g., void execSql):
+async function invokeDbFunctionRaw<T>(
+  tconn: TransportClient,
+  engine: DataSourceId,
+  methodName: string,
+  req: T
+): Promise<Result<any>> {
+  const ereq: EngineReq<T> = { engine, req };
+  const retStr = await tconn.invoke(
+    "DataSourceConnection." + methodName,
+    JSON.stringify(ereq)
+  );
+  const ret = JSON.parse(retStr);
   return ret;
 }
 
@@ -151,6 +181,42 @@ class RemoteDataSourceConnection implements DataSourceConnection {
       this.tconn,
       this.sourceId,
       "getTableName",
+      req
+    ).then(decodeResult);
+  }
+
+  async execSql(sql: string): Promise<void> {
+    const req: DbConnExecSqlRequest = { sql };
+    await invokeDbFunctionRaw(
+      this.tconn,
+      this.sourceId,
+      "execSql",
+      req
+    ).then(decodeResult);
+  }
+
+  async getSqlForQuery(query: QueryExp): Promise<string> {
+    const req: DbConnGetSqlForQueryRequest = {
+      queryStr: JSON.stringify(query),
+    };
+    return invokeDbFunctionRaw(
+      this.tconn,
+      this.sourceId,
+      "getSqlForQuery",
+      req
+    ).then(decodeResult);
+  }
+
+  async renameColumn(
+    tableName: string,
+    oldName: string,
+    newName: string
+  ): Promise<void> {
+    const req: DbConnRenameColumnRequest = { tableName, oldName, newName };
+    await invokeDbFunctionRaw(
+      this.tconn,
+      this.sourceId,
+      "renameColumn",
       req
     ).then(decodeResult);
   }

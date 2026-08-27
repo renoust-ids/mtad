@@ -98,7 +98,12 @@ const exportCSV = async (
   const schema = await appRtc.getSchema(query); // Map entries in a row object to array of [displayName, value] pairs
 
   const mapRow = (row: reltab.Row) => {
-    return schema.columns.map((cid) => [schema.displayName(cid), row[cid]]);
+    return schema.columns.map((cid) => {
+      const ct = schema.columnType(cid);
+      const val = row[cid];
+      const formatted = ct ? ct.stringRender(val) : String(val ?? "");
+      return [schema.displayName(cid), formatted];
+    });
   };
 
   let offset = 0;

@@ -1,0 +1,8 @@
+id,name,city,id_1,customer_id,product,amount,id_2,age,salary,is_active,birth_date,start_time,created_at,notes
+1,Alice,Paris,102,1,Mouse,25,1,30,75000.5,true,1994-05-15,09:00:00,2024-01-15T10:30:00.000Z,Engineer
+2,Bob,Lyon,103,2,Keyboard,75,2,25,65000,false,1999-08-22,08:30:00,2024-02-20T14:15:00.000Z,Designer
+3,Charlie,Marseille,104,3,Monitor,300,3,35,85000.75,true,1989-12-01,10:15:00,2024-03-10T09:45:00.000Z,Manager
+4,Diana,Nice,,,,,4,28,70000,true,1996-03-18,09:30:00,2024-04-05T11:00:00.000Z,Developer
+,,,,,,,5,32,90000.25,false,1992-07-30,08:00:00,2024-05-12T16:20:00.000Z,Lead
+,,,105,5,Ghost,9999,,,,,,,,
+1,Aliced,Paris,101,1,Laptop,1200,,,,,,,,

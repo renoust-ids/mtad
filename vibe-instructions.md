@@ -15,6 +15,7 @@ Tu es un développeur Full Stack Expert en TypeScript, React, Electron et requê
 4. **Performances DuckDB** : Pour les manipulations de CSV, exploiter la puissance de DuckDB (ex: `SELECT * FROM read_csv_auto('path')`). Utiliser `read_csv_auto` avec gestion du typage (cast) et des valeurs nulles.
 5. **Tests Unitaires Requis** : Toute modification de la logique métier (`reltab`) doit être accompagnée de tests unitaires utilisant le framework de test du projet (ex: Jest).
 6. **Monorepo Workflow** : Les dépendances entre packages locaux doivent respecter le système Lerna.
+7. **Répertoire Temporaire** : Si tu as besoin d'un répertoire temporaire pour y créer des fichiers temporaires, crée en un localement, que tu peux ajouter à ton gitignore, et détruire une fois que tu n'en as plus besoin.
 
 # Gestion de la Fenêtre de Contexte (Checkpointing)
 Pour éviter la saturation de ta mémoire contextuelle (context compression), tu dois opérer un "Handoff" entre chaque grande étape :
@@ -51,7 +52,7 @@ Intégrer une fonctionnalité de "Jointure de CSV" (Merge/Join CSV). Cette fonct
 - **Nom du produit** : MTad (application Electron)
 - **App ID** : `com.mtad.app`
 - **Version actuelle** : `0.0.1`
-- **Dépôt** : https://github.com/renoust-ids/tad
+- **Dépôt** : https://github.com/renoust-ids/mtad
 - **Branche principale** : `main`
 - **Auteur** : Benjamin Renoust (from Antony Courtney)
 
@@ -116,7 +117,7 @@ git push origin v0.0.1
 ```
 
 ### 5. Téléchargement des artefacts
-1. Aller sur https://github.com/renoust-ids/tad/actions
+1. Aller sur https://github.com/renoust-ids/mtad/actions
 2. Cliquer sur le workflow "Build & Release" correspondant au tag
 3. Télécharger les artefacts dans la section "Artifacts" de chaque job
 
@@ -141,4 +142,5 @@ git push origin v0.0.1
 - [ ] Release draft créée sur GitHub
 
 ## Mission
-- La mission est décrite dans le fichier vibe/joincsv/mission.md
+- La mission est décrite dans le fichier vibe/celledit/mission.md
+- Demarre par la lecture de vibe/celledit/STATE_HANDOFF.md

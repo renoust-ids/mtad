@@ -16,7 +16,7 @@ import * as he from "he";
 import { useRef, useState } from "react";
 import ReactDOM from "react-dom/client";
 import * as reltab from "reltab";
-import { ColumnType, NumericColumnHistogramData } from "reltab";
+import { ColumnKind, ColumnType, NumericColumnHistogramData } from "reltab";
 import * as SlickGrid from "slickgrid-es6";
 import {
   VictoryAxis,
@@ -36,6 +36,20 @@ const { CellRangeSelector, CellSelectionModel, CellCopyManager, AutoTooltips } =
   Plugins;
 
 export type OpenURLFn = (url: string) => void;
+
+export interface CellEditStartData {
+  row: number;
+  col: number;
+  columnId: string;
+  value: any;
+  rawValue: any;
+  columnKind: ColumnKind;
+  sqlTypeName?: string;
+  isPivot: boolean;
+  pivotDepth?: number;
+  isAggregateRow: boolean;
+  rowData: { [columnId: string]: any };
+}
 
 let divCounter = 0;
 
@@ -355,6 +369,8 @@ const createGrid = (
     onGridClick,
     onGridSelectionChange,
     onSetColumnOrder,
+    onCellEditStart,
+    onColumnRename,
     sortKey,
     clipboard,
     openURL,
@@ -478,13 +494,147 @@ const createGrid = (
     // log.info("onGridClick: ", e, args);
     const columns = grid.getColumns();
     const col = columns[args.cell];
-    // log.info("onGridClick: column: ", col);
     var item = grid.getDataItem(args.row);
+    if (!col || !item) return;
 
     onGridClick?.(args.row, args.cell, item, col.id, item[col.id]);
   };
 
   grid.onClick.subscribe(handleGridClick);
+
+  grid.onDblClick.subscribe((_event: Event, data: any) => {
+    const currentDataView = grid.getData();
+    const item = currentDataView.getItem(data.row);
+    const columns = grid.getColumns();
+    const column = columns[data.cell];
+
+    // Exclude system columns
+    if (["_", "_id", "_parentId", "Rec"].includes(column.id)) {
+      return;
+    }
+
+    // Exclude _pivot column on leaf rows (no pivot column to update)
+    if (item && item._isLeaf && column.id === "_pivot") {
+      return;
+    }
+
+    const value = item ? item[column.id] : null;
+    const colType = currentDataView.schema?.columnType(column.id);
+    const formattedValue = colType ? colType.stringRender(value) : String(value ?? "");
+    
+    // Extract row data (excluding metadata columns), store raw values
+    const rowData: { [columnId: string]: any } = {};
+    if (item) {
+      for (const key of Object.keys(item)) {
+        if (!key.startsWith('_') && key !== 'Rec') {
+          rowData[key] = item[key];
+        }
+      }
+    }
+    
+    onCellEditStart?.({
+      row: data.row,
+      col: data.cell,
+      columnId: column.id,
+      value: formattedValue,
+      rawValue: value,
+      columnKind: colType?.kind ?? "string",
+      sqlTypeName: colType?.sqlTypeName,
+      isPivot: column.id === "_pivot",
+      pivotDepth: item?._depth,
+      isAggregateRow: !item?._isLeaf,
+      rowData,
+    });
+  });
+
+  // Cell right-click context menu for editing
+  grid.onContextMenu.subscribe((event: any, _args: any) => {
+    event.preventDefault();
+    const cellInfo = grid.getCellFromEvent(event);
+    if (!cellInfo) return;
+
+    const currentDataView = grid.getData();
+    const item = currentDataView.getItem(cellInfo.row);
+    const columns = grid.getColumns();
+    const column = columns[cellInfo.cell];
+    if (!column || !item) return;
+
+    // Exclude system columns
+    if (["_", "_id", "_parentId", "Rec"].includes(column.id)) {
+      return;
+    }
+
+    // Exclude _pivot column on leaf rows (no pivot column to update)
+    if (item._isLeaf && column.id === "_pivot") {
+      return;
+    }
+
+    // Remove any existing context menu
+    const existing = document.getElementById("cell-ctx-menu");
+    if (existing) existing.remove();
+
+    const value = item ? item[column.id] : null;
+    const colType = currentDataView.schema?.columnType(column.id);
+    const formattedValue = colType
+      ? colType.stringRender(value)
+      : String(value ?? "");
+
+    // Extract row data (excluding metadata columns), store raw values
+    const rowData: { [columnId: string]: any } = {};
+    if (item) {
+      for (const key of Object.keys(item)) {
+        if (!key.startsWith("_") && key !== "Rec") {
+          rowData[key] = item[key];
+        }
+      }
+    }
+
+    const isPivotCell = column.id === "_pivot";
+    const isAggregate = item && !item._isLeaf;
+
+    const cellEditData: CellEditStartData = {
+      row: cellInfo.row,
+      col: cellInfo.cell,
+      columnId: column.id,
+      value: formattedValue,
+      rawValue: value,
+      columnKind: colType?.kind ?? "string",
+      sqlTypeName: colType?.sqlTypeName,
+      isPivot: isPivotCell,
+      pivotDepth: item?._depth,
+      isAggregateRow: isAggregate,
+      rowData,
+    };
+
+    const menu = document.createElement("div");
+    menu.id = "cell-ctx-menu";
+    menu.className = "bp4-menu";
+    menu.style.position = "fixed";
+    menu.style.zIndex = "9999";
+    menu.style.left = `${(event.originalEvent ?? event).clientX}px`;
+    menu.style.top = `${(event.originalEvent ?? event).clientY}px`;
+
+    const menuItem = document.createElement("div");
+    menuItem.className = "bp4-menu-item";
+    // Aggregate rows always say "Edit all"; leaf rows say "Edit"
+    menuItem.textContent = isAggregate ? "Edit all" : "Edit";
+    menuItem.addEventListener("click", () => {
+      menu.remove();
+      onCellEditStart?.(cellEditData);
+    });
+    menu.appendChild(menuItem);
+
+    document.body.appendChild(menu);
+
+    // Close menu on outside click
+    const closeMenu = (ev: MouseEvent) => {
+      if (!menu.contains(ev.target as Node)) {
+        menu.remove();
+        document.removeEventListener("click", closeMenu);
+      }
+    };
+    setTimeout(() => document.addEventListener("click", closeMenu), 0);
+  });
 
   grid.onColumnsReordered.subscribe((e: any, args: any) => {
     const cols = grid.getColumns();
@@ -492,6 +642,45 @@ const createGrid = (
       .map((c: any) => c.field)
       .filter((cid: any) => cid[0] !== "_");
     onSetColumnOrder?.(displayColIds);
+  });
+
+  // Column header right-click context menu for renaming
+  grid.onHeaderContextMenu.subscribe((e: Event, args: any) => {
+    e.preventDefault();
+    const column = args.column;
+    if (!column || column.id.startsWith("_") || column.id === "Rec") return;
+
+    // Remove any existing context menu
+    const existing = document.getElementById("col-header-ctx-menu");
+    if (existing) existing.remove();
+
+    const menu = document.createElement("div");
+    menu.id = "col-header-ctx-menu";
+    menu.className = "bp4-menu";
+    menu.style.position = "fixed";
+    menu.style.zIndex = "9999";
+    menu.style.left = `${(e as MouseEvent).clientX}px`;
+    menu.style.top = `${(e as MouseEvent).clientY}px`;
+
+    const renameItem = document.createElement("div");
+    renameItem.className = "bp4-menu-item";
+    renameItem.textContent = "Rename";
+    renameItem.addEventListener("click", () => {
+      menu.remove();
+      onColumnRename?.(column.id);
+    });
+    menu.appendChild(renameItem);
+
+    document.body.appendChild(menu);
+
+    // Close menu on outside click
+    const closeMenu = (ev: MouseEvent) => {
+      if (!menu.contains(ev.target as Node)) {
+        menu.remove();
+        document.removeEventListener("click", closeMenu);
+      }
+    };
+    setTimeout(() => document.addEventListener("click", closeMenu), 0);
   });
 
   // load the first page
@@ -678,6 +867,8 @@ export interface DataGridProps {
     items: any[][]
   ) => void;
   onSetColumnOrder?: (displayColumns: string[]) => void;
+  onCellEditStart?: (data: CellEditStartData) => void;
+  onColumnRename?: (columnId: string) => void;
   openURL: OpenURLFn;
   embedded: boolean;
 }

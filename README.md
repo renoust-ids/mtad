@@ -1,24 +1,27 @@
-# Tad
+# MTad
 
-This repository contains the source code for [Tad](https://www.tadviewer.com), an application for viewing and analyzing tabular
-data sets.
+MTad is a fork of [Tad](https://www.tadviewer.com), an application for viewing and analyzing tabular data sets, with additional features for data editing and manipulation.
 
-The Tad desktop application enables you to quickly view and explore tabular data in several of the most popular
+The MTad desktop application enables you to quickly view and explore tabular data in several of the most popular
 tabular data file formats: CSV, Parquet, and SQLite and DuckDb database files.
 Internally, the application is powered by an in-memory instance of [DuckDb](https://duckdb.org/), a fast, embeddable database engine optimized for analytic queries.
 
-The core of Tad is a React UI component that implements a hierarchical pivot table that allows you to specify a combination of pivot, filter, aggregate, sort, column selection, column ordering and basic column formatting operations. Tad delegates to a SQL database for storage and analytics, and generates SQL queries to perform all
+The core of MTad is a React UI component that implements a hierarchical pivot table that allows you to specify a combination of pivot, filter, aggregate, sort, column selection, column ordering and basic column formatting operations. MTad delegates to a SQL database for storage and analytics, and generates SQL queries to perform all
 analytic operations specified in the UI.
 
-Tad can be launched from the command line like this:
+MTad can be launched from the command line like this:
 
-    $ tad MetObjects.csv
+    $ ./run.sh --reltab
+
+Or to open a specific file:
+
+    $ cd packages/tad-app && npm start -- path/to/file.csv
 
 This will open a window with a scrollable view of the full contents of the CSV file:
 
 ![Tad screenshot](doc/screenshots/tad-metobjects-unpivoted.png "Unpivoted view of CSV file")
 
-Tad uses [SlickGrid](http://slickgrid.net/) for rendering the data grid. This allows Tad to support efficient linear
+MTad uses [SlickGrid](http://slickgrid.net/) for rendering the data grid. This allows MTad to support efficient linear
 scrolling of the entire file, even for very large (millions of rows) data sets.
 
 A few additional mouse clicks on the above view yields this view, pivoted by a few
@@ -27,49 +30,148 @@ with columns re-ordered:
 
 ![tad screenshot](doc/screenshots/tad-metobjects-pivoted.png "Met Museum Objects with Pivots")
 
-# Installing Tad
+## New Features in MTad
 
-The easiest way to install the Tad desktop app is to use a pre-packaged binary release. See [The Tad Landing Page](http://tadviewer.com/#news) for information on the latest release and download links, or go straight to the [releases](./releases) page.
+### Cell Editing
 
-# History and What's Here
+MTad supports editing cell values directly in the data grid:
 
-Tad was initially released in 2017 as a standalone desktop application for viewing and exploring CSV files.
+- **Double-click** on any editable cell to open an edit modal with type-aware validation
+- **Right-click** on cells to access a context menu with editing options
+- Edit **pivot labels** on aggregate rows (renames all occurrences of the pivot value)
+- Edit **aggregate cells** to update values grouped by pivot columns
 
-The core of Tad is a React UI component that implements a hierarchical pivot table that allows you to specify a combination of pivot, filter, aggregate, sort, column selection, column ordering and basic column formatting operations. Tad delegates to a SQL database for storage and analytics, and generates SQL queries to perform all
-analytic operations specified in the UI.
+### Column Management
 
-This repository is a modular refactor of the original Tad source code, with several key improvements on the original code base:
+- **Right-click** on column headers to rename columns (executes `ALTER TABLE RENAME COLUMN`)
+- Column reorder via drag-and-drop
+- Column sorting (ascending/descending)
 
-- The repository is organized as a modular [Lerna](https://lerna.js.org/) based monorepo.
-- The code has been ported to TypeScript and the UI code has been updated to React Hooks.
-- There is support for communicating with multiple database back ends for reltab (Tad's SQL generation and query evaluation layer), in addition to the original sqlite. Current backends (in varying degrees of completeness) include DuckDb, Snowflake, Google BigQuery, and AWS Athena (Presto)
-- There is a minimal proof-of-concept web-based front-end to demonstrate how Tad can be deployed on the web.
-- The core Tad pivot table component now builds in its own module independent of any front end. This should allow embedding the Tad pivot table in other applications or contexts.
+### CSV Materialization
+
+- Join CSV files and materialize the result as a new DuckDB table
+- Create virtual tables from CSV files with automatic type detection
+
+# Installing MTad
+
+The easiest way to install the MTad desktop app is to build from source. See [Building from Source](#building-mtad-from-source) below.
+
+For pre-packaged releases of the original Tad, see [The Tad Landing Page](http://tadviewer.com/#news) or the [releases](./releases) page.
+
+# Building MTad from Source
+
+## Pre-requisites
+
+- [Node.js](https://nodejs.org/) v20 or later
+- npm (included with Node.js)
+- Lerna (installed via npm)
+
+## Quick Start
+
+```bash
+# Clone the repository
+git clone https://github.com/renoust-ids/mtad.git
+cd tad
+
+# Install dependencies and build
+./run.sh --reltab
+```
+
+This will:
+1. Bootstrap all monorepo packages via Lerna
+2. Build the reltab SQL generation layer
+3. Build tadviewer and tad-app bundles
+
+## Development Workflow
+
+### Using run.sh (Recommended)
+
+```bash
+# Full build (bootstrap + reltab + bundles)
+./run.sh --reltab
+
+# Quick rebuild (skip bootstrap if already done)
+./run.sh --reltab
+```
+
+### Manual Build Steps
+
+```bash
+# Bootstrap packages
+npx lerna bootstrap --force-local --hoist --no-ci
+
+# Build reltab (SQL generation layer)
+cd packages/reltab && npx tsc -p tsconfig-build.json
+
+# Build tadviewer (React component)
+cd ../tadviewer && npx webpack --mode production
+
+# Build tad-app (Electron desktop app)
+cd ../tad-app && npx webpack --mode production
+```
+
+### Running in Development
+
+```bash
+# Launch the app with reltab backend
+./run.sh --reltab
+
+# Or launch directly via Electron
+cd packages/tad-app && npm start -- path/to/data.csv
+```
+
+### Iterating During Development
+
+Keep these running in separate terminals:
+
+```bash
+# Terminal 1: Watch tadviewer (auto-rebuild on changes)
+cd packages/tadviewer && npm run watch
+
+# Terminal 2: Watch tad-app (auto-rebuild on changes)
+cd packages/tad-app && npm run watch
+```
+
+Then restart the Electron app to see changes. For changes to reltab or other packages, run the full build.
+
+## Packaging for Distribution
+
+```bash
+cd packages/tad-app
+npx electron-builder --mac dir --arm64 --publish=never
+```
+
+## Logs
+
+Log files (via [electron-log](https://www.npmjs.com/package/electron-log)):
+
+- macOS: `~/Library/Logs/mtad/main.log`
+- Linux: `~/.config/mtad/main.log`
+- Windows: `%USERPROFILE%\AppData\Roaming\mtad\main.log`
 
 ## The Essential Packages
 
-The core packages that are used to build Tad are found in the [packages](./packages) sub-directory. These are the packages
-used to build the Tad desktop application:
+The core packages that are used to build MTad are found in the [packages](./packages) sub-directory. These are the packages
+used to build the MTad desktop application:
 
-- [**reltab**](./packages/reltab) - The core abstraction used in Tad for programmatically constructing and executing relational SQL queries. This also defines the driver interface implemented by specific database back-ends, and a small, transport-agnostic remoting layer to allow queries and results to be transmitted between a web browser
+- [**reltab**](./packages/reltab) - The core abstraction used in MTad for programmatically constructing and executing relational SQL queries. This also defines the driver interface implemented by specific database back-ends, and a small, transport-agnostic remoting layer to allow queries and results to be transmitted between a web browser
   (or electron renderer process) and a reltab backend server.
+  - Key methods: `execSql()` for DML statements, `getSqlForQuery()` for SQL generation, `renameColumn()` for schema changes
 - [**reltab-duckdb**](./packages/reltab-duckdb/) -- reltab driver for DuckDb
-- [**reltab-sqlite**](./packages/reltab-sqlite/) -- reltab driver for SQLite
 - [**aggtree**](./packages/aggtree/) - A library built on top of reltab for constructing pivot trees from relational queries.
-- [**tadviewer**](./packages/tadviewer/) - The core Tad pivot table UI as a standalone, embeddable React component.
-- [**tad-app**](./packages/tad-app/) - The Tad desktop application, built with Electron
+- [**tadviewer**](./packages/tadviewer/) - The core MTad pivot table UI as a standalone, embeddable React component.
+  - Cell editing with double-click and right-click context menu
+  - Column rename via header context menu
+  - Pivot-aware editing (aggregate rows vs leaf rows)
+- [**tad-app**](./packages/tad-app/) - The MTad desktop application, built with Electron
 
-## Experimental Packages
+## Original Tad Packages
 
-This repository also includes a number of proof-of-concept experimental packages, in varying states of completeness. These are provided for reference and as a starting
-point for further investigation and development.
+These packages are from the original Tad project and are maintained for compatibility:
 
+- [**reltab-sqlite**](./packages/reltab-sqlite/) -- reltab driver for SQLite
 - [**tadweb-app**](./packages/tadweb-app/) - A minimal web app built with [tadviewer](./packages/tadviewer/), to demonstrate Tad running in a web browser.
 - [**tadweb-server**](./packages/tadweb-server/) - A reference web server for serving the Tad web app and providing the reltab back end.
 - [**reltab-aws-athena**](./packages/reltab-aws-athena/) - reltab driver for AWS Athena
 - [**reltab-bigquery**](./packages/reltab-bigquery/) - reltab driver for Google BigQuery
 - [**reltab-snowflake**](./packages/reltab-snowflake/) - reltab driver for Snowflake
-
-# Building Tad from Source
-
-Detailed instructions on building tad from sources available in [doc/building.md](doc/building.md)

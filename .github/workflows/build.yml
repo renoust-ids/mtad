@@ -2,7 +2,7 @@ name: Build & Release
 
 on:
   push:
-    branches: [main, joincsv]
+    branches: [main, feat/celledit]
     tags:
       - 'v*'
   workflow_dispatch:

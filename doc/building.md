@@ -1,94 +1,128 @@
-# Building Tad from Sources
+# Building MTad from Sources
 
 ## Pre-requisites: Node, Npm and Lerna
 
-To build Tad, you should have [node](https://nodejs.org/en/) and `npm`(https://www.npmjs.com/get-npm) (included when you install Node.js) installed. The versions of these tools used for development are:
+To build MTad, you should have [Node.js](https://nodejs.org/) v20 or later and `npm` (included when you install Node.js) installed.
 
-    $ node --version
-    v19.3.0
-    $ npm --version
-    9.2.0
-
-Once you have Node installed, run `npm install` at the top level:
-
-    $ npm install
-
-## Installing dependencies and linking modules (Bootstrapping)
-
-Lerna supports a process called [bootstrapping](https://github.com/lerna/lerna/tree/main/commands/bootstrap#readme) that links local packages together and installs any remaining dependencies. To the extent possible, lerna tries to hoist common dependencies needed by different packages in the monorepo.
-To bootstrap Tad correctly, run the following:
-
-    $ npm run bootstrap
-
-This runs the standard lerna `bootstrap` command with a few extra arguments needed for how Tad's source is structured.
-
-## Building Everything
-
-After bootstrapping, run the following script to try and build everything, including the web app (tadweb-app), reference web server (tadweb-server), and desktop app:
-
-    $ ./tools/build-all.sh
-
-## Trying the Desktop app
-
-    $ cd packages/tad-app
-    $ npm start -- csv/movie_metadata.csv
-
-If all went well, the Tad app should start with a view of `csv/movie_metadata.csv`
-
-## Trying the experimental web app
-
-    $ cd packages/tadweb-server
-    $ npm start
-
-If all goes well, you will see something like:
-
-```
-db initialization complete
-Listening on port  9000
+```bash
+$ node --version
+v20.x.x
+$ npm --version
+10.x.x
 ```
 
-open a web browser to `localhost:9000` and you should see Tad in your web browser.
+## Quick Start
 
-## Trying Experimental Backends
+The easiest way to build MTad is using the `run.sh` script:
 
-You can try out the experimental backends by setting appropriate environment variables and un-commenting
-the relevant `init` calls in `main()` in [../src/tadweb-server/server.ts](../src/tadweb-server/server.ts).
+```bash
+# Full build (bootstrap + reltab + bundles)
+./run.sh --reltab
+```
+
+This will:
+1. Bootstrap all monorepo packages via Lerna
+2. Build the reltab SQL generation layer
+3. Build tadviewer and tad-app bundles
+
+## Manual Build Steps
+
+### 1. Install Dependencies
+
+```bash
+npm install
+npx lerna bootstrap --force-local --hoist --no-ci
+```
+
+### 2. Build reltab (SQL Generation Layer)
+
+```bash
+cd packages/reltab
+npx tsc -p tsconfig-build.json
+```
+
+### 3. Build tadviewer (React Component)
+
+```bash
+cd packages/tadviewer
+npx webpack --mode production
+```
+
+### 4. Build tad-app (Electron Desktop App)
+
+```bash
+cd packages/tad-app
+npx webpack --mode production
+```
+
+## Running the Application
+
+### Development Mode
+
+```bash
+# Launch with reltab backend (recommended)
+./run.sh --reltab
+
+# Or launch directly via Electron
+cd packages/tad-app && npm start -- path/to/data.csv
+```
+
+### Iterating During Development
+
+Keep these running in separate terminals:
+
+```bash
+# Terminal 1: Watch tadviewer (auto-rebuild on changes)
+cd packages/tadviewer && npm run watch
+
+# Terminal 2: Watch tad-app (auto-rebuild on changes)
+cd packages/tad-app && npm run watch
+```
+
+Then restart the Electron app to see changes. For changes to reltab or other packages, run the full build.
+
+## Packaging for Distribution
+
+```bash
+cd packages/tad-app
+npx electron-builder --mac dir --arm64 --publish=never
+```
+
+## Useful Commands
+
+```bash
+# Run tests
+cd packages/reltab && npm test
+cd packages/reltab-duckdb && npm test
+
+# Clean and rebuild
+npx lerna clean --yes
+npx lerna bootstrap --force-local --hoist --no-ci
+
+# Build all packages
+npx lerna run build
+```
+
+## Logs
+
+Log files (via [electron-log](https://www.npmjs.com/package/electron-log)):
+
+- macOS: `~/Library/Logs/mtad/main.log`
+- Linux: `~/.config/mtad/main.log`
+- Windows: `%USERPROFILE%\AppData\Roaming\mtad\main.log`
+
+## Experimental Backends
+
+You can try out the experimental backends by setting appropriate environment variables:
 
 ### Snowflake Credentials
 
-If you want to try the **experimental** reltab-snowflake backend, set the environment variables `$RELTAB_SNOWFLAKE_ACCOUNT`, `$RELTAB_SNOWFLAKE_USERNAME` and `$RELTAB_SNOWFLAKE_PASSWORD` with a valid account name, username and password, respectively, for your Snowflake account.
+Set `$RELTAB_SNOWFLAKE_ACCOUNT`, `$RELTAB_SNOWFLAKE_USERNAME` and `$RELTAB_SNOWFLAKE_PASSWORD`.
 
 ### BigQuery Credentials
 
-If you If you want to try the **experimental** reltab-bigquery backend, and have a Google BigQuery account, set the environment variable `$GOOGLE_APPLICATION_CREDENTIALS` to the path of a bigquery account credentials JSON file.
+Set `$GOOGLE_APPLICATION_CREDENTIALS` to the path of a BigQuery credentials JSON file.
 
-## Iterating during UI Development: Desktop App
+### AWS Athena
 
-When iterating on the UI during development, I recommend keeping a couple of windows open:
-
-- In `packages\tadviewer`, run `npm run watch`
-- In `packages\tad-app`, run `npm run watch`
-
-Note that you'll still have to run `npm run build` if you make changes in any of the other library packages (`reltab`,
-`reltab-duckdb`, `aggtree`).
-
-## Iterating during UI Development: Web App
-
-Similar to above, but with three windows open:
-
-- In `packages\tadviewer`, run `npm run watch`
-- In `packages\tadweb-app`, run `npm run watch`
-- In `tadweb-server`, running `npm start`
-
-With those running continuously, you should be able to just hit reload in your browser on `localhost:9000` to pick up any code changes. You'll still have to run `npm run build` if you make changes in any of the other library packages (`reltab`,
-`reltab-duckdb`, `aggtree`, etc.).
-
-# Additional Info
-
-## Useful paths:
-
-Log information (from [electron-log](https://www.npmjs.com/package/electron-log)):
-
-- on Linux: ~/.config/Tad/main.log
-- on OS X: ~/Library/Logs/Tad/main.log
-- on Windows: %USERPROFILE%\AppData\Roaming\Tad\main.log
+Configure AWS credentials and set appropriate environment variables.

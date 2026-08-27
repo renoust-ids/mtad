@@ -19,7 +19,10 @@ function isDuckDBStringRenderer(val: any): val is DuckDBStringRenderer {
   );
 }
 
-const createTimestampStringRenderer = (dateOnly = false) => ({
+const createTimestampStringRenderer = (opts?: {
+  dateOnly?: boolean;
+  timeOnly?: boolean;
+}) => ({
   stringRender: (val: any) => {
     if (val == null) {
       return "";
@@ -30,7 +33,9 @@ const createTimestampStringRenderer = (dateOnly = false) => ({
     let retStr: string;
     try {
       retStr = new Date(val).toISOString();
-      if (dateOnly) retStr = retStr.split("T")[0];
+      if (opts?.dateOnly) retStr = retStr.split("T")[0];
+      else if (opts?.timeOnly)
+        retStr = retStr.split("T")[1].replace(/\.\d{3}Z$/, "");
     } catch (err) {
       if (err instanceof RangeError) {
         console.info(
@@ -86,7 +91,7 @@ const datetimeCT = new ColumnType(
 const timesWithTimeZoneCT = new ColumnType(
   "TIME WITH TIME ZONE",
   "timestamp",
-  createTimestampStringRenderer()
+  createTimestampStringRenderer({ timeOnly: true })
 );
 
 const timestampWithTimeZoneCT = new ColumnType(
@@ -104,7 +109,13 @@ const timestampTZCT = new ColumnType(
 const dateCT = new ColumnType(
   "DATE",
   "timestamp",
-  createTimestampStringRenderer(true)
+  createTimestampStringRenderer({ dateOnly: true })
+);
+
+const timeCT = new ColumnType(
+  "TIME",
+  "timestamp",
+  createTimestampStringRenderer({ timeOnly: true })
 );
 
 const blobCT = new ColumnType("BLOB", "blob", {
@@ -154,7 +165,7 @@ export class DuckDBDialectClass extends BaseSQLDialect {
     SMALLINT: intCT,
     TINYINT: intCT,
     TEXT: textCT,
-    TIME: timestampCT,
+    TIME: timeCT,
     "TIME WITH TIME ZONE": timestampWithTimeZoneCT,
     TIMESTAMP: timestampCT,
     TIMESTAMPTZ: timestampTZCT,

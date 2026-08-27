@@ -3,12 +3,14 @@ import { mutableGet, StateRef } from "oneref";
 import * as React from "react";
 import { useRef } from "react";
 import * as reltab from "reltab";
+import { Dialog, Button, Intent } from "@blueprintjs/core";
 import { AppState } from "../AppState";
 import { DataRow } from "../PagedDataView";
-import { ViewState } from "../ViewState";
+import { ViewState, CellEditState } from "../ViewState";
 import * as actions from "../actions";
 import * as util from "../util";
-import { DataGrid, DataGridProps } from "./DataGrid";
+import { CellEditStartData, DataGrid, DataGridProps } from "./DataGrid";
+import { CellEditModal } from "./CellEditModal";
 import { SimpleClipboard } from "./SimpleClipboard";
 
 import { CellClickData } from "./CellClickData";
@@ -182,6 +184,80 @@ const GridPaneInternal: React.FunctionComponent<GridPaneProps> = ({
 
   const isPivoted = viewParams.vpivots.length > 0;
 
+  const editingCell = viewState.editingCell;
+
+  const handleEditStart = React.useCallback(
+    (data: CellEditStartData) => {
+      actions.startCellEdit({
+        row: data.row,
+        col: data.col,
+        columnId: data.columnId,
+        value: data.value,
+        rawValue: data.rawValue,
+        columnKind: data.columnKind,
+        sqlTypeName: data.sqlTypeName,
+        isAggregateRow: data.isAggregateRow,
+        isPivot: data.isPivot,
+        pivotDepth: data.pivotDepth,
+        rowData: data.rowData,
+      }, stateRef);
+    },
+    [stateRef]
+  );
+
+  const handleEditSave = React.useCallback(
+    async (newValue: string) => {
+      await actions.commitCellEdit(newValue, stateRef);
+    },
+    [stateRef]
+  );
+
+  const handleEditCancel = React.useCallback(() => {
+    actions.cancelCellEdit(stateRef);
+  }, [stateRef]);
+
+  // Column rename state
+  const [renameState, setRenameState] = React.useState<{
+    isOpen: boolean;
+    columnId: string;
+    newName: string;
+  }>({ isOpen: false, columnId: "", newName: "" });
+
+  const handleColumnRename = React.useCallback(
+    (columnId: string) => {
+      setRenameState({ isOpen: true, columnId, newName: columnId });
+    },
+    []
+  );
+
+  const handleRenameSave = React.useCallback(async () => {
+    const { columnId, newName } = renameState;
+    if (!newName.trim() || newName === columnId) {
+      setRenameState((s) => ({ ...s, isOpen: false }));
+      return;
+    }
+    // Get table name from baseQuery
+    const baseQuery = viewState.baseQuery as any;
+    const getTableName = (rep: any): string | null => {
+      if (!rep) return null;
+      if (rep.tableName) return rep.tableName;
+      if (rep.from) return getTableName(rep.from);
+      return null;
+    };
+    const tableName = getTableName(baseQuery?._rep);
+    if (!tableName) {
+      console.error("renameColumn: could not find table name");
+      setRenameState((s) => ({ ...s, isOpen: false }));
+      return;
+    }
+    await actions.renameColumn(tableName, columnId, newName.trim(), stateRef);
+    setRenameState((s) => ({ ...s, isOpen: false }));
+  }, [renameState, viewState.baseQuery, stateRef]);
+
+  const handleRenameCancel = React.useCallback(() => {
+    setRenameState((s) => ({ ...s, isOpen: false }));
+  }, []);
+
   const dataGridProps: DataGridProps = {
     dataView,
     showColumnHistograms,
@@ -199,6 +275,8 @@ const GridPaneInternal: React.FunctionComponent<GridPaneProps> = ({
     onGridClick,
     onGridSelectionChange,
     onSetColumnOrder,
+    onCellEditStart: handleEditStart,
+    onColumnRename: handleColumnRename,
     sortKey,
     isPivoted,
     clipboard,
@@ -206,7 +284,54 @@ const GridPaneInternal: React.FunctionComponent<GridPaneProps> = ({
     embedded,
   };
 
-  return <DataGrid {...dataGridProps} />;
+  return (
+    <>
+      <DataGrid {...dataGridProps} />
+      <CellEditModal
+        isOpen={editingCell !== null}
+        columnId={editingCell?.columnId ?? ""}
+        columnDisplayName={editingCell?.columnId ?? ""}
+        currentValue={editingCell?.value}
+        columnKind={editingCell?.columnKind ?? "string"}
+        sqlTypeName={editingCell?.sqlTypeName}
+        isAggregateRow={editingCell?.isAggregateRow ?? false}
+        isPivot={editingCell?.isPivot ?? false}
+        onSave={handleEditSave}
+        onCancel={handleEditCancel}
+      />
+      <Dialog
+        isOpen={renameState.isOpen}
+        title="Rename Column"
+        onClose={handleRenameCancel}
+        canOutsideClickClose={true}
+      >
+        <div className="bp4-dialog-body">
+          <label className="bp4-label">
+            New name for "{renameState.columnId}":
+            <input
+              className="bp4-input bp4-fill"
+              type="text"
+              value={renameState.newName}
+              onChange={(e) => setRenameState((s) => ({ ...s, newName: e.target.value }))}
+              autoFocus
+            />
+          </label>
+        </div>
+        <div className="bp4-dialog-footer">
+          <div className="bp4-dialog-footer-actions">
+            <Button onClick={handleRenameCancel}>Cancel</Button>
+            <Button
+              intent={Intent.PRIMARY}
+              onClick={handleRenameSave}
+              disabled={!renameState.newName.trim() || renameState.newName === renameState.columnId}
+            >
+              Rename
+            </Button>
+          </div>
+        </div>
+      </Dialog>
+    </>
+  );
 };
 
 // TODO: It might be better to move this memoization down a level into DataGrid,

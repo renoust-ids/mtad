@@ -13,6 +13,9 @@ import {
   DbConnGetColumnStatsMapRequest,
   DbConnGetChildrenRequest,
   DbConnGetTableNameRequest,
+  DbConnExecSqlRequest,
+  DbConnGetSqlForQueryRequest,
+  DbConnRenameColumnRequest,
   ReltabConnection,
 } from "./Connection";
 import {
@@ -125,6 +128,39 @@ const dbConnGetColumnStatsMap = async (
   return columnStatsMap;
 };
 
+const dbConnExecSql = async (
+  conn: DataSourceConnection,
+  req: DbConnExecSqlRequest
+): Promise<void> => {
+  const hrstart = process.hrtime();
+  await conn.execSql(req.sql);
+  const elapsed = process.hrtime(hrstart);
+  log.info("execSql: executed in", prettyHRTime(elapsed));
+};
+
+const dbConnGetSqlForQuery = async (
+  conn: DataSourceConnection,
+  req: DbConnGetSqlForQueryRequest
+): Promise<string> => {
+  const hrstart = process.hrtime();
+  const { queryStr } = req;
+  const query = deserializeQueryReq(queryStr) as any;
+  const sql = await conn.getSqlForQuery(query);
+  const elapsed = process.hrtime(hrstart);
+  log.info("getSqlForQuery: executed in", prettyHRTime(elapsed));
+  return sql;
+};
+
+const dbConnRenameColumn = async (
+  conn: DataSourceConnection,
+  req: DbConnRenameColumnRequest
+): Promise<void> => {
+  const hrstart = process.hrtime();
+  await conn.renameColumn(req.tableName, req.oldName, req.newName);
+  const elapsed = process.hrtime(hrstart);
+  log.info("renameColumn: executed in", prettyHRTime(elapsed));
+};
+
 // an EngineReqHandler wraps a req in an EngineReq that carries an
 // db engine identifier (DataSourceId) that is used to identify
 // a particular Db instance for dispatching the Db request.
@@ -152,6 +188,9 @@ const handleDbConnGetTableSchema = mkEngineReqHandler(dbConnGetTableSchema);
 const handleDbConnGetColumnStatsMap = mkEngineReqHandler(
   dbConnGetColumnStatsMap
 );
+const handleDbConnExecSql = mkEngineReqHandler(dbConnExecSql);
+const handleDbConnGetSqlForQuery = mkEngineReqHandler(dbConnGetSqlForQuery);
+const handleDbConnRenameColumn = mkEngineReqHandler(dbConnRenameColumn);
 
 let providerRegistry: { [providerName: string]: DataSourceProvider } = {};
 
@@ -333,6 +372,18 @@ export const serverInit = (ts: TransportServer) => {
   ts.registerInvokeHandler(
     "DataSourceConnection.getColumnStatsMap",
     simpleJSONHandler(exceptionHandler(handleDbConnGetColumnStatsMap))
+  );
+  ts.registerInvokeHandler(
+    "DataSourceConnection.execSql",
+    simpleJSONHandler(exceptionHandler(handleDbConnExecSql))
+  );
+  ts.registerInvokeHandler(
+    "DataSourceConnection.getSqlForQuery",
+    simpleJSONHandler(exceptionHandler(handleDbConnGetSqlForQuery))
+  );
+  ts.registerInvokeHandler(
+    "DataSourceConnection.renameColumn",
+    simpleJSONHandler(exceptionHandler(handleDbConnRenameColumn))
   );
 };
 

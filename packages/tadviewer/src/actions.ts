@@ -1,5 +1,5 @@
 import { ViewParams } from "./ViewParams";
-import { ViewState } from "./ViewState";
+import { ViewState, CellEditState } from "./ViewState";
 import {
   AppState,
   ExportFormat,
@@ -754,7 +754,17 @@ export const confirmCsvJoin = async (
     nullString: joinArgs.nullString || undefined,
   };
 
-  const newBaseQuery = baseQuery.joinCsv(reltabArgs, rhsSchema, rightColumns);
+  const fusionQuery = baseQuery.joinCsv(reltabArgs, rhsSchema, rightColumns);
+
+  // Materialize the fusion result into a new DuckDB table so all columns are editable
+  const materializedTableName = `_fused_${Date.now()}`;
+  const fusionSql = await dbc.getSqlForQuery(fusionQuery);
+  const createTableSql = `CREATE TABLE "${materializedTableName}" AS ${fusionSql}`;
+  console.log(`[JoinCSV] Materializing: ${createTableSql}`);
+  await dbc.execSql(createTableSql);
+
+  // Use a simple tableQuery pointing to the materialized table
+  const newBaseQuery = reltab.tableQuery(materializedTableName);
   const newBaseSchema = await aggtree.getBaseSchema(
     dbc,
     newBaseQuery,
@@ -781,4 +791,256 @@ export const confirmCsvJoin = async (
     stateRef,
     (st: AppState): AppState => st.set("viewState", viewStateNew) as AppState
   );
+};
+
+// --- Cell Edit Actions ---
+
+export const startCellEdit = (
+  editState: CellEditState,
+  stateRef: StateRef<AppState>
+): void => {
+  update(stateRef, (state: AppState) =>
+    state.update("viewState", (vs) =>
+      vs!.set("editingCell", editState)
+    )
+  );
+};
+
+export const commitCellEdit = async (
+  newValue: string,
+  stateRef: StateRef<AppState>
+): Promise<void> => {
+  const state = mutableGet(stateRef);
+  const editState = state.viewState.editingCell;
+  if (!editState) return;
+
+  const { dbc, baseQuery, baseSchema } = state.viewState;
+  if (!dbc || !baseQuery) {
+    console.error("commitCellEdit: no database connection or base query");
+    return;
+  }
+
+  // Get the table name by traversing the from chain (handles joinCsv, etc.)
+  const getTableName = (rep: any): string | null => {
+    if (!rep) return null;
+    if (rep.tableName) return rep.tableName;
+    if (rep.from) return getTableName(rep.from);
+    return null;
+  };
+  const queryRep = (baseQuery as any)._rep;
+  const tableName = getTableName(queryRep);
+  if (!tableName) {
+    console.error("commitCellEdit: could not find table name in query", baseQuery);
+    return;
+  }
+
+  // Get the target table's schema to filter rowData to only columns in the table
+  let tableSchema: reltab.Schema | null = null;
+  try {
+    tableSchema = await dbc.getTableSchema(tableName);
+  } catch (err) {
+    console.error("commitCellEdit: could not get table schema", err);
+    return;
+  }
+  const tableColumns = new Set(tableSchema.columns);
+
+  // Format a raw value for use in SQL WHERE clause
+  const formatWhereValue = (col: string, val: any): string => {
+    if (val === null || val === undefined) return `"${col}" IS NULL`;
+    if (val instanceof Date) {
+      const ct = tableSchema?.columnType(col);
+      const sqlType = ct?.sqlTypeName;
+      if (sqlType === "DATE") {
+        return `"${col}" = '${val.toISOString().split("T")[0]}'`;
+      } else if (sqlType === "TIME") {
+        const timePart = val.toISOString().split("T")[1].replace(/\.\d{3}Z$/, "");
+        return `"${col}" = '${timePart}'`;
+      }
+      // TIMESTAMP and others: use full ISO string
+      return `"${col}" = '${val.toISOString()}'`;
+    }
+    if (typeof val === "string") {
+      return `"${col}" = '${val.replace(/'/g, "''")}'`;
+    }
+    return `"${col}" = ${val}`;
+  };
+
+  // Build WHERE clause from row data, only using columns that exist in the target table
+  const whereParts: string[] = [];
+  for (const [col, val] of Object.entries(editState.rowData)) {
+    if (tableColumns.has(col)) {
+      whereParts.push(formatWhereValue(col, val));
+    }
+  }
+
+  const whereClause = whereParts.join(" AND ");
+  
+  // Build the new value - handle different types
+  let sqlValue: string;
+  const trimmed = newValue.trim();
+  if (newValue === "" || trimmed.toLowerCase() === "null") {
+    sqlValue = "NULL";
+  } else if (editState.columnKind === "string" || editState.columnKind === "dialect" || editState.columnKind === "date" || editState.columnKind === "time" || editState.columnKind === "datetime" || editState.columnKind === "timestamp") {
+    sqlValue = `'${newValue.replace(/'/g, "''")}'`;
+  } else if (editState.columnKind === "boolean") {
+    sqlValue = /^(true|yes|1)$/i.test(trimmed) ? "TRUE" : "FALSE";
+  } else {
+    sqlValue = newValue;
+  }
+
+  let sql: string;
+
+  // Pivot label editing: UPDATE table SET pivotColumn = newValue WHERE pivotColumn = oldValue
+  if (editState.isAggregateRow && editState.isPivot) {
+    const vpivots = state.viewState.viewParams.vpivots;
+    const pivotIndex = editState.pivotDepth! - 1;
+    const pivotColumn = pivotIndex >= 0 ? vpivots[pivotIndex] : null;
+    if (!pivotColumn) {
+      console.error("commitCellEdit: could not determine pivot column for depth", editState.pivotDepth);
+      return;
+    }
+    const oldValue = editState.rawValue;
+    const oldValueStr = formatWhereValue(pivotColumn, oldValue).replace(/^"[^"]*" = /, "");
+    sql = `UPDATE "${tableName}" SET "${pivotColumn}" = ${sqlValue} WHERE "${pivotColumn}" = ${oldValueStr}`;
+  } else if (editState.isAggregateRow && !editState.isPivot) {
+    // Aggregate cell editing: UPDATE table SET column = newValue WHERE pivotCol1 = val1 AND pivotCol2 = val2
+    const vpivots = state.viewState.viewParams.vpivots;
+    const depth = editState.pivotDepth ?? 1;
+    const groupByCols = vpivots.slice(0, depth);
+    if (groupByCols.length === 0) {
+      console.error("commitCellEdit: no group-by columns for aggregate row at depth", depth);
+      return;
+    }
+    const whereParts: string[] = [];
+    for (const col of groupByCols) {
+      const val = editState.rowData[col];
+      if (val === null || val === undefined) {
+        whereParts.push(`"${col}" IS NULL`);
+      } else {
+        whereParts.push(formatWhereValue(col, val));
+      }
+    }
+    const aggregateWhere = whereParts.join(" AND ");
+    sql = `UPDATE "${tableName}" SET "${editState.columnId}" = ${sqlValue} WHERE ${aggregateWhere}`;
+  } else {
+    sql = `UPDATE "${tableName}" SET "${editState.columnId}" = ${sqlValue} WHERE ${whereClause}`;
+  }
+  
+  console.log(`[CellEdit] Executing: ${sql}`);
+
+  try {
+    // Execute the UPDATE via raw SQL
+    await dbc.execSql(sql);
+    
+    console.log(
+      `[CellEdit] Committed: row=${editState.row}, col=${editState.columnId}, ` +
+      `old=${editState.value}, new=${newValue}`
+    );
+
+    // Trigger data refresh by updating viewParams reference
+    // This will cause PivotRequester to re-fetch data
+    update(stateRef, (st: AppState) => {
+      const currentVP = st.viewState.viewParams;
+      // Create a new reference to trigger PivotRequester refresh
+      const newVP = currentVP.set("displayColumns", currentVP.displayColumns.slice()) as ViewParams;
+      return st
+        .update("viewState", (vs) =>
+          vs!
+            .set("editingCell", null)
+            .set("viewParams", newVP) as ViewState
+        );
+    });
+  } catch (err) {
+    console.error("[CellEdit] Error executing UPDATE:", err);
+    // Still close the modal even on error
+    update(stateRef, (st: AppState) =>
+      st.update("viewState", (vs) =>
+        vs!.set("editingCell", null)
+      )
+    );
+  }
+};
+
+export const cancelCellEdit = (
+  stateRef: StateRef<AppState>
+): void => {
+  update(stateRef, (state: AppState) =>
+    state.update("viewState", (vs) =>
+      vs!.set("editingCell", null)
+    )
+  );
+};
+
+// --- Column Rename Action ---
+
+export const renameColumn = async (
+  tableName: string,
+  oldName: string,
+  newName: string,
+  stateRef: StateRef<AppState>
+): Promise<void> => {
+  const state = mutableGet(stateRef);
+  const { dbc } = state.viewState;
+  if (!dbc) {
+    console.error("renameColumn: no database connection");
+    return;
+  }
+
+  try {
+    await dbc.renameColumn(tableName, oldName, newName);
+    console.log(
+      `[ColumnRename] Renamed column "${oldName}" to "${newName}" in table "${tableName}"`
+    );
+
+    const appState = mutableGet(stateRef);
+    const showRecordCount = appState.showRecordCount;
+
+    // Re-fetch the baseQuery and baseSchema after rename.
+    const newBQ = reltab.tableQuery(tableName);
+    const newBaseSchema = await aggtree.getBaseSchema(
+      dbc,
+      newBQ,
+      showRecordCount
+    );
+
+    // Update ViewParams to replace old column name with new name
+    update(stateRef, (st: AppState) => {
+      const vp = st.viewState.viewParams;
+      if (!vp) return st;
+
+      // Helper to replace column name in an array
+      const replaceInArr = (arr: string[]): string[] =>
+        arr.map((c) => (c === oldName ? newName : c));
+
+      // Helper to replace column name in sortKey
+      const replaceInSortKey = (sortKey: Array<[string, boolean]>): Array<[string, boolean]> =>
+        sortKey.map(([col, asc]) => [col === oldName ? newName : col, asc]);
+
+      // Helper to replace column name in aggMap
+      const replaceInAggMap = (aggMap: { [cid: string]: reltab.AggFn }): { [cid: string]: reltab.AggFn } => {
+        if (aggMap[oldName] !== undefined) {
+          const newAggMap = { ...aggMap };
+          newAggMap[newName] = newAggMap[oldName];
+          delete newAggMap[oldName];
+          return newAggMap;
+        }
+        return aggMap;
+      };
+
+      const newVP = vp
+        .set("displayColumns", replaceInArr(vp.displayColumns))
+        .set("vpivots", replaceInArr(vp.vpivots))
+        .set("sortKey", replaceInSortKey(vp.sortKey))
+        .set("aggMap", replaceInAggMap(vp.aggMap)) as ViewParams;
+
+      return st.update("viewState", (vs) =>
+        vs!
+          .set("viewParams", newVP)
+          .set("baseQuery", newBQ)
+          .set("baseSchema", newBaseSchema) as ViewState
+      );
+    });
+  } catch (err) {
+    console.error("[ColumnRename] Error renaming column:", err);
+  }
 };
