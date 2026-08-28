@@ -1218,6 +1218,27 @@ const buildRowIdWhere = (
   return `rowid IN (${rids.join(", ")})`;
 };
 
+// Build a WHERE clause that targets every leaf row rolling up into an
+// aggregate row. The pivot path of an aggregate row is materialized in its
+// `_path` columns: `_path[i]` holds the value of the i-th pivot column
+// (vpivots[i]) for every level i < depth. Map each path element back onto its
+// pivot column so the clause matches exactly the underlying leaf rows.
+const buildAggregateRowWhere = (
+  item: { [columnId: string]: any },
+  vpivots: string[],
+  depth: number
+): string => {
+  const parts: string[] = [];
+  for (let i = 0; i < depth && i < vpivots.length; i++) {
+    const col = vpivots[i];
+    const value = item["_path" + i] ?? item[col];
+    parts.push(`"${col}" = ${formatSqlValue(value)}`);
+  }
+  // depth 0 (root row) has no pivot columns -> match everything
+  if (parts.length === 0) return "1=1";
+  return parts.join(" AND ");
+};
+
 // --- Delete Rows Action ---
 
 export const deleteRows = async (
@@ -1327,10 +1348,9 @@ export const deleteAllAggregateRows = async (
   }
 
   try {
-    // Build WHERE from pivot columns: vpivots[0..depth-1]
-    const pivotCols = viewParams.vpivots.slice(0, depth);
-    const whereParts = pivotCols.map((col: string) => `"${col}" = ${formatSqlValue(item[col])}`);
-    const whereClause = whereParts.join(" AND ");
+    // Build WHERE from the aggregate row's pivot path: each _path[i] value
+    // mapped back onto vpivots[i]
+    const whereClause = buildAggregateRowWhere(item, viewParams.vpivots, depth);
 
     await dbc.deleteRows(tableName, whereClause);
     console.log(`[DeleteAllAggregate] Deleted aggregate rows for depth ${depth} in "${tableName}"`);
@@ -1371,9 +1391,7 @@ export const duplicateAllAggregateRows = async (
   }
 
   try {
-    const pivotCols = viewParams.vpivots.slice(0, depth);
-    const whereParts = pivotCols.map((col: string) => `"${col}" = ${formatSqlValue(item[col])}`);
-    const whereClause = whereParts.join(" AND ");
+    const whereClause = buildAggregateRowWhere(item, viewParams.vpivots, depth);
 
     await dbc.duplicateRows(tableName, whereClause);
     console.log(`[DuplicateAllAggregate] Duplicated aggregate rows for depth ${depth} in "${tableName}"`);
