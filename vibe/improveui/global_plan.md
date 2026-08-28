@@ -13,8 +13,8 @@ Context Menu Colonne (onHeaderContextMenu)
 
 Context Menu Cellules (onContextMenu)
     ├── Edit / Edit all (existant)
-    ├── Delete Rows → DELETE FROM WHERE row IN (selected rows) → execSql()
-    ├── Duplicate Rows → INSERT INTO SELECT * WHERE row IN (selected rows) → execSql()
+    ├── Delete Rows → DELETE FROM WHERE rowid IN (...) sur les feuilles, sinon WHERE valeurs → execSql()
+    ├── Duplicate Rows → INSERT INTO SELECT * WHERE rowid IN (...) sur les feuilles, sinon WHERE valeurs → execSql()
     ├── Copy (cells) → clipboard.writeText(TSV) ← cellules sélectionnées uniquement
     └── Copy (rows) → clipboard.writeText(TSV) ← toutes colonnes visibles des lignes sélectionnées
 
@@ -22,6 +22,10 @@ Context Menu Lignes Agrégées (onContextMenu, _isLeaf === false)
     ├── Edit all (existant)
     ├── Delete All Aggregate Rows → DELETE FROM WHERE pivotCols match → execSql()
     └── Duplicate All Aggregate Rows → INSERT INTO SELECT * WHERE pivotCols match → execSql()
+
+Ciblage rowid (Step 8) : column cachée _rid = rowid DuckDB, threadée jusqu'aux
+lignes feuilles du grid. Edit/Duplicate/Delete sur une ligne feuille ciblent un
+rowid précis ; les lignes agrégées/root retombent sur la clause par valeurs.
 
 Export Interface (ExportBeginDialog)
     ├── Visible Columns Only (checkbox, défaut=true)
@@ -68,3 +72,10 @@ Export Interface (ExportBeginDialog)
 - Column Order checkbox
 
 ### Step 7: Build & E2E testing
+
+### Step 8: Ciblage par rowid physique (rows bug-fix)
+- Colonne cachée `_rid` (= rowid DuckDB) threadée jusqu'aux lignes feuilles
+- Edit/Duplicate/Delete ciblent un rowid précis (plus d'explosion 1→2→4, plus
+  d'édition touchant toutes les copies)
+- Régression pivot corrigée (NULL typé sur agrégés/root + cycle circulaire
+  `defaultDialect` cassé)
