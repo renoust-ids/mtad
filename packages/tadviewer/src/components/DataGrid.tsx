@@ -373,6 +373,15 @@ function getUniqueRowsFromRanges(ranges: any[], grid: any): number[] {
   return Array.from(rowSet).sort((a, b) => a - b);
 }
 
+function getSelectionCellCount(ranges: any[]): number {
+  if (!ranges || ranges.length === 0) return 1;
+  let count = 0;
+  for (const range of ranges) {
+    count += (range.toRow - range.fromRow + 1) * (range.toCell - range.fromCell + 1);
+  }
+  return count;
+}
+
 /* Create grid from the specified set of columns */
 const createGrid = (
   containerId: string,
@@ -655,8 +664,8 @@ const createGrid = (
 
     const menuItem = document.createElement("div");
     menuItem.className = "bp4-menu-item";
-    // Aggregate rows always say "Edit all"; leaf rows say "Edit"
-    menuItem.textContent = isAggregate ? "Edit all" : "Edit";
+    // Aggregate rows always say "Edit all"; leaf rows say "Edit Cell"
+    menuItem.textContent = isAggregate ? "Edit all" : "Edit Cell";
     menuItem.addEventListener("click", () => {
       menu.remove();
       onCellEditStart?.(cellEditData);
@@ -671,7 +680,11 @@ const createGrid = (
     // Delete Rows item
     const deleteRowsItem = document.createElement("div");
     deleteRowsItem.className = "bp4-menu-item";
-    deleteRowsItem.textContent = "Delete Rows";
+    deleteRowsItem.textContent =
+      getUniqueRowsFromRanges(grid.getSelectionModel().getSelectedRanges(), grid)
+        .length > 1
+        ? "Delete Rows"
+        : "Delete Row";
     deleteRowsItem.addEventListener("click", () => {
       menu.remove();
       // Get selected rows from selection model
@@ -689,7 +702,11 @@ const createGrid = (
     // Duplicate Rows item
     const dupRowsItem = document.createElement("div");
     dupRowsItem.className = "bp4-menu-item";
-    dupRowsItem.textContent = "Duplicate Rows";
+    dupRowsItem.textContent =
+      getUniqueRowsFromRanges(grid.getSelectionModel().getSelectedRanges(), grid)
+        .length > 1
+        ? "Duplicate Rows"
+        : "Duplicate Row";
     dupRowsItem.addEventListener("click", () => {
       menu.remove();
       const ranges = grid.getSelectionModel().getSelectedRanges();
@@ -734,7 +751,10 @@ const createGrid = (
 
     const copyCellsItem = document.createElement("div");
     copyCellsItem.className = "bp4-menu-item";
-    copyCellsItem.textContent = "Copy (cells)";
+    const cellCount = getSelectionCellCount(
+      grid.getSelectionModel().getSelectedRanges()
+    );
+    copyCellsItem.textContent = cellCount > 1 ? "Copy Cells" : "Copy Cell";
     copyCellsItem.addEventListener("click", () => {
       menu.remove();
       const ranges = grid.getSelectionModel().getSelectedRanges();
@@ -746,7 +766,11 @@ const createGrid = (
 
     const copyRowsItem = document.createElement("div");
     copyRowsItem.className = "bp4-menu-item";
-    copyRowsItem.textContent = "Copy (rows)";
+    copyRowsItem.textContent =
+      getUniqueRowsFromRanges(grid.getSelectionModel().getSelectedRanges(), grid)
+        .length > 1
+        ? "Copy Rows"
+        : "Copy Row";
     copyRowsItem.addEventListener("click", () => {
       menu.remove();
       const ranges = grid.getSelectionModel().getSelectedRanges();
@@ -806,7 +830,7 @@ const createGrid = (
 
     const renameItem = document.createElement("div");
     renameItem.className = "bp4-menu-item";
-    renameItem.textContent = "Rename";
+    renameItem.textContent = "Rename Column";
     renameItem.addEventListener("click", () => {
       menu.remove();
       onColumnRename?.(column.id);
@@ -815,7 +839,7 @@ const createGrid = (
 
     const deleteItem = document.createElement("div");
     deleteItem.className = "bp4-menu-item";
-    deleteItem.textContent = "Delete";
+    deleteItem.textContent = "Delete Column";
     deleteItem.addEventListener("click", () => {
       menu.remove();
       onColumnDelete?.(column.id);
@@ -824,7 +848,7 @@ const createGrid = (
 
     const duplicateItem = document.createElement("div");
     duplicateItem.className = "bp4-menu-item";
-    duplicateItem.textContent = "Duplicate";
+    duplicateItem.textContent = "Duplicate Column";
     duplicateItem.addEventListener("click", () => {
       menu.remove();
       onColumnDuplicate?.(column.id);
