@@ -210,6 +210,8 @@ const mkSlickColMap = (
       ci.name = he.encode(pivotColumnDisplayName);
       ci.toolTip = he.encode(pivotColumnDisplayName);
       ci.formatter = groupCellFormatter;
+      // allow sorting by pivot label (direction applied per pivot depth)
+      ci.sortable = true;
     } else {
       var displayName = cmd.displayName || colId;
       ci.name = he.encode(displayName);
