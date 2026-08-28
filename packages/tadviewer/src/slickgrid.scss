@@ -2,6 +2,20 @@
 @import "~slickgrid-es6/dist/slick.grid.scss";
 @import "~slickgrid-es6/dist/slick-default-theme.scss";
 
-.slick-cell.selected {
-  background-color: #d8e6ff;
+.slick-row .slick-cell.selected,
+.slick-row.odd .slick-cell.selected,
+.slick-row.active-row .slick-cell.selected,
+.slick-row.active-row.odd .slick-cell.selected {
+  background-color: #94aee3;
+}
+
+.slick-row .slick-cell:hover,
+.slick-row.odd .slick-cell:hover,
+.slick-row.active-row .slick-cell:hover,
+.slick-row.active-row.odd .slick-cell:hover,
+.slick-row .slick-cell:hover.selected,
+.slick-row.odd .slick-cell:hover.selected,
+.slick-row.active-row .slick-cell:hover.selected,
+.slick-row.active-row.odd .slick-cell:hover.selected {
+  background-color: #b5c7eb;
 }
