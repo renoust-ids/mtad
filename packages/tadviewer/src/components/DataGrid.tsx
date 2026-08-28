@@ -579,6 +579,21 @@ const createGrid = (
     const cellInfo = grid.getCellFromEvent(event);
     if (!cellInfo) return;
 
+    // Simulate a left-click at the same position so the cell under the
+    // right-click cursor gets selected (highlighted) too.
+    const domEvent =
+      (event.originalEvent as MouseEvent | undefined) ?? (event as MouseEvent);
+    const range = grid.getCellFromPoint(domEvent.clientX, domEvent.clientY);
+    if (range.cell >= 0 && range.row >= 0) {
+      grid.setActiveCell(range.row, range.cell);
+      const selModel = grid.getSelectionModel();
+      if (selModel) {
+        selModel.setSelectedRanges([
+          new Slick.Range(range.row, range.cell),
+        ]);
+      }
+    }
+
     const currentDataView = grid.getData();
     const item = currentDataView.getItem(cellInfo.row);
     const columns = grid.getColumns();
