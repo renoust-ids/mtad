@@ -2,23 +2,29 @@
 @import "~slickgrid-es6/dist/slick.grid.scss";
 @import "~slickgrid-es6/dist/slick-default-theme.scss";
 
-.slickgrid-container .slick-cell.selected,
-.slickgrid-container .slick-row.active-row .slick-cell.selected {
+.slickgrid-container .slick-row.odd .slick-cell.selected,
+.slickgrid-container .slick-row.active-row.odd .slick-cell.selected {
   background-color: #94aee3;
 }
 
-.slickgrid-container .slick-row.odd .slick-cell.selected,
-.slickgrid-container .slick-row.active-row.odd .slick-cell.selected {
+.slickgrid-container .slick-cell.selected,
+.slickgrid-container .slick-row.even .slick-cell.selected,
+.slickgrid-container .slick-row.active-row .slick-cell.selected,
+.slickgrid-container .slick-row.active-row.even .slick-cell.selected {
   background-color: #bccced;
 }
 
 .slickgrid-container .slick-cell:hover,
 .slickgrid-container .slick-row.odd .slick-cell:hover,
+.slickgrid-container .slick-row.even .slick-cell:hover,
 .slickgrid-container .slick-row.active-row .slick-cell:hover,
 .slickgrid-container .slick-row.active-row.odd .slick-cell:hover,
+.slickgrid-container .slick-row.active-row.even .slick-cell:hover,
 .slickgrid-container .slick-cell:hover.selected,
 .slickgrid-container .slick-row.odd .slick-cell:hover.selected,
+.slickgrid-container .slick-row.even .slick-cell:hover.selected,
 .slickgrid-container .slick-row.active-row .slick-cell:hover.selected,
-.slickgrid-container .slick-row.active-row.odd .slick-cell:hover.selected {
+.slickgrid-container .slick-row.active-row.odd .slick-cell:hover.selected,
+.slickgrid-container .slick-row.active-row.even .slick-cell:hover.selected {
   background-color: #b5c7eb;
 }
