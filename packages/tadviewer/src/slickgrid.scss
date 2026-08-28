@@ -3,12 +3,12 @@
 @import "~slickgrid-es6/dist/slick-default-theme.scss";
 
 .slickgrid-container .slick-cell.selected,
-.slickgrid-container .slick-row.active-row .slick-cell.selected,
-.slickgrid-container .slick-row.active-row.odd .slick-cell.selected {
+.slickgrid-container .slick-row.active-row .slick-cell.selected {
   background-color: #94aee3;
 }
 
-.slickgrid-container .slick-row.odd .slick-cell.selected {
+.slickgrid-container .slick-row.odd .slick-cell.selected,
+.slickgrid-container .slick-row.active-row.odd .slick-cell.selected {
   background-color: #bccced;
 }
 
