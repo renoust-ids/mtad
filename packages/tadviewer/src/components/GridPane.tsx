@@ -200,6 +200,7 @@ const GridPaneInternal: React.FunctionComponent<GridPaneProps> = ({
         isPivot: data.isPivot,
         pivotDepth: data.pivotDepth,
         rowData: data.rowData,
+        rid: data.rid,
       }, stateRef);
     },
     [stateRef]

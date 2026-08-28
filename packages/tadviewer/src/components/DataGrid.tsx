@@ -49,6 +49,7 @@ export interface CellEditStartData {
   pivotDepth?: number;
   isAggregateRow: boolean;
   rowData: { [columnId: string]: any };
+  rid?: number;
 }
 
 let divCounter = 0;
@@ -570,6 +571,7 @@ const createGrid = (
       pivotDepth: item?._depth,
       isAggregateRow: !item?._isLeaf,
       rowData,
+      rid: item?._rid != null ? Number(item._rid) : undefined,
     });
   });
 
@@ -640,6 +642,7 @@ const createGrid = (
       pivotDepth: item?._depth,
       isAggregateRow: isAggregate,
       rowData,
+      rid: item?._rid != null ? Number(item._rid) : undefined,
     };
 
     const menu = document.createElement("div");

@@ -137,7 +137,7 @@ export class VPivotTree {
       id: "_pivot",
       displayName: "_pivot",
     };
-    const aggCols = this.baseSchema.columns;
+    const aggCols = this.baseSchema.columns.filter((cid) => cid !== "_rid");
     const aggMap = this.aggMap;
     const gbAggs: any =
       aggMap != null ? aggCols.map((cid) => [aggMap[cid], cid]) : aggCols;
@@ -379,7 +379,7 @@ export function vpivot(
   }
   const hiddenCols = ["_depth", "_pivot", "_isRoot"];
   const outCols = baseSchema.columns.concat(hiddenCols);
-  const gbCols = baseSchema.columns.slice();
+  const gbCols = baseSchema.columns.filter((cid) => cid !== "_rid");
   const gbAggs: AggColSpec[] =
     aggMap != null ? gbCols.map((cid) => [aggMap[cid], cid]) : gbCols;
   let rootQuery = null;

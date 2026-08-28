@@ -171,6 +171,7 @@ const requestQueryView = async (
   const aggMap: any = {};
 
   for (let cid of schemaCols) {
+    if (cid === "_rid") continue; // internal row identifier
     aggMap[cid] = viewParams.getAggFn(baseSchema, cid);
   }
 

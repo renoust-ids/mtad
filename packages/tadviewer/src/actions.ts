@@ -152,8 +152,10 @@ export const replaceCurrentView = async (
     appState.showRecordCount
   );
 
-  // start off with all columns displayed:
-  const displayColumns = baseSchema.columns.slice();
+  // start off with all columns displayed (excluding internal _-prefixed cols):
+  const displayColumns = baseSchema.columns.filter(
+    (cid) => !cid.startsWith("_") && cid !== "Rec"
+  );
 
   const openPaths = new PathTree();
   if (!viewParams) {
@@ -880,14 +882,19 @@ export const commitCellEdit = async (
   };
 
   // Build WHERE clause from row data, only using columns that exist in the target table
-  const whereParts: string[] = [];
-  for (const [col, val] of Object.entries(editState.rowData)) {
-    if (tableColumns.has(col)) {
-      whereParts.push(formatWhereValue(col, val));
+  // For leaf rows, use the physical rowid to target exactly one row.
+  let whereClause: string;
+  if (!editState.isAggregateRow && editState.rid != null) {
+    whereClause = `rowid = ${editState.rid}`;
+  } else {
+    const whereParts: string[] = [];
+    for (const [col, val] of Object.entries(editState.rowData)) {
+      if (tableColumns.has(col)) {
+        whereParts.push(formatWhereValue(col, val));
+      }
     }
+    whereClause = whereParts.join(" AND ");
   }
-
-  const whereClause = whereParts.join(" AND ");
   
   // Build the new value - handle different types
   let sqlValue: string;
@@ -1194,6 +1201,23 @@ const buildMultiRowWhere = (rowDataList: { [columnId: string]: any }[]): string 
   return clauses.join(" OR ");
 };
 
+// Build a WHERE clause that targets exactly the given rows by their physical
+// rowid, if available. Returns null if no rowids are present (e.g. aggregate rows).
+const buildRowIdWhere = (
+  rowDataList: { [columnId: string]: any }[]
+): string | null => {
+  if (rowDataList.length === 0) return null;
+  // only valid when every row is a leaf row carrying a physical rowid
+  const allLeaf = rowDataList.every((rd) => rd._isLeaf);
+  if (!allLeaf) return null;
+  const rids = rowDataList
+    .map((rd) => rd._rid)
+    .filter((r) => r != null)
+    .map((r) => Number(r));
+  if (rids.length === 0) return null;
+  return `rowid IN (${rids.join(", ")})`;
+};
+
 // --- Delete Rows Action ---
 
 export const deleteRows = async (
@@ -1220,7 +1244,7 @@ export const deleteRows = async (
   }
 
   try {
-    const whereClause = buildMultiRowWhere(rowDataList);
+    const whereClause = buildRowIdWhere(rowDataList) ?? buildMultiRowWhere(rowDataList);
     await dbc.deleteRows(tableName, whereClause);
     console.log(`[DeleteRows] Deleted ${rowDataList.length} row(s) from "${tableName}"`);
 
@@ -1261,7 +1285,7 @@ export const duplicateRows = async (
   }
 
   try {
-    const whereClause = buildMultiRowWhere(rowDataList);
+    const whereClause = buildRowIdWhere(rowDataList) ?? buildMultiRowWhere(rowDataList);
     await dbc.duplicateRows(tableName, whereClause);
     console.log(`[DuplicateRows] Duplicated ${rowDataList.length} row(s) in "${tableName}"`);
 

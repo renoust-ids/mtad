@@ -229,6 +229,14 @@ export class DbDataSource implements DataSourceConnection {
       switch (leafQuery.operator) {
         case "table":
           schema = await this.db.getTableSchema(leafQuery.tableName);
+          if (schema) {
+            // add a unique physical row identifier (DuckDB rowid) as a hidden
+            // column so downstream operations can target individual rows
+            schema = schema.extend("_rid", {
+              columnType: "integer",
+              displayName: "_rid",
+            });
+          }
           break;
         case "sql":
           schema = await this.db.getSqlQuerySchema(leafQuery.sqlQuery);

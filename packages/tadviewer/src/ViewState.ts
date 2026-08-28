@@ -18,6 +18,7 @@ export interface CellEditState {
   readonly isPivot: boolean;
   readonly pivotDepth?: number;
   readonly rowData: { [columnId: string]: any };
+  readonly rid?: number;
 }
 
 /**

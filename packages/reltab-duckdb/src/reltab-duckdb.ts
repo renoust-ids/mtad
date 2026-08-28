@@ -133,6 +133,9 @@ export function columnStatsFromSummarize(
 
   for (const row of metaRows) {
     const colId = row[columNameKey] as string;
+    if (colId === "_rid") {
+      continue; // internal row identifier -- never compute stats for it
+    }
     const columnType: string = (
       row[columnTypeKey] as string
     ).toLocaleUpperCase();

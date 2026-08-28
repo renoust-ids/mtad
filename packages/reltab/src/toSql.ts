@@ -71,11 +71,19 @@ const tableQueryToSql = (
   const schema = tableMap[key];
   const { tableName } = query;
 
-  const selectCols = schema.columns;
+  const selectCols = schema.columns.map((cid) => {
+    if (cid === "_rid") {
+      // The _rid column maps to DuckDB's physical rowid
+      return {
+        colExp: col("rowid"),
+        colType: schema.columnType(cid),
+        as: "_rid",
+      };
+    }
+    return mkColSelItem(cid, schema.columnType(cid));
+  });
   const sel = {
-    selectCols: selectCols.map((cid) =>
-      mkColSelItem(cid, schema.columnType(cid))
-    ),
+    selectCols,
     from: tableName,
     groupBy: [],
     orderBy: [],
