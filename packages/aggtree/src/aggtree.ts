@@ -157,6 +157,16 @@ export class VPivotTree {
           displayName: "_pivot",
         })
         .groupBy(["_pivot"], gbAggs);
+      // aggregate rows group by the pivot (and thus not _rid), so there is no
+      // physical rowid here; materialize _rid as a typed NULL so it stays
+      // present and matches the leaf columns for UNION ALL.
+      const ridType = this.baseSchema.columnType("_rid");
+      if (ridType != null) {
+        pathQuery = pathQuery.extend(
+          "_rid",
+          reltab.cast(reltab.constVal(null), ridType)
+        );
+      }
     } else {
       // leaf level
       const leafExp =
@@ -385,8 +395,16 @@ export function vpivot(
   let rootQuery = null;
 
   if (showRoot) {
+    const ridType = baseSchema.columnType("_rid");
     rootQuery = baseQuery
-      .groupBy([], gbAggs)
+      .groupBy([], gbAggs);
+    if (ridType != null) {
+      rootQuery = rootQuery.extend(
+        "_rid",
+        reltab.cast(reltab.constVal(null), ridType)
+      );
+    }
+    rootQuery = rootQuery
       .extend("_pivot", asString(constVal(null)))
       .extend("_depth", constVal(0))
       .extend("_isRoot", constVal(true))

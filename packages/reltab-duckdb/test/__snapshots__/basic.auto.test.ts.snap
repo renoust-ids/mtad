@@ -267,6 +267,51 @@ exports[`basic groupBy 1`] = `
 TableRep {
   "rowData": [
     {
+      "Job Family": "Maintenance, Vehicle & Facilities",
+      "TCOE": 123432n,
+      "Title": "Vehicle Inspector",
+    },
+    {
+      "Job Family": "Police",
+      "TCOE": 127660n,
+      "Title": "Revenue Protection Guard",
+    },
+    {
+      "Job Family": "Maintenance, Vehicle & Facilities",
+      "TCOE": 104260n,
+      "Title": "Transit Vehicle Mechanic",
+    },
+    {
+      "Job Family": "Transportation Operations",
+      "TCOE": 352988n,
+      "Title": "Station Agent",
+    },
+    {
+      "Job Family": "Maintenance, Vehicle & Facilities",
+      "TCOE": 124962n,
+      "Title": "Structures Inspector",
+    },
+    {
+      "Job Family": "Executive Management",
+      "TCOE": 288160n,
+      "Title": "Assistant General Manager Operations",
+    },
+    {
+      "Job Family": "Engineering & Systems Engineering",
+      "TCOE": 212535n,
+      "Title": "Group Manager Systems Capital Prog",
+    },
+    {
+      "Job Family": "Legal & Paralegal",
+      "TCOE": 321543n,
+      "Title": "General Counsel",
+    },
+    {
+      "Job Family": "Public Affairs & Marketing",
+      "TCOE": 181955n,
+      "Title": "Department Manager Gov't & Comm Rel",
+    },
+    {
       "Job Family": "Executive Management",
       "TCOE": 819582n,
       "Title": "General Manager",
@@ -285,16 +330,6 @@ TableRep {
       "Job Family": "Maintenance, Vehicle & Facilities",
       "TCOE": 113775n,
       "Title": "Electrician",
-    },
-    {
-      "Job Family": "Maintenance, Vehicle & Facilities",
-      "TCOE": 104260n,
-      "Title": "Transit Vehicle Mechanic",
-    },
-    {
-      "Job Family": "Transportation Operations",
-      "TCOE": 352988n,
-      "Title": "Station Agent",
     },
     {
       "Job Family": "Transportation Operations",
@@ -325,41 +360,6 @@ TableRep {
       "Job Family": "Legal & Paralegal",
       "TCOE": 445028n,
       "Title": "Senior Attorney",
-    },
-    {
-      "Job Family": "Legal & Paralegal",
-      "TCOE": 321543n,
-      "Title": "General Counsel",
-    },
-    {
-      "Job Family": "Public Affairs & Marketing",
-      "TCOE": 181955n,
-      "Title": "Department Manager Gov't & Comm Rel",
-    },
-    {
-      "Job Family": "Maintenance, Vehicle & Facilities",
-      "TCOE": 124962n,
-      "Title": "Structures Inspector",
-    },
-    {
-      "Job Family": "Executive Management",
-      "TCOE": 288160n,
-      "Title": "Assistant General Manager Operations",
-    },
-    {
-      "Job Family": "Engineering & Systems Engineering",
-      "TCOE": 212535n,
-      "Title": "Group Manager Systems Capital Prog",
-    },
-    {
-      "Job Family": "Maintenance, Vehicle & Facilities",
-      "TCOE": 123432n,
-      "Title": "Vehicle Inspector",
-    },
-    {
-      "Job Family": "Police",
-      "TCOE": 127660n,
-      "Title": "Revenue Protection Guard",
     },
   ],
   "schema": {
