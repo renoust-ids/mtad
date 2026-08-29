@@ -1171,6 +1171,94 @@ export const duplicateColumn = async (
   }
 };
 
+// --- Insert Row Action ---
+
+const getTableNameFromQuery = (baseQuery: any): string | null => {
+  const getTableName = (rep: any): string | null => {
+    if (!rep) return null;
+    if (rep.tableName) return rep.tableName;
+    if (rep.from) return getTableName(rep.from);
+    return null;
+  };
+  return getTableName(baseQuery?._rep);
+};
+
+export const insertRow = async (
+  stateRef: StateRef<AppState>
+): Promise<void> => {
+  const state = mutableGet(stateRef);
+  const { dbc, baseQuery } = state.viewState;
+  if (!dbc || !baseQuery) {
+    console.error("insertRow: no database connection or baseQuery");
+    return;
+  }
+
+  const tableName = getTableNameFromQuery(baseQuery);
+  if (!tableName) {
+    console.error("insertRow: could not find table name");
+    return;
+  }
+
+  try {
+    await dbc.insertRow(tableName);
+    console.log(`[InsertRow] Inserted new empty row in "${tableName}"`);
+
+    // Trigger data refresh
+    update(stateRef, (st: AppState) => {
+      const vp = st.viewState.viewParams;
+      const newVP = vp.set("displayColumns", vp.displayColumns.slice()) as ViewParams;
+      return st.update("viewState", (vs) => vs!.set("viewParams", newVP) as ViewState);
+    });
+  } catch (err) {
+    console.error("[InsertRow] Error inserting row:", err);
+  }
+};
+
+// --- Insert Column Action ---
+
+export const insertColumn = async (
+  tableName: string,
+  columnName: string,
+  stateRef: StateRef<AppState>
+): Promise<void> => {
+  const state = mutableGet(stateRef);
+  const { dbc } = state.viewState;
+  if (!dbc) {
+    console.error("insertColumn: no database connection");
+    return;
+  }
+
+  try {
+    await dbc.insertColumn(tableName, columnName);
+    console.log(`[InsertColumn] Added column "${columnName}" to table "${tableName}"`);
+
+    const appState = mutableGet(stateRef);
+    const showRecordCount = appState.showRecordCount;
+    const vp = appState.viewState.viewParams;
+
+    // Re-fetch schema
+    const newBQ = reltab.tableQuery(tableName);
+    const newBaseSchema = await aggtree.getBaseSchema(dbc, newBQ, showRecordCount);
+
+    // Append the new column to the display columns
+    const newDisplayCols = [...vp.displayColumns, columnName];
+
+    const newVP = vp
+      .set("displayColumns", newDisplayCols) as ViewParams;
+
+    update(stateRef, (st: AppState) =>
+      st.update("viewState", (vs) =>
+        vs!
+          .set("viewParams", newVP)
+          .set("baseQuery", newBQ)
+          .set("baseSchema", newBaseSchema) as ViewState
+      )
+    );
+  } catch (err) {
+    console.error("[InsertColumn] Error inserting column:", err);
+  }
+};
+
 // --- Row Operations ---
 
 const EXCLUDE_COLS = ["Rec", "_id", "_parentId"];

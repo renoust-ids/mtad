@@ -330,6 +330,67 @@ const GridPaneInternal: React.FunctionComponent<GridPaneProps> = ({
     setDuplicateState({ isOpen: false, sourceColumn: "", newColumn: "" });
   }, []);
 
+  // Insert column state
+  const [insertColumnState, setInsertColumnState] = React.useState<{
+    isOpen: boolean;
+    newColumn: string;
+  }>({ isOpen: false, newColumn: "" });
+
+  const genUniqueColumnName = React.useCallback(
+    (baseName: string): string => {
+      const existing = new Set(
+        (viewState.baseSchema ? viewState.baseSchema.columns : []).filter(
+          (cid) => !cid.startsWith("_") && cid !== "Rec"
+        )
+      );
+      let candidate = baseName;
+      let i = 2;
+      while (existing.has(candidate)) {
+        candidate = `${baseName}_${i}`;
+        i++;
+      }
+      return candidate;
+    },
+    [viewState.baseSchema]
+  );
+
+  const handleInsertColumn = React.useCallback(
+    (columnId: string) => {
+      const suggested = genUniqueColumnName(
+        columnId ? `${columnId}_new` : "new_column"
+      );
+      setInsertColumnState({ isOpen: true, newColumn: suggested });
+    },
+    [genUniqueColumnName]
+  );
+
+  const handleInsertColumnSave = React.useCallback(async () => {
+    const { newColumn } = insertColumnState;
+    if (!newColumn.trim()) {
+      setInsertColumnState({ isOpen: false, newColumn: "" });
+      return;
+    }
+    const baseQuery = viewState.baseQuery as any;
+    const getTableName = (rep: any): string | null => {
+      if (!rep) return null;
+      if (rep.tableName) return rep.tableName;
+      if (rep.from) return getTableName(rep.from);
+      return null;
+    };
+    const tableName = getTableName(baseQuery?._rep);
+    if (!tableName) {
+      console.error("insertColumn: could not find table name");
+      setInsertColumnState({ isOpen: false, newColumn: "" });
+      return;
+    }
+    await actions.insertColumn(tableName, newColumn.trim(), stateRef);
+    setInsertColumnState({ isOpen: false, newColumn: "" });
+  }, [insertColumnState, viewState.baseQuery, stateRef]);
+
+  const handleInsertColumnCancel = React.useCallback(() => {
+    setInsertColumnState({ isOpen: false, newColumn: "" });
+  }, []);
+
   // Row operations from cell selection
   const handleDeleteRows = React.useCallback(
     async (rowDataList: { [columnId: string]: any }[]) => {
@@ -344,6 +405,10 @@ const GridPaneInternal: React.FunctionComponent<GridPaneProps> = ({
     },
     [stateRef]
   );
+
+  const handleInsertRow = React.useCallback(async () => {
+    await actions.insertRow(stateRef);
+  }, [stateRef]);
 
   const handleDeleteAggregateRows = React.useCallback(
     async (item: any, depth: number) => {
@@ -380,8 +445,10 @@ const GridPaneInternal: React.FunctionComponent<GridPaneProps> = ({
     onColumnRename: handleColumnRename,
     onColumnDelete: handleColumnDelete,
     onColumnDuplicate: handleColumnDuplicate,
+    onInsertColumn: handleInsertColumn,
     onDeleteRows: handleDeleteRows,
     onDuplicateRows: handleDuplicateRows,
+    onInsertRow: handleInsertRow,
     onDeleteAggregateRows: handleDeleteAggregateRows,
     onDuplicateAggregateRows: handleDuplicateAggregateRows,
     vpivots: viewParams.vpivots,
@@ -478,6 +545,37 @@ const GridPaneInternal: React.FunctionComponent<GridPaneProps> = ({
               disabled={!duplicateState.newColumn.trim() || duplicateState.newColumn === duplicateState.sourceColumn}
             >
               Duplicate
+            </Button>
+          </div>
+        </div>
+      </Dialog>
+      <Dialog
+        isOpen={insertColumnState.isOpen}
+        title="Insert Column"
+        onClose={handleInsertColumnCancel}
+        canOutsideClickClose={true}
+      >
+        <div className="bp4-dialog-body">
+          <label className="bp4-label">
+            Name for the new empty column:
+            <input
+              className="bp4-input bp4-fill"
+              type="text"
+              value={insertColumnState.newColumn}
+              onChange={(e) => setInsertColumnState((s) => ({ ...s, newColumn: e.target.value }))}
+              autoFocus
+            />
+          </label>
+        </div>
+        <div className="bp4-dialog-footer">
+          <div className="bp4-dialog-footer-actions">
+            <Button onClick={handleInsertColumnCancel}>Cancel</Button>
+            <Button
+              intent={Intent.PRIMARY}
+              onClick={handleInsertColumnSave}
+              disabled={!insertColumnState.newColumn.trim()}
+            >
+              Insert
             </Button>
           </div>
         </div>
