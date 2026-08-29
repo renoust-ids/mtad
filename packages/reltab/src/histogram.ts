@@ -50,7 +50,8 @@ export function columnHistogramQuery(
   baseQuery: QueryExp,
   colId: string,
   colType: ColumnType,
-  colStats: NumericSummaryStats
+  colStats: NumericSummaryStats,
+  requestedBinCount?: number
 ): NumericColumnHistogramQuery | null {
   const minVal = colStats.min;
   const maxVal = colStats.max;
@@ -58,7 +59,10 @@ export function columnHistogramQuery(
   if (minVal == null || maxVal == null || minVal === maxVal) {
     return null;
   }
-  const binCount = binsForColumn(colStats);
+  const binCount =
+    requestedBinCount != null && requestedBinCount > 0
+      ? requestedBinCount
+      : binsForColumn(colStats);
 
   const [niceMinVal, niceMaxVal] = nice(minVal, maxVal, binCount);
 
@@ -156,12 +160,17 @@ export type ColumnHistogramMap = {
  *
  * Single-column histogram data for one column, computed on demand.
  * Returns null if the column is not numeric, has no stats, or has empty range.
+ *
+ * Same as getSingleColumnHistogramData, but with an explicit requested bin
+ * count (used by dialog bin-count sliders). When binCount is omitted, the
+ * bin count is derived from the column stats via Sturges' rule.
  */
-export async function getSingleColumnHistogramData(
+export async function getColumnHistogramDataForBins(
   dsConn: DataSourceConnection,
   baseQuery: QueryExp,
   baseSchema: Schema,
   colId: string,
+  binCount?: number,
   colStats?: NumericSummaryStats
 ): Promise<NumericColumnHistogramData | null> {
   const colType = baseSchema.columnType(colId);
@@ -179,12 +188,35 @@ export async function getSingleColumnHistogramData(
     stats = s;
   }
 
-  const histoInfo = columnHistogramQuery(baseQuery, colId, colType, stats);
+  const histoInfo = columnHistogramQuery(
+    baseQuery,
+    colId,
+    colType,
+    stats,
+    binCount
+  );
   if (histoInfo == null) {
     return null;
   }
   const histoRes = await dsConn.evalQuery(histoInfo.histoQuery);
   return getNumericColumnHistogramData(colId, histoInfo, histoRes);
+}
+
+export function getSingleColumnHistogramData(
+  dsConn: DataSourceConnection,
+  baseQuery: QueryExp,
+  baseSchema: Schema,
+  colId: string,
+  colStats?: NumericSummaryStats
+): Promise<NumericColumnHistogramData | null> {
+  return getColumnHistogramDataForBins(
+    dsConn,
+    baseQuery,
+    baseSchema,
+    colId,
+    undefined,
+    colStats
+  );
 }
 
 // a single categorical value with its frequency

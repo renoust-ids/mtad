@@ -5,7 +5,9 @@ import { tableQuery } from "../src/QueryExp";
 import { DuckDBDialect } from "../src/dialects/DuckDBDialect";
 import {
   columnFrequencyQuery,
+  columnHistogramQuery,
   getColumnFrequencyData,
+  getColumnHistogramDataForBins,
   getSingleColumnHistogramData,
 } from "../src/histogram";
 
@@ -147,6 +149,58 @@ describe("getSingleColumnHistogramData", () => {
       tableSchema,
       "a",
       flatStats
+    );
+    expect(data).toBeNull();
+  });
+});
+
+describe("explicit bin count", () => {
+  test("columnHistogramQuery honors a requested bin count", () => {
+    const intType = DuckDBDialect.columnTypes["INTEGER"];
+    const info = columnHistogramQuery(
+      tableQuery("t"),
+      "a",
+      intType,
+      numericStats,
+      10
+    );
+    expect(info).not.toBeNull();
+    expect(info!.binCount).toBe(10);
+    const binWidth = (info!.niceMaxVal - info!.niceMinVal) / 10;
+    expect(info!.binWidth).toBeCloseTo(binWidth);
+  });
+
+  test("getColumnHistogramDataForBins runs the query with the requested bins", async () => {
+    const runSqlQuery = jest.fn().mockResolvedValue([
+      { column: "a", bin: 0, binCount: 2 },
+      { column: "a", bin: 1, binCount: 3 },
+      { column: "a", bin: 2, binCount: 1 },
+    ]);
+    const ds = new DbDataSource(makeDriver(runSqlQuery));
+
+    const data = await getColumnHistogramDataForBins(
+      ds,
+      tableQuery("t"),
+      tableSchema,
+      "a",
+      3
+    );
+
+    expect(data).not.toBeNull();
+    expect(data!.binCount).toBe(3);
+    expect(data!.binData).toEqual([2, 3, 1]);
+    expect(getSql(runSqlQuery)).toContain('GROUP BY "column", "bin"');
+  });
+
+  test("getColumnHistogramDataForBins returns null for non-numeric columns", async () => {
+    const runSqlQuery = jest.fn();
+    const ds = new DbDataSource(makeDriver(runSqlQuery));
+    const data = await getColumnHistogramDataForBins(
+      ds,
+      tableQuery("t"),
+      tableSchema,
+      "b",
+      5
     );
     expect(data).toBeNull();
   });
