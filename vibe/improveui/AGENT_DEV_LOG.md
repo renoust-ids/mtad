@@ -42,10 +42,15 @@
 - `DuckDBDialect` est un singleton, pas une classe → corrigé dans le test.
 - `reltab` non résolvable depuis racine node_modules pour le script scratch → on requiert le `dist/reltab.js` directement.
 
-### Prochaine étape
-- E2E manuel dans l'app Electron : vérifier les 3 features (insert row, insert column, hover border, right-click group).
-
 ### Nettoyage final + alignment de version
 - **Fichiers supprimés** : `examples/modified.{2,3,4,5}.csv` (artefacts de tests d'export, aucune référence dans le code). `examples/modified.csv` restauré à sa version commitée (`git checkout`).
 - **Fichier committé** : `package-lock.json` (bump `0.0.1 → 0.0.3` pour aligner avec le `package.json` racine), via `chore: align package-lock.json version with root package.json (0.0.3)` (08230d6).
 - **Résultat** : arbre de travail propre (`git status` vide).
+
+### Validation E2E (utilisateur)
+- **"all works"** confirmé par l'utilisateur sur les 3 features de l'étape 10 : Insert Row, Insert Column, hover border `#5a6375`, right-click sur groupe sélectionné (sélection préservée après le fix `setActiveCell`).
+- Step 10 clôturé côté implémentation + validation.
+
+### Vérification build CI (push GitHub)
+- `.github/workflows/build.yml` : ajout de la branche `improveui` au trigger `push` (elle ne l'était pas → le push n'aurait pas déclenché de build). Commit + push de la branche pour lancer les jobs mac / windows / linux et vérifier le build de bout en bout.
+- Objectif : checker que le bundle tad-app + packaging electron-builder passent sur les 3 plateformes.

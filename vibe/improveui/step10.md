@@ -72,4 +72,4 @@ columns: ["a","b","new_col"]
 - [x] `packages/reltab` : `tsc` + `npm test` (13 tests)
 - [x] `packages/tadviewer` : `tsc` + webpack production
 - [x] SQL vérifié sur DuckDB réelle (ligne vide + colonne vide)
-- [ ] E2E manuel Electron : Insert Row, Insert Column, hover border, right-click groupe
+- [x] E2E manuel Electron : Insert Row, Insert Column, hover border, right-click groupe — validé par l'utilisateur ("all works")

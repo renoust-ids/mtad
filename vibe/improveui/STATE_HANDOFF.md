@@ -2,7 +2,7 @@
 
 ## Current State
 - **Branch**: `improveui` (created from master v0.0.3)
-- **Status**: Implementation complete (steps 1–10 done). Working tree clean — stray `examples/modified*.csv` removed, `package-lock.json` version aligned to 0.0.3 (08230d6).
+- **Status**: Steps 1–10 implemented AND E2E-validated by the user ("all works"). Working tree clean (stray CSVs removed, package-lock aligned 0.0.3). Branch pushed to origin; `.github/workflows/build.yml` now also triggers on `improveui` pushes to verify the multi-platform build in CI. Next: check GitHub Actions run; eventually merge improveui → main + tag for release.
 
 ## Goal
 Implement UI improvements: column/row/cell manipulation via context menus and export options.
