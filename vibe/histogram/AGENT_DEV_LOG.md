@@ -61,7 +61,7 @@
 - Sélecteur de colonne : `HTMLSelect` en haut du body listant les colonnes de `baseSchema` (filtre `_`/`Rec` comme Insert Column) ; prop `onSelectColumn` câblée dans GridPane → `setHistogramColId`.
 - Fenêtre redimensionnable : `style={{ resize: "both", overflow: "auto", min/max }}` appliqué au `.bp4-dialog` (Blueprint applique `style` directement sur `div.bp4-dialog`, pas de CSS repo nécessaire).
 - **Validation** : `npx tsc` ok ; `npx webpack --env prod --mode production` 17 warnings pré-existants, ≈4.7 s.
-- **Commit** : `(à venir)`
+- **Commit** : `18d9f14` `feat(tadviewer): add bin tooltips, live bin count, column selector and resizable histogram dialog`
 
 ### Step 5 — En cours
 - Docs : README (section "Column Histograms"), `doc/features.md`, `quickstart.html`, `doc/site/index.html` (carte feature + News 0.0.4).
