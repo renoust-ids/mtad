@@ -68,6 +68,8 @@ export interface AppStateProps {
 
   joinCsvDialog: JoinCsvDialogState;
 
+  histogramDialogColId: string | null;
+
   appLoadingTimer: Timer;
   activity: Activity;
   showRecordCount: boolean;
@@ -89,6 +91,7 @@ const defaultAppStateProps: AppStateProps = {
   viewConfirmDialogOpen: false,
   viewConfirmSourcePath: null,
   joinCsvDialog: defaultJoinCsvDialogState,
+  histogramDialogColId: null,
   appLoadingTimer: new Timer(),
   activity: "None",
   showRecordCount: true,
@@ -113,6 +116,7 @@ export class AppState extends Immutable.Record(defaultAppStateProps) {
   public readonly viewConfirmDialogOpen!: boolean;
   public readonly viewConfirmSourcePath!: DataSourcePath | null;
   public readonly joinCsvDialog!: JoinCsvDialogState;
+  public readonly histogramDialogColId!: string | null;
   public readonly appLoadingTimer!: Timer;
   public readonly activity!: Activity;
   public readonly showRecordCount!: boolean;

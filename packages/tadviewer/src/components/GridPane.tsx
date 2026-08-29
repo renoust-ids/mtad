@@ -331,18 +331,28 @@ const GridPaneInternal: React.FunctionComponent<GridPaneProps> = ({
     setDuplicateState({ isOpen: false, sourceColumn: "", newColumn: "" });
   }, []);
 
-  // Column histogram dialog state
-  const [histogramColId, setHistogramColId] = React.useState<string | null>(
-    null
+  // Column histogram dialog state (lives in AppState so it can be opened
+  // from the app menu)
+  const handleOpenHistogram = React.useCallback(
+    (columnId: string) => actions.openColumnHistogram(columnId, stateRef),
+    [stateRef]
   );
 
-  const handleOpenHistogram = React.useCallback((columnId: string) => {
-    setHistogramColId(columnId);
-  }, []);
+  const handleCloseHistogram = React.useCallback(
+    () => actions.closeColumnHistogram(stateRef),
+    [stateRef]
+  );
 
-  const handleCloseHistogram = React.useCallback(() => {
-    setHistogramColId(null);
-  }, []);
+  const handleSelectHistogramColumn = React.useCallback(
+    (columnId: string) => actions.openColumnHistogram(columnId, stateRef),
+    [stateRef]
+  );
+
+  const handleCategoryFilter = React.useCallback(
+    (colId: string, values: string[], includeNull: boolean) =>
+      actions.setCategoryHistogramFilter(colId, values, includeNull, stateRef),
+    [stateRef]
+  );
 
   // Insert column state
   const [insertColumnState, setInsertColumnState] = React.useState<{
@@ -598,10 +608,11 @@ const GridPaneInternal: React.FunctionComponent<GridPaneProps> = ({
       <HistogramDialog
         appState={appState}
         stateRef={stateRef}
-        colId={histogramColId}
+        colId={appState.histogramDialogColId}
         onClose={handleCloseHistogram}
-        onSelectColumn={setHistogramColId}
+        onSelectColumn={handleSelectHistogramColumn}
         onBrushFilter={onHistogramBrushFilter}
+        onCategoryFilter={handleCategoryFilter}
       />
     </>
   );

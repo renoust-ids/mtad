@@ -63,6 +63,16 @@
 - **Validation** : `npx tsc` ok ; `npx webpack --env prod --mode production` 17 warnings pré-existants, ≈4.7 s.
 - **Commit** : `18d9f14` `feat(tadviewer): add bin tooltips, live bin count, column selector and resizable histogram dialog`
 
+### Step 4c — Retour utilisateur : tooltip épinglé, menu Analytics, sélection bars catégorielles, pivot
+- **F1 Tooltip épinglé à l'échelle du dialog** : remplace VictoryTooltip par un overlay HTML `position:absolute` (z-index élevé, suivi souris) qui reste affiché quand le curseur quitte le graphe pour le selector — effacé seulement à la sortie du `bp4-dialog-body`. Géométrie par bandes (binW = plot/binCount) pour trouver la bin sous le curseur (numérique ET catégoriel).
+- **F2 Menu Analytics (barre de menu Electron)** : menu natif "Analytics > Histogram" listant les colonnes. Renderer pousse les colonnes (schema de la vue) via `ipcRenderer.send("update-histogram-menu-columns", cols)` sur changement d'état ; main (`ipcMain.on`) → `appMenu.updateHistogramMenuColumns` (mémorise + `createMenu()`). Clic sur une colonne → `focusedWindow.webContents.send("open-column-histogram", { colId })` → renderer `actions.openColumnHistogram`.
+- Dialog piloté par l'état : `AppState.histogramDialogColId` + actions `openColumnHistogram`/`closeColumnHistogram` ; GridPane n'a plus d'état local.
+- **F3 Sélection de bars catégorielles** : clic sur une barre → toggle sélection (fill #137CBD si sélectionnée sinon #BFCCD6), filtre appliqué via nouvelle action `setCategoryHistogramFilter` (`IN` + `ISNULL`), nettoyage des clauses `colId` (BinRelExp ET UnaryRelExp via `filterExpWithoutCol`). Barre `(null)` → principe ISNULL. Re-clic sur sélectionnée → retrait du filtre.
+- **F4 Pivot (cellules agrégées)** : `getViewQueryAndSchema()` — si `viewParams.vpivots.length > 0` et `queryView` dispo → histogramme sur `queryView.query` (tree query agrégée) + `dataView.schema` (schema agrégé, fallback baseSchema) ; sinon baseQuery/baseSchema (comportement inchangé). Selector de colonnes + titre utilisent le schema de la vue. Brush/filtre gardés sur baseQuery → pré-agrégation (guard : colId absent de baseSchema → pas de filtre).
+- `loadColumnHistogramData` : signature changée en `(dbc, query, schema, colId, binCount?)`.
+- **Validation** : tadviewer `npx tsc` ok + webpack 17 warnings ; tad-app `npx webpack --mode production` compilé avec succès.
+- **Commits** : `(à venir)`
+
 ### Step 5 — En cours
 - Docs : README (section "Column Histograms"), `doc/features.md`, `quickstart.html`, `doc/site/index.html` (carte feature + News 0.0.4).
 - `.github/workflows/build.yml` : branche `histograms` ajoutée aux triggers de push.

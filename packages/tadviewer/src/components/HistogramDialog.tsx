@@ -1,9 +1,9 @@
 // An interactive per-column histogram dialog, opened from the column header
-// context menu. Numeric columns get a binned histogram (with bin count, log
-// scale, null bar, brush-to-filter); other columns get a categorical bar
-// chart.
+// context menu or the Analytics menu. Numeric columns get a binned histogram
+// (with bin count, log scale, null bar, brush-to-filter); other columns get a
+// categorical bar chart whose bars can be selected to filter the grid.
 import * as React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as reltab from "reltab";
 import {
   Button,
@@ -19,7 +19,6 @@ import {
   VictoryBar,
   VictoryBrushContainer,
   VictoryChart,
-  VictoryTooltip,
 } from "victory";
 import { mutableGet, StateRef } from "oneref";
 import { AppState } from "../AppState";
@@ -33,6 +32,11 @@ export interface HistogramDialogProps {
   onClose: () => void;
   onSelectColumn?: (colId: string) => void;
   onBrushFilter: (colId: string, range: [number, number] | null) => void;
+  onCategoryFilter?: (
+    colId: string,
+    values: string[],
+    includeNull: boolean
+  ) => void;
 }
 
 const MAX_CATEGORIES = 20;
@@ -46,6 +50,19 @@ function numericStatsFormatter(n: number | null | undefined): string {
   return n == null ? "-" : round2(n).toLocaleString();
 }
 
+interface HoverInfo {
+  left: number;
+  top: number;
+  lines: string[];
+  count: number;
+}
+
+interface CatBar {
+  value: string;
+  count: number;
+  isNull: boolean;
+}
+
 const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
   appState,
   stateRef,
@@ -53,6 +70,7 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
   onClose,
   onSelectColumn,
   onBrushFilter,
+  onCategoryFilter,
 }) => {
   const [data, setData] = useState<ColumnHistogramData | null>(null);
   const [stats, setStats] = useState<reltab.NumericSummaryStats | null>(null);
@@ -62,21 +80,48 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
   const [sliderVal, setSliderVal] = useState<number | null>(null);
   const [logY, setLogY] = useState(false);
   const [showNulls, setShowNulls] = useState(true);
+  const [hoverInfo, setHoverInfo] = useState<HoverInfo | null>(null);
+  const [selectedCats, setSelectedCats] = useState<Set<string>>(new Set());
+  const [selectedNull, setSelectedNull] = useState(false);
+  const chartWrapRef = useRef<HTMLDivElement>(null);
 
   const isOpen = colId != null;
   const numeric = data != null && "binWidth" in data;
+
+  // The query and schema whose data the histogram should describe. When a
+  // pivot is active this is the aggregated (tree) query and its schema, so
+  // the histogram reflects the aggregated cells; otherwise the base query.
+  const getViewQueryAndSchema = (): {
+    query: reltab.QueryExp;
+    schema: reltab.Schema;
+  } | null => {
+    const app = mutableGet(stateRef);
+    const vs = app.viewState;
+    if (!vs?.dbc || !vs.baseQuery || !vs.baseSchema) {
+      return null;
+    }
+    const isPivoted = vs.viewParams.vpivots.length > 0;
+    return {
+      query:
+        isPivoted && vs.queryView != null ? vs.queryView.query : vs.baseQuery,
+      schema:
+        isPivoted && vs.dataView?.schema != null
+          ? vs.dataView.schema
+          : vs.baseSchema,
+    };
+  };
 
   useEffect(() => {
     if (colId == null) {
       return;
     }
     let cancelled = false;
-    const app = mutableGet(stateRef);
-    const vs = app.viewState;
-    if (!vs?.dbc || !vs.baseQuery || !vs.baseSchema) {
+    const qs = getViewQueryAndSchema();
+    if (qs == null) {
       return;
     }
-    const colKind: ColumnKind = vs.baseSchema.columnType(colId).kind;
+    const { query, schema } = qs;
+    const colKind: ColumnKind = schema.columnType(colId).kind;
     const isNumericCol = colKind === "integer" || colKind === "real";
 
     setLoading(true);
@@ -85,20 +130,25 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
     setStats(null);
     setBinCount(null);
     setSliderVal(null);
+    setHoverInfo(null);
+    setSelectedCats(new Set());
+    setSelectedNull(false);
 
     const run = async () => {
       try {
+        const app = mutableGet(stateRef);
+        const vs = app.viewState;
         const res = await loadColumnHistogramData(
-          vs.dbc!,
-          vs.baseQuery!,
-          vs.baseSchema!,
+          vs!.dbc!,
+          query,
+          schema,
           colId,
           undefined
         );
         if (cancelled) return;
         setData(res);
         if (res != null && isNumericCol) {
-          const statsMap = await vs.dbc!.getColumnStatsMap(vs.baseQuery!);
+          const statsMap = await vs!.dbc!.getColumnStatsMap(query);
           const s = statsMap[colId];
           if (s != null && s.statsType === "numeric") {
             if (cancelled) return;
@@ -117,6 +167,7 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [colId, stateRef]);
 
   // re-bin with an explicit count without touching stats
@@ -125,17 +176,19 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
       return;
     }
     let cancelled = false;
-    const app = mutableGet(stateRef);
-    const vs = app.viewState;
-    if (!vs?.dbc || !vs.baseQuery || !vs.baseSchema) {
+    const qs = getViewQueryAndSchema();
+    if (qs == null) {
       return;
     }
+    const { query, schema } = qs;
     const run = async () => {
       try {
+        const app = mutableGet(stateRef);
+        const vs = app.viewState;
         const res = await loadColumnHistogramData(
-          vs.dbc!,
-          vs.baseQuery!,
-          vs.baseSchema!,
+          vs!.dbc!,
+          query,
+          schema,
           colId,
           binCount
         );
@@ -150,13 +203,17 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [binCount, colId, stateRef]);
 
   const handleBrushEnd = (brushInfo: any) => {
     if (colId == null) return;
     const app = mutableGet(stateRef);
     const vs = app.viewState;
-    const ck = vs?.baseSchema.columnType(colId).kind;
+    if (vs == null || !vs.baseSchema.columns.includes(colId)) {
+      return;
+    }
+    const ck = vs.baseSchema.columnType(colId).kind;
     let [minVal, maxVal] = brushInfo.x;
     if (ck === "integer") {
       minVal = Math.round(minVal);
@@ -168,30 +225,144 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
     onBrushFilter(colId, [minVal, maxVal]);
   };
 
+  const categoricalBars = (catData: reltab.CategoricalDistributionData): CatBar[] => {
+    const values = catData.binData.slice(0, MAX_CATEGORIES);
+    const bars: CatBar[] = [
+      ...values.map((b) => ({
+        value: String(b.value),
+        count: b.count,
+        isNull: false,
+      })),
+    ];
+    if (showNulls && catData.nullCount > 0) {
+      bars.push({ value: "(null)", count: catData.nullCount, isNull: true });
+    }
+    return bars.filter((d) => (logY ? d.count > 0 : true));
+  };
+
+  const handleChartMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const wrap = chartWrapRef.current;
+    if (!wrap || data == null) {
+      return;
+    }
+    const rect = wrap.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const padLeft = 64;
+    const padRight = 24;
+    const plotW = wrap.offsetWidth - padLeft - padRight;
+    if (mx < padLeft || mx > padLeft + plotW) {
+      return;
+    }
+    const oLeft = Math.min(mx + 14, wrap.offsetWidth - 190);
+    const oTop = e.clientY - rect.top + 14;
+    if ("binWidth" in data) {
+      const numData = data as reltab.NumericColumnHistogramData;
+      const binW = plotW / numData.binCount;
+      let i = Math.floor((mx - padLeft) / binW);
+      i = Math.max(0, Math.min(numData.binCount - 1, i));
+      const binMin = numData.niceMinVal + i * numData.binWidth;
+      const binMax = binMin + numData.binWidth;
+      setHoverInfo({
+        left: oLeft,
+        top: oTop,
+        lines: [
+          `${round2(binMin).toLocaleString()} \u2013 ${round2(
+            binMax
+          ).toLocaleString()}`,
+        ],
+        count: numData.binData[i] ?? 0,
+      });
+    } else {
+      const catData = data as reltab.CategoricalDistributionData;
+      const bars = categoricalBars(catData);
+      if (bars.length === 0) {
+        return;
+      }
+      const barW = plotW / bars.length;
+      let i = Math.floor((mx - padLeft) / barW);
+      i = Math.max(0, Math.min(bars.length - 1, i));
+      setHoverInfo({
+        left: oLeft,
+        top: oTop,
+        lines: [bars[i].value],
+        count: bars[i].count,
+      });
+    }
+  };
+
+  const applyCategoryFilter = (next: Set<string>, nextNull: boolean) => {
+    if (colId == null) return;
+    onCategoryFilter?.(colId, Array.from(next), nextNull);
+  };
+
+  const toggleCatValue = (value: string) => {
+    const next = new Set(selectedCats);
+    if (next.has(value)) {
+      next.delete(value);
+    } else {
+      next.add(value);
+    }
+    setSelectedCats(next);
+    applyCategoryFilter(next, selectedNull);
+  };
+
+  const toggleCatNull = () => {
+    const nextNull = !selectedNull;
+    setSelectedNull(nextNull);
+    applyCategoryFilter(selectedCats, nextNull);
+  };
+
+  const isCatSelected = (value: string): boolean =>
+    value === "(null)" ? selectedNull : selectedCats.has(value);
+
+  const renderChartWrap = (chart: React.ReactNode) => (
+    <div
+      ref={chartWrapRef}
+      style={{ position: "relative" }}
+      onMouseMove={handleChartMouseMove}
+    >
+      {chart}
+      {hoverInfo != null && (
+        <div
+          style={{
+            position: "absolute",
+            left: hoverInfo.left,
+            top: hoverInfo.top,
+            background: "#F5F8FA",
+            border: "1px solid #137CBD",
+            borderRadius: 3,
+            padding: "4px 8px",
+            fontSize: 12,
+            lineHeight: 1.4,
+            pointerEvents: "none",
+            zIndex: 30,
+            maxWidth: 260,
+            boxShadow: "0 2px 6px rgba(17, 20, 24, 0.2)",
+          }}
+        >
+          {hoverInfo.lines.map((line, i) => (
+            <div key={i}>{line}</div>
+          ))}
+          <div>
+            <strong>count: {countLabel(hoverInfo.count)}</strong>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   const renderNumericChart = () => {
     const numData = data as reltab.NumericColumnHistogramData;
     const chartData = numData.binData
-      .map((count: number, i: number) => {
-        const binMin = numData.niceMinVal + i * numData.binWidth;
-        return {
-          binMid: binMin + numData.binWidth / 2,
-          binLabel: `${round2(binMin).toLocaleString()} \u2013 ${round2(
-            binMin + numData.binWidth
-          ).toLocaleString()}`,
-          count,
-        };
-      })
+      .map((count: number, i: number) => ({
+        binMid: numData.niceMinVal + (i + 0.5) * numData.binWidth,
+        count,
+      }))
       .filter((d) => (logY ? d.count > 0 : true));
     const nullCount = stats?.pctNull ? Math.round(stats.pctNull * stats.count) : 0;
     const nullBars =
       showNulls && nullCount > 0
-        ? [
-            {
-              binMid: numData.niceMaxVal + numData.binWidth * 1.5,
-              binLabel: "null",
-              count: nullCount,
-            },
-          ]
+        ? [{ binMid: numData.niceMaxVal + numData.binWidth * 1.5, count: nullCount }]
         : [];
 
     const fmtOpts = {
@@ -200,17 +371,7 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
       useGrouping: true,
     };
 
-    const barTooltip = (
-      <VictoryTooltip
-        style={{ fontSize: 12 }}
-        flyoutStyle={{ stroke: "#137CBD", fill: "white" }}
-        cornerRadius={3}
-        pointerLength={4}
-        flyoutPadding={{ top: 4, bottom: 4, left: 8, right: 8 }}
-      />
-    );
-
-    return (
+    const chart = (
       <VictoryChart
         height={260}
         padding={{ top: 24, bottom: 44, left: 64, right: 24 }}
@@ -248,10 +409,6 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
           data={chartData}
           x="binMid"
           y="count"
-          labels={({ datum }) =>
-            `${datum.binLabel}\ncount: ${datum.count.toLocaleString()}`
-          }
-          labelComponent={barTooltip}
         />
         {nullBars.length > 0 && (
           <VictoryBar
@@ -259,32 +416,25 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
             data={nullBars}
             x="binMid"
             y="count"
-            labels={({ datum }) =>
-              `${datum.binLabel}\ncount: ${datum.count.toLocaleString()}`
-            }
-            labelComponent={barTooltip}
           />
         )}
       </VictoryChart>
     );
+    return renderChartWrap(chart);
   };
 
   const renderCategoricalChart = () => {
     const catData = data as reltab.CategoricalDistributionData;
-    const values = catData.binData.slice(0, MAX_CATEGORIES);
-    const bars = showNulls && catData.nullCount > 0
-      ? [...values.map((b) => ({ value: String(b.value), count: b.count })), { value: "(null)", count: catData.nullCount }]
-      : values.map((b) => ({ value: String(b.value), count: b.count }));
-    const shown = bars.filter((d) => (logY ? d.count > 0 : true));
+    const bars = categoricalBars(catData);
 
     if (catData.totalCount === 0) {
       return <p className="bp4-text-muted">No data for this column.</p>;
     }
-    if (shown.length === 0) {
+    if (bars.length === 0) {
       return <p className="bp4-text-muted">No non-null values to display.</p>;
     }
 
-    return (
+    const chart = (
       <VictoryChart
         height={260}
         padding={{ top: 24, bottom: 74, left: 64, right: 24 }}
@@ -295,7 +445,7 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
             axis: { stroke: "#CBD2D9" },
             tickLabels: { fontSize: 9, angle: 40, textAnchor: "start" },
           }}
-          tickValues={shown.map((d) => d.value)}
+          tickValues={bars.map((d) => d.value)}
         />
         <VictoryAxis
           dependentAxis
@@ -306,24 +456,41 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
           }}
         />
         <VictoryBar
-          style={{ data: { fill: "#137CBD" } }}
-          data={shown}
+          style={{
+            data: {
+              fill: (d: any) => (isCatSelected(d.value) ? "#137CBD" : "#BFCCD6"),
+            },
+          }}
+          data={bars}
           x="value"
           y="count"
-          labels={({ datum }) =>
-            `${datum.value}\ncount: ${datum.count.toLocaleString()}`
-          }
-          labelComponent={
-            <VictoryTooltip
-              style={{ fontSize: 12 }}
-              flyoutStyle={{ stroke: "#137CBD", fill: "white" }}
-              cornerRadius={3}
-              pointerLength={4}
-              flyoutPadding={{ top: 4, bottom: 4, left: 8, right: 8 }}
-            />
-          }
+          events={[
+            {
+              target: "data",
+              eventHandlers: {
+                onClick: (_evt: any, props: any) => {
+                  const val = String(props.datum.value);
+                  if (val === "(null)") {
+                    toggleCatNull();
+                  } else {
+                    toggleCatValue(val);
+                  }
+                  return undefined;
+                },
+              },
+            },
+          ]}
         />
       </VictoryChart>
+    );
+    return (
+      <div>
+        {renderChartWrap(chart)}
+        <div className="bp4-text-muted" style={{ fontSize: 12, marginTop: 4 }}>
+          Click a bar to filter the grid to that value; click it again to
+          remove it. Select several to combine them.
+        </div>
+      </div>
     );
   };
 
@@ -434,15 +601,17 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
     );
   }
 
+  const vs = appState.viewState;
+  const pivotActive = vs != null && vs.viewParams.vpivots.length > 0;
+  const viewSchema =
+    pivotActive && vs?.dataView?.schema != null
+      ? vs.dataView.schema
+      : vs?.baseSchema ?? null;
   const displayName =
-    colId != null
-      ? appState.viewState?.baseSchema.displayName(colId) ?? colId
-      : "";
-
-  const schema = appState.viewState?.baseSchema ?? null;
+    colId != null ? viewSchema?.displayName(colId) ?? colId : "";
   const columns =
-    schema != null
-      ? schema.columns.filter((cid) => !cid.startsWith("_") && cid !== "Rec")
+    viewSchema != null
+      ? viewSchema.columns.filter((cid) => !cid.startsWith("_") && cid !== "Rec")
       : [];
 
   return (
@@ -460,7 +629,7 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
         maxHeight: "95vh",
       }}
     >
-      <div className="bp4-dialog-body">
+      <div className="bp4-dialog-body" onMouseLeave={() => setHoverInfo(null)}>
         <div style={{ marginBottom: 10 }}>
           <HTMLSelect
             value={colId ?? ""}
@@ -470,7 +639,7 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
           >
             {columns.map((cid) => (
               <option key={cid} value={cid}>
-                {schema!.displayName(cid)}
+                {viewSchema!.displayName(cid)}
               </option>
             ))}
           </HTMLSelect>
