@@ -26,6 +26,12 @@
 - `DataGrid.tsx` `onContextMenu` : si la cellule survolée est déjà dans un range sélectionné, on garde la sélection (menu agit sur tout le groupe) ; sinon sélection cellule unique.
 - **Commit** : `feat(tadviewer): keep multi-cell selection when right-clicking a selected cell` (49e077b)
 
+### 4. Right-click sélection gardée — correction (fix du fix)
+- **Problème remonté** : malgré le garde `inSelection`, un clic droit sur un groupe sélectionné re-sélectionnait quand même la cellule survolée.
+- **Cause racine** : `grid.setActiveCell(row, cell)` déclenche `onActiveCellChanged`, et le `CellSelectionModel` de SlickGrid écoute cet événement et **réduit les ranges à la seule cellule active** (`selectActiveCell → n([new Range(row, cell)])`). Le garde contrôlait `setSelectedRanges` mais pas `setActiveCell`.
+- **Fix** : `setActiveCell` n'est plus appelé quand la cellule survolée est déjà dans la sélection (conservée telle quelle) ; il reste appelé pour une cellule hors sélection (sélection réduite à la cellule, comportement d'origine conservé). Vérifié dans le bundle minifié de `slickgrid-es6`.
+- **Commits** : `fix(tadviewer): keep right-click selection on selected cell group` (à venir) + doc mise à jour.
+
 ### 4. Hover = bordure épaisse au lieu de fill
 - `packages/tadviewer/src/slickgrid.scss` : suppression du `background-color: #b5c7eb` ; ajout `box-shadow: inset 0 0 0 2px #5a6375` (bordure épaisse bleu foncé, sans décalage de layout).
 - Vérifié dans `dist/tadviewer.js` : `5a6375` présent, `b5c7eb` absent.
