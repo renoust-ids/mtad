@@ -26,6 +26,10 @@ Context Menu Lignes Agrégées (onContextMenu, _isLeaf === false)
 Ciblage rowid (Step 8) : column cachée _rid = rowid DuckDB, threadée jusqu'aux
 lignes feuilles du grid. Edit/Duplicate/Delete sur une ligne feuille ciblent un
 rowid précis ; les lignes agrégées/root retombent sur la clause par valeurs.
+Lignes agrégées (Step 9) : clause WHERE construite depuis le chemin de pivot
+(_path[i] → vpivots[i]), jamais vide pour la racine (1=1).
+Tri par label de pivot (Step 9) : colonne _pivot sortable, direction appliquée
+au _path i de chaque profondeur (_pivot exclu du mécanisme _sortVal).
 
 Export Interface (ExportBeginDialog)
     ├── Visible Columns Only (checkbox, défaut=true)
@@ -79,3 +83,13 @@ Export Interface (ExportBeginDialog)
   d'édition touchant toutes les copies)
 - Régression pivot corrigée (NULL typé sur agrégés/root + cycle circulaire
   `defaultDialect` cassé)
+
+### Step 9: Corrections contextuel (fix + features)
+- Fix duplication/suppression des lignes agrégées : clause WHERE construite
+  depuis le chemin de pivot `_path[i]` → `vpivots[i]` (jamais vide pour la
+  racine)
+- Feature tri par label de pivot : colonne `_pivot` sortable, direction
+  utilisateur appliquée au `_path i` de chaque profondeur (`_pivot` exclu du
+  `_sortVal`)
+- Chore libellés de menus : Rename/Duplicate/Delete Column, Edit Cell,
+  Delete/Duplicate/Copy Row(s), Copy Cell(s) selon la sélection
