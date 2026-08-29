@@ -71,7 +71,7 @@
 - **F4 Pivot (cellules agrégées)** : `getViewQueryAndSchema()` — si `viewParams.vpivots.length > 0` et `queryView` dispo → histogramme sur `queryView.query` (tree query agrégée) + `dataView.schema` (schema agrégé, fallback baseSchema) ; sinon baseQuery/baseSchema (comportement inchangé). Selector de colonnes + titre utilisent le schema de la vue. Brush/filtre gardés sur baseQuery → pré-agrégation (guard : colId absent de baseSchema → pas de filtre).
 - `loadColumnHistogramData` : signature changée en `(dbc, query, schema, colId, binCount?)`.
 - **Validation** : tadviewer `npx tsc` ok + webpack 17 warnings ; tad-app `npx webpack --mode production` compilé avec succès.
-- **Commits** : `(à venir)`
+- **Commits** : `979b878` `feat(tadviewer): add pinned tooltip, Analytics menu, categorical bar filter and pivot-aware histograms`
 
 ### Step 5 — En cours
 - Docs : README (section "Column Histograms"), `doc/features.md`, `quickstart.html`, `doc/site/index.html` (carte feature + News 0.0.4).
