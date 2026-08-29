@@ -8,6 +8,7 @@ import * as reltab from "reltab";
 import {
   Button,
   Dialog,
+  HTMLSelect,
   Slider,
   Spinner,
   Switch,
@@ -18,6 +19,7 @@ import {
   VictoryBar,
   VictoryBrushContainer,
   VictoryChart,
+  VictoryTooltip,
 } from "victory";
 import { mutableGet, StateRef } from "oneref";
 import { AppState } from "../AppState";
@@ -29,6 +31,7 @@ export interface HistogramDialogProps {
   stateRef: StateRef<AppState>;
   colId: string | null;
   onClose: () => void;
+  onSelectColumn?: (colId: string) => void;
   onBrushFilter: (colId: string, range: [number, number] | null) => void;
 }
 
@@ -48,6 +51,7 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
   stateRef,
   colId,
   onClose,
+  onSelectColumn,
   onBrushFilter,
 }) => {
   const [data, setData] = useState<ColumnHistogramData | null>(null);
@@ -167,15 +171,27 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
   const renderNumericChart = () => {
     const numData = data as reltab.NumericColumnHistogramData;
     const chartData = numData.binData
-      .map((count: number, i: number) => ({
-        binMid: numData.niceMinVal + (i + 0.5) * numData.binWidth,
-        count,
-      }))
+      .map((count: number, i: number) => {
+        const binMin = numData.niceMinVal + i * numData.binWidth;
+        return {
+          binMid: binMin + numData.binWidth / 2,
+          binLabel: `${round2(binMin).toLocaleString()} \u2013 ${round2(
+            binMin + numData.binWidth
+          ).toLocaleString()}`,
+          count,
+        };
+      })
       .filter((d) => (logY ? d.count > 0 : true));
     const nullCount = stats?.pctNull ? Math.round(stats.pctNull * stats.count) : 0;
     const nullBars =
       showNulls && nullCount > 0
-        ? [{ binMid: numData.niceMaxVal + numData.binWidth * 1.5, count: nullCount }]
+        ? [
+            {
+              binMid: numData.niceMaxVal + numData.binWidth * 1.5,
+              binLabel: "null",
+              count: nullCount,
+            },
+          ]
         : [];
 
     const fmtOpts = {
@@ -183,6 +199,16 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
       maximumFractionDigits: 2,
       useGrouping: true,
     };
+
+    const barTooltip = (
+      <VictoryTooltip
+        style={{ fontSize: 12 }}
+        flyoutStyle={{ stroke: "#137CBD", fill: "white" }}
+        cornerRadius={3}
+        pointerLength={4}
+        flyoutPadding={{ top: 4, bottom: 4, left: 8, right: 8 }}
+      />
+    );
 
     return (
       <VictoryChart
@@ -222,6 +248,10 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
           data={chartData}
           x="binMid"
           y="count"
+          labels={({ datum }) =>
+            `${datum.binLabel}\ncount: ${datum.count.toLocaleString()}`
+          }
+          labelComponent={barTooltip}
         />
         {nullBars.length > 0 && (
           <VictoryBar
@@ -229,6 +259,10 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
             data={nullBars}
             x="binMid"
             y="count"
+            labels={({ datum }) =>
+              `${datum.binLabel}\ncount: ${datum.count.toLocaleString()}`
+            }
+            labelComponent={barTooltip}
           />
         )}
       </VictoryChart>
@@ -276,6 +310,18 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
           data={shown}
           x="value"
           y="count"
+          labels={({ datum }) =>
+            `${datum.value}\ncount: ${datum.count.toLocaleString()}`
+          }
+          labelComponent={
+            <VictoryTooltip
+              style={{ fontSize: 12 }}
+              flyoutStyle={{ stroke: "#137CBD", fill: "white" }}
+              cornerRadius={3}
+              pointerLength={4}
+              flyoutPadding={{ top: 4, bottom: 4, left: 8, right: 8 }}
+            />
+          }
         />
       </VictoryChart>
     );
@@ -333,6 +379,22 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
       <>
         {numeric && (
           <div style={{ marginBottom: 8 }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "baseline",
+                justifyContent: "space-between",
+              }}
+            >
+              <div className="bp4-text-muted" style={{ fontSize: 12 }}>
+                Bins
+              </div>
+              <div style={{ fontSize: 12, fontWeight: 600 }}>
+                {sliderVal ??
+                  binCount ??
+                  (data as reltab.NumericColumnHistogramData).binCount}
+              </div>
+            </div>
             <Slider
               min={2}
               max={50}
@@ -349,9 +411,6 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
               onChange={(v: number) => setSliderVal(v)}
               onRelease={(v: number) => setBinCount(v)}
             />
-            <div className="bp4-text-muted" style={{ fontSize: 12 }}>
-              Bins
-            </div>
           </div>
         )}
         {numeric ? renderNumericChart() : renderCategoricalChart()}
@@ -380,14 +439,44 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
       ? appState.viewState?.baseSchema.displayName(colId) ?? colId
       : "";
 
+  const schema = appState.viewState?.baseSchema ?? null;
+  const columns =
+    schema != null
+      ? schema.columns.filter((cid) => !cid.startsWith("_") && cid !== "Rec")
+      : [];
+
   return (
     <Dialog
       isOpen={isOpen}
       title={`${displayName} - Histogram`}
       onClose={onClose}
       canOutsideClickClose={false}
+      style={{
+        resize: "both",
+        overflow: "auto",
+        minWidth: 420,
+        minHeight: 300,
+        maxWidth: "95vw",
+        maxHeight: "95vh",
+      }}
     >
-      <div className="bp4-dialog-body">{body}</div>
+      <div className="bp4-dialog-body">
+        <div style={{ marginBottom: 10 }}>
+          <HTMLSelect
+            value={colId ?? ""}
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+              onSelectColumn?.(e.target.value)
+            }
+          >
+            {columns.map((cid) => (
+              <option key={cid} value={cid}>
+                {schema!.displayName(cid)}
+              </option>
+            ))}
+          </HTMLSelect>
+        </div>
+        {body}
+      </div>
       <div className="bp4-dialog-footer">
         <div className="bp4-dialog-footer-actions">
           <Button onClick={onClose}>Close</Button>

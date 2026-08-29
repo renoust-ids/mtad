@@ -600,6 +600,7 @@ const GridPaneInternal: React.FunctionComponent<GridPaneProps> = ({
         stateRef={stateRef}
         colId={histogramColId}
         onClose={handleCloseHistogram}
+        onSelectColumn={setHistogramColId}
         onBrushFilter={onHistogramBrushFilter}
       />
     </>

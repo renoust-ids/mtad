@@ -55,6 +55,14 @@
 - **Validation** : `npx tsc` et `npx webpack --env prod --mode production` (≈4 s, 17 warnings de perf pré-existants, bundle 2.37 MiB).
 - **Commit** : `5c67711` `feat(tadviewer): add interactive Histogram dialog and header menu item`
 
+### Step 4b — Améliorations UI (retour utilisateur)
+- Hover sur une barre → tooltip Victory (`VictoryTooltip`) : plage de bins exacte (`123.45 – 130.00`) ou valeur catégorielle + `count`.
+- Slider bins : valeur courante affichée en direct (colonne "Bins → {n}") pendant le drag.
+- Sélecteur de colonne : `HTMLSelect` en haut du body listant les colonnes de `baseSchema` (filtre `_`/`Rec` comme Insert Column) ; prop `onSelectColumn` câblée dans GridPane → `setHistogramColId`.
+- Fenêtre redimensionnable : `style={{ resize: "both", overflow: "auto", min/max }}` appliqué au `.bp4-dialog` (Blueprint applique `style` directement sur `div.bp4-dialog`, pas de CSS repo nécessaire).
+- **Validation** : `npx tsc` ok ; `npx webpack --env prod --mode production` 17 warnings pré-existants, ≈4.7 s.
+- **Commit** : `(à venir)`
+
 ### Step 5 — En cours
 - Docs : README (section "Column Histograms"), `doc/features.md`, `quickstart.html`, `doc/site/index.html` (carte feature + News 0.0.4).
 - `.github/workflows/build.yml` : branche `histograms` ajoutée aux triggers de push.
