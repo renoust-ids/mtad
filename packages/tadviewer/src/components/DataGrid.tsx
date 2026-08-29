@@ -404,8 +404,10 @@ const createGrid = (
     onColumnRename,
     onColumnDelete,
     onColumnDuplicate,
+    onInsertColumn,
     onDeleteRows,
     onDuplicateRows,
+    onInsertRow,
     onDeleteAggregateRows,
     onDuplicateAggregateRows,
     vpivots,
@@ -592,14 +594,25 @@ const createGrid = (
     const cellInfo = grid.getCellFromEvent(event);
     if (!cellInfo) return;
 
-    // Simulate a left-click at the same position so the cell under the
-    // right-click cursor gets selected (highlighted) too.
+    // Keep the current selection if the right-clicked cell is already part of
+    // it (so the context menu acts on the whole group); otherwise select just
+    // the hovered cell.
     const row = cellInfo.row;
     const cell = cellInfo.cell;
     grid.setActiveCell(row, cell);
     const selModel = grid.getSelectionModel();
     if (selModel) {
-      selModel.setSelectedRanges([new Slick.Range(row, cell)]);
+      const ranges = selModel.getSelectedRanges();
+      const inSelection = ranges.some(
+        (r: any) =>
+          cellInfo.row >= r.fromRow &&
+          cellInfo.row <= r.toRow &&
+          cellInfo.cell >= r.fromCell &&
+          cellInfo.cell <= r.toCell
+      );
+      if (!inSelection) {
+        selModel.setSelectedRanges([new Slick.Range(row, cell)]);
+      }
     }
 
     const currentDataView = grid.getData();
@@ -721,6 +734,16 @@ const createGrid = (
     });
     menu.appendChild(dupRowsItem);
 
+    // Insert Row item (appends an empty row)
+    const insertRowItem = document.createElement("div");
+    insertRowItem.className = "bp4-menu-item";
+    insertRowItem.textContent = "Insert Row";
+    insertRowItem.addEventListener("click", () => {
+      menu.remove();
+      onInsertRow?.();
+    });
+    menu.appendChild(insertRowItem);
+
     // Aggregate-only items
     if (isAggregate) {
       const sep2 = document.createElement("div");
@@ -829,6 +852,19 @@ const createGrid = (
     menu.style.zIndex = "9999";
     menu.style.left = `${(e as MouseEvent).clientX}px`;
     menu.style.top = `${(e as MouseEvent).clientY}px`;
+
+    const insertColumnItem = document.createElement("div");
+    insertColumnItem.className = "bp4-menu-item";
+    insertColumnItem.textContent = "Insert Column";
+    insertColumnItem.addEventListener("click", () => {
+      menu.remove();
+      onInsertColumn?.(column.id);
+    });
+    menu.appendChild(insertColumnItem);
+
+    const sepCol = document.createElement("div");
+    sepCol.className = "bp4-menu-divider";
+    menu.appendChild(sepCol);
 
     const renameItem = document.createElement("div");
     renameItem.className = "bp4-menu-item";
@@ -1057,8 +1093,10 @@ export interface DataGridProps {
   onColumnRename?: (columnId: string) => void;
   onColumnDelete?: (columnId: string) => void;
   onColumnDuplicate?: (columnId: string) => void;
+  onInsertColumn?: (columnId: string) => void;
   onDeleteRows?: (rowDataList: { [columnId: string]: any }[]) => void;
   onDuplicateRows?: (rowDataList: { [columnId: string]: any }[]) => void;
+  onInsertRow?: () => void;
   onDeleteAggregateRows?: (item: any, depth: number) => void;
   onDuplicateAggregateRows?: (item: any, depth: number) => void;
   vpivots?: string[];
