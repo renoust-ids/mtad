@@ -11,6 +11,7 @@ import * as actions from "../actions";
 import * as util from "../util";
 import { CellEditStartData, DataGrid, DataGridProps } from "./DataGrid";
 import { CellEditModal } from "./CellEditModal";
+import HistogramDialog from "./HistogramDialog";
 import { SimpleClipboard } from "./SimpleClipboard";
 
 import { CellClickData } from "./CellClickData";
@@ -330,6 +331,19 @@ const GridPaneInternal: React.FunctionComponent<GridPaneProps> = ({
     setDuplicateState({ isOpen: false, sourceColumn: "", newColumn: "" });
   }, []);
 
+  // Column histogram dialog state
+  const [histogramColId, setHistogramColId] = React.useState<string | null>(
+    null
+  );
+
+  const handleOpenHistogram = React.useCallback((columnId: string) => {
+    setHistogramColId(columnId);
+  }, []);
+
+  const handleCloseHistogram = React.useCallback(() => {
+    setHistogramColId(null);
+  }, []);
+
   // Insert column state
   const [insertColumnState, setInsertColumnState] = React.useState<{
     isOpen: boolean;
@@ -446,6 +460,7 @@ const GridPaneInternal: React.FunctionComponent<GridPaneProps> = ({
     onColumnDelete: handleColumnDelete,
     onColumnDuplicate: handleColumnDuplicate,
     onInsertColumn: handleInsertColumn,
+    onColumnHistogram: handleOpenHistogram,
     onDeleteRows: handleDeleteRows,
     onDuplicateRows: handleDuplicateRows,
     onInsertRow: handleInsertRow,
@@ -580,6 +595,13 @@ const GridPaneInternal: React.FunctionComponent<GridPaneProps> = ({
           </div>
         </div>
       </Dialog>
+      <HistogramDialog
+        appState={appState}
+        stateRef={stateRef}
+        colId={histogramColId}
+        onClose={handleCloseHistogram}
+        onBrushFilter={onHistogramBrushFilter}
+      />
     </>
   );
 };
