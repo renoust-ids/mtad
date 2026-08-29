@@ -2,7 +2,7 @@
 
 ## Current State
 - **Branch**: `improveui` (created from master v0.0.3)
-- **Status**: Implementation complete (steps 1–10 done). Remaining: final commit cleanup of stray `examples/modified*.csv` and `package-lock.json` (left uncommitted).
+- **Status**: Implementation complete (steps 1–10 done). Working tree clean — stray `examples/modified*.csv` removed, `package-lock.json` version aligned to 0.0.3 (08230d6).
 
 ## Goal
 Implement UI improvements: column/row/cell manipulation via context menus and export options.
