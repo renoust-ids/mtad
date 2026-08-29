@@ -73,7 +73,7 @@
           <div class="specs-holder">
             <img src="images/puzzle-icon@2x.png" alt="puzzle">
             <p><strong>Column Management</strong></p>
-            <p>Right-click column headers to rename columns. Reorder columns via drag-and-drop. Sort ascending or descending.</p>
+            <p>Right-click column headers to insert or rename columns. Reorder columns via drag-and-drop. Sort ascending or descending.</p>
           </div>
         </div>
       </div>
@@ -101,6 +101,30 @@
           </div>
         </div>
       </div>
+
+      <div class="row" style="margin-top: 20px;">
+        <div class="col-sm-4">
+          <div class="specs-holder">
+            <img src="images/pivot-icon@2x.png" alt="pivot">
+            <p><strong>Row &amp; Column Insertion</strong></p>
+            <p>Right-click any cell to insert a new empty row or a column header to insert a new empty column, with an auto-suggested unique name.</p>
+          </div>
+        </div>
+        <div class="col-sm-4">
+          <div class="specs-holder">
+            <img src="images/puzzle-icon@2x.png" alt="puzzle">
+            <p><strong>Grid Interaction Refinements</strong></p>
+            <p>Hovering a cell draws a thick dark-blue border instead of a fill, keeping every value readable at all times.</p>
+          </div>
+        </div>
+        <div class="col-sm-4">
+          <div class="specs-holder">
+            <img src="images/csv-icon@2x.png" alt="csv">
+            <p><strong>Selection-Aware Context Menus</strong></p>
+            <p>Right-clicking inside a multi-cell selection keeps the selection intact, so delete, duplicate, and copy actions apply to the whole group.</p>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -113,8 +137,10 @@
       <ul>
         <li><strong>Cell editing</strong> with double-click and right-click context menus</li>
         <li><strong>Pivot-aware editing</strong> for aggregate and leaf rows</li>
+        <li><strong>Row and column insertion</strong> from the grid right-click menus</li>
         <li><strong>Column rename</strong> via header context menu</li>
         <li><strong>CSV join materialization</strong> into DuckDB tables</li>
+        <li><strong>Selection-aware context menus</strong> that keep multi-cell selections on right-click</li>
       </ul>
       <p style="margin-top: 20px;">
         <a href="https://github.com/antonycourtney/tad" class="btn btn-default">Original Tad on GitHub</a>
@@ -126,9 +152,9 @@
   <div id="news" class="section news-section">
     <div class="container">
     <h3>News</h3>
-    <p class="lead">MTad 0.0.2 - August 2026</p>
+    <p class="lead">MTad 0.0.3 - August 2026</p>
     <p>
-    MTad adds cell editing, column rename, and CSV join features to the Tad foundation.
+    MTad adds row and column insertion, hover highlighting, and selection-aware context menus to the Tad foundation.
     </p>
     <p>
     Build from source to try MTad. See the <a href="https://github.com/renoust-ids/mtad">GitHub repository</a> for instructions.
@@ -151,6 +177,17 @@
   <div id="relnotes" class="section relnotes-section">
     <div class="container">
     <h3>Release Notes</h3>
+
+    <div class="release-section">
+      <h4>MTad 0.0.3 - August 2026</h4>
+      <h5>New Features</h5>
+      <ul>
+        <li><strong>Insert Row</strong> - Right-click any cell and choose Insert Row to append a new empty row</li>
+        <li><strong>Insert Column</strong> - Right-click a column header and choose Insert Column to add a new empty column with an auto-suggested unique name</li>
+        <li><strong>Hover Highlight</strong> - Hovering a cell draws a thick dark-blue border instead of a fill, keeping cell values readable</li>
+        <li><strong>Selection-Aware Right-Click</strong> - Right-clicking inside a multi-cell selection keeps the selection intact so context-menu actions act on the whole group</li>
+      </ul>
+    </div>
 
     <div class="release-section">
       <h4>MTad 0.0.2 - August 2026</h4>

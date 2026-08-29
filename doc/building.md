@@ -1,5 +1,7 @@
 # Building MTad from Sources
 
+MTad is a fork of [Tad](https://www.tadviewer.com) that adds data editing and manipulation (cell editing, row and column insertion, column rename, CSV materialization) on top of the core pivot-table viewer. See [doc/features.md](features.md) for a full feature overview.
+
 ## Pre-requisites: Node, Npm and Lerna
 
 To build MTad, you should have [Node.js](https://nodejs.org/) v20 or later and `npm` (included when you install Node.js) installed.
