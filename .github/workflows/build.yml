@@ -2,7 +2,7 @@ name: Build & Release
 
 on:
   push:
-    branches: [main, feat/celledit, improveui]
+    branches: [main, feat/celledit, improveui, histograms]
     tags:
       - 'v*'
   workflow_dispatch:

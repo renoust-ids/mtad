@@ -39,6 +39,13 @@ MTad is a fork of [Tad](https://www.tadviewer.com) that adds data editing and ma
 - **Hover highlight** — hovering a cell draws a thick dark-blue border around it (instead of a fill), so the underlying value stays readable at all times
 - **Selection-aware right-click** — right-clicking a cell that is part of an existing multi-cell selection keeps the selection intact; context-menu actions (delete, duplicate, copy, ...) act on the whole selected group rather than collapsing to the clicked cell
 
+## Column Histograms
+
+- **Histogram** — right-click a column header and choose **Histogram** to open an interactive chart for that single column, computed on demand from the underlying table
+- Numeric columns get a **binned histogram** with a bin-count slider, an optional log scale, a configurable null bar, and a stats panel (count, nulls, unique, min, max, mean, std)
+- **Brush to filter** — drag across the histogram to apply a numeric range filter to the grid (`filter >= min && filter <= max`), reusing the existing filter machinery
+- Non-numeric columns get a **categorical bar chart** with the most frequent values and optional null bar
+
 ## CSV Materialization
 
 - Join multiple CSV files and **materialize** the result as a new DuckDB table

@@ -59,6 +59,12 @@ MTad supports editing cell values directly in the data grid:
 - **Hover highlight** — hovering a cell draws a thick dark blue border around it instead of filling it, so the underlying value stays readable at all times
 - **Selections survive right-clicks** — right-clicking a cell that is part of an existing multi-cell selection keeps the selection intact, so context menu actions (delete, duplicate, copy, ...) act on the whole selected group rather than collapsing to a single cell
 
+### Column Histograms
+
+- **Right-click** a column header and choose **Histogram** to open an interactive chart for that column, computed on demand
+- Numeric columns get a binned histogram with a bin-count slider, optional log scale and null bar, a statistics panel (count, nulls, unique, min, max, mean, std), and **brush-to-filter**: drag over the bars to filter the grid to that numeric range
+- Non-numeric columns get a categorical bar chart of the most frequent values
+
 ### CSV Materialization
 
 - Join CSV files and materialize the result as a new DuckDB table
