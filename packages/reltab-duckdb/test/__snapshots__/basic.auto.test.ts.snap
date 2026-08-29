@@ -85,6 +85,7 @@ TableRep {
       "Title": "General Manager",
       "Union": "Non-Represented",
       "_depth": 0,
+      "_rid": 0n,
     },
     {
       "Base": 298700n,
@@ -94,6 +95,7 @@ TableRep {
       "Title": "General Manager",
       "Union": "Non-Represented",
       "_depth": 0,
+      "_rid": 1n,
     },
     {
       "Base": 212647n,
@@ -103,6 +105,7 @@ TableRep {
       "Title": "Assistant General Manager Operations",
       "Union": "Non-Represented",
       "_depth": 0,
+      "_rid": 3n,
     },
     {
       "Base": 206914n,
@@ -112,6 +115,7 @@ TableRep {
       "Title": "Deputy General Manager",
       "Union": "Non-Represented",
       "_depth": 0,
+      "_rid": 5n,
     },
     {
       "Base": 152125n,
@@ -121,6 +125,7 @@ TableRep {
       "Title": "Chief Safety Officer",
       "Union": "Non-Represented",
       "_depth": 0,
+      "_rid": 11n,
     },
   ],
   "schema": {
@@ -153,6 +158,10 @@ TableRep {
         "columnType": "INTEGER",
         "displayName": "_depth",
       },
+      "_rid": {
+        "columnType": "integer",
+        "displayName": "_rid",
+      },
     },
     "columns": [
       "Name",
@@ -161,6 +170,7 @@ TableRep {
       "TCOE",
       "Job Family",
       "Union",
+      "_rid",
       "_depth",
     ],
     "dialect": "duckdb",
@@ -178,6 +188,7 @@ TableRep {
       "TCOE": 399921n,
       "Title": "General Manager",
       "Union": "Non-Represented",
+      "_rid": 0n,
     },
     {
       "Base": 298700n,
@@ -186,6 +197,7 @@ TableRep {
       "TCOE": 419661n,
       "Title": "General Manager",
       "Union": "Non-Represented",
+      "_rid": 1n,
     },
     {
       "Base": 212647n,
@@ -194,6 +206,7 @@ TableRep {
       "TCOE": 288160n,
       "Title": "Assistant General Manager Operations",
       "Union": "Non-Represented",
+      "_rid": 3n,
     },
     {
       "Base": 206914n,
@@ -202,6 +215,7 @@ TableRep {
       "TCOE": 281548n,
       "Title": "Deputy General Manager",
       "Union": "Non-Represented",
+      "_rid": 5n,
     },
   ],
   "schema": {
@@ -230,6 +244,10 @@ TableRep {
         "columnType": "VARCHAR",
         "displayName": "Union",
       },
+      "_rid": {
+        "columnType": "integer",
+        "displayName": "_rid",
+      },
     },
     "columns": [
       "Name",
@@ -238,6 +256,7 @@ TableRep {
       "TCOE",
       "Job Family",
       "Union",
+      "_rid",
     ],
     "dialect": "duckdb",
   },
@@ -249,8 +268,48 @@ TableRep {
   "rowData": [
     {
       "Job Family": "Maintenance, Vehicle & Facilities",
+      "TCOE": 123432n,
+      "Title": "Vehicle Inspector",
+    },
+    {
+      "Job Family": "Police",
+      "TCOE": 127660n,
+      "Title": "Revenue Protection Guard",
+    },
+    {
+      "Job Family": "Maintenance, Vehicle & Facilities",
+      "TCOE": 104260n,
+      "Title": "Transit Vehicle Mechanic",
+    },
+    {
+      "Job Family": "Transportation Operations",
+      "TCOE": 352988n,
+      "Title": "Station Agent",
+    },
+    {
+      "Job Family": "Maintenance, Vehicle & Facilities",
       "TCOE": 124962n,
       "Title": "Structures Inspector",
+    },
+    {
+      "Job Family": "Executive Management",
+      "TCOE": 288160n,
+      "Title": "Assistant General Manager Operations",
+    },
+    {
+      "Job Family": "Engineering & Systems Engineering",
+      "TCOE": 212535n,
+      "Title": "Group Manager Systems Capital Prog",
+    },
+    {
+      "Job Family": "Legal & Paralegal",
+      "TCOE": 321543n,
+      "Title": "General Counsel",
+    },
+    {
+      "Job Family": "Public Affairs & Marketing",
+      "TCOE": 181955n,
+      "Title": "Department Manager Gov't & Comm Rel",
     },
     {
       "Job Family": "Executive Management",
@@ -273,24 +332,19 @@ TableRep {
       "Title": "Electrician",
     },
     {
-      "Job Family": "Legal & Paralegal",
-      "TCOE": 321543n,
-      "Title": "General Counsel",
-    },
-    {
-      "Job Family": "Public Affairs & Marketing",
-      "TCOE": 181955n,
-      "Title": "Department Manager Gov't & Comm Rel",
+      "Job Family": "Transportation Operations",
+      "TCOE": 238211n,
+      "Title": "Chief Transportation Officer",
     },
     {
       "Job Family": "Maintenance, Vehicle & Facilities",
-      "TCOE": 123432n,
-      "Title": "Vehicle Inspector",
+      "TCOE": 128332n,
+      "Title": "Wayside Inspector",
     },
     {
-      "Job Family": "Police",
-      "TCOE": 127660n,
-      "Title": "Revenue Protection Guard",
+      "Job Family": "Transportation Operations",
+      "TCOE": 118799n,
+      "Title": "Train Operator",
     },
     {
       "Job Family": "Finance & Accounting",
@@ -306,41 +360,6 @@ TableRep {
       "Job Family": "Legal & Paralegal",
       "TCOE": 445028n,
       "Title": "Senior Attorney",
-    },
-    {
-      "Job Family": "Maintenance, Vehicle & Facilities",
-      "TCOE": 104260n,
-      "Title": "Transit Vehicle Mechanic",
-    },
-    {
-      "Job Family": "Transportation Operations",
-      "TCOE": 352988n,
-      "Title": "Station Agent",
-    },
-    {
-      "Job Family": "Executive Management",
-      "TCOE": 288160n,
-      "Title": "Assistant General Manager Operations",
-    },
-    {
-      "Job Family": "Engineering & Systems Engineering",
-      "TCOE": 212535n,
-      "Title": "Group Manager Systems Capital Prog",
-    },
-    {
-      "Job Family": "Transportation Operations",
-      "TCOE": 238211n,
-      "Title": "Chief Transportation Officer",
-    },
-    {
-      "Job Family": "Maintenance, Vehicle & Facilities",
-      "TCOE": 128332n,
-      "Title": "Wayside Inspector",
-    },
-    {
-      "Job Family": "Transportation Operations",
-      "TCOE": 118799n,
-      "Title": "Train Operator",
     },
   ],
   "schema": {
@@ -368,6 +387,10 @@ TableRep {
       "Union": {
         "columnType": "VARCHAR",
         "displayName": "Union",
+      },
+      "_rid": {
+        "columnType": "integer",
+        "displayName": "_rid",
       },
     },
     "columns": [
@@ -618,6 +641,7 @@ TableRep {
       "TCOE": 399921n,
       "Title": "General Manager",
       "Union": "Non-Represented",
+      "_rid": 0n,
     },
     {
       "Base": 206914n,
@@ -626,6 +650,7 @@ TableRep {
       "TCOE": 281548n,
       "Title": "Deputy General Manager",
       "Union": "Non-Represented",
+      "_rid": 5n,
     },
     {
       "Base": 298700n,
@@ -634,6 +659,7 @@ TableRep {
       "TCOE": 419661n,
       "Title": "General Manager",
       "Union": "Non-Represented",
+      "_rid": 1n,
     },
     {
       "Base": 152125n,
@@ -642,6 +668,7 @@ TableRep {
       "TCOE": 211941n,
       "Title": "Chief Safety Officer",
       "Union": "Non-Represented",
+      "_rid": 11n,
     },
     {
       "Base": 212647n,
@@ -650,6 +677,7 @@ TableRep {
       "TCOE": 288160n,
       "Title": "Assistant General Manager Operations",
       "Union": "Non-Represented",
+      "_rid": 3n,
     },
   ],
   "schema": {
@@ -678,6 +706,10 @@ TableRep {
         "columnType": "VARCHAR",
         "displayName": "Union",
       },
+      "_rid": {
+        "columnType": "integer",
+        "displayName": "_rid",
+      },
     },
     "columns": [
       "Name",
@@ -686,6 +718,7 @@ TableRep {
       "TCOE",
       "Job Family",
       "Union",
+      "_rid",
     ],
     "dialect": "duckdb",
   },
@@ -704,6 +737,7 @@ TableRep {
       "Union": "Non-Represented",
       "_depth": 0,
       "_pivot": null,
+      "_rid": 0n,
     },
     {
       "Base": 298700n,
@@ -714,6 +748,7 @@ TableRep {
       "Union": "Non-Represented",
       "_depth": 0,
       "_pivot": null,
+      "_rid": 1n,
     },
     {
       "Base": 238269n,
@@ -724,6 +759,7 @@ TableRep {
       "Union": "Non-Represented",
       "_depth": 0,
       "_pivot": null,
+      "_rid": 2n,
     },
     {
       "Base": 212647n,
@@ -734,6 +770,7 @@ TableRep {
       "Union": "Non-Represented",
       "_depth": 0,
       "_pivot": null,
+      "_rid": 3n,
     },
     {
       "Base": 208744n,
@@ -744,6 +781,7 @@ TableRep {
       "Union": "Non-Represented",
       "_depth": 0,
       "_pivot": null,
+      "_rid": 4n,
     },
     {
       "Base": 206914n,
@@ -754,6 +792,7 @@ TableRep {
       "Union": "Non-Represented",
       "_depth": 0,
       "_pivot": null,
+      "_rid": 5n,
     },
     {
       "Base": 170383n,
@@ -764,6 +803,7 @@ TableRep {
       "Union": "Non-Represented",
       "_depth": 0,
       "_pivot": null,
+      "_rid": 6n,
     },
     {
       "Base": 165470n,
@@ -774,6 +814,7 @@ TableRep {
       "Union": "Non-Represented",
       "_depth": 0,
       "_pivot": null,
+      "_rid": 7n,
     },
     {
       "Base": 160289n,
@@ -784,6 +825,7 @@ TableRep {
       "Union": "Non-Represented",
       "_depth": 0,
       "_pivot": null,
+      "_rid": 8n,
     },
     {
       "Base": 157300n,
@@ -794,6 +836,7 @@ TableRep {
       "Union": "Non-Represented",
       "_depth": 0,
       "_pivot": null,
+      "_rid": 9n,
     },
     {
       "Base": 152434n,
@@ -804,6 +847,7 @@ TableRep {
       "Union": "Non-Represented",
       "_depth": 0,
       "_pivot": null,
+      "_rid": 10n,
     },
     {
       "Base": 152125n,
@@ -814,6 +858,7 @@ TableRep {
       "Union": "Non-Represented",
       "_depth": 0,
       "_pivot": null,
+      "_rid": 11n,
     },
     {
       "Base": 77446n,
@@ -824,6 +869,7 @@ TableRep {
       "Union": "SEIU",
       "_depth": 0,
       "_pivot": null,
+      "_rid": 12n,
     },
     {
       "Base": 77446n,
@@ -834,6 +880,7 @@ TableRep {
       "Union": "SEIU",
       "_depth": 0,
       "_pivot": null,
+      "_rid": 13n,
     },
     {
       "Base": 77446n,
@@ -844,6 +891,7 @@ TableRep {
       "Union": "SEIU",
       "_depth": 0,
       "_pivot": null,
+      "_rid": 14n,
     },
     {
       "Base": 75701n,
@@ -854,6 +902,7 @@ TableRep {
       "Union": "BPOA",
       "_depth": 0,
       "_pivot": null,
+      "_rid": 15n,
     },
     {
       "Base": 74068n,
@@ -864,6 +913,7 @@ TableRep {
       "Union": "SEIU",
       "_depth": 0,
       "_pivot": null,
+      "_rid": 16n,
     },
     {
       "Base": 61184n,
@@ -874,6 +924,7 @@ TableRep {
       "Union": "ATU",
       "_depth": 0,
       "_pivot": null,
+      "_rid": 17n,
     },
     {
       "Base": 130035n,
@@ -884,6 +935,7 @@ TableRep {
       "Union": "Non-Represented",
       "_depth": 0,
       "_pivot": null,
+      "_rid": 18n,
     },
     {
       "Base": 60790n,
@@ -894,6 +946,7 @@ TableRep {
       "Union": "ATU",
       "_depth": 0,
       "_pivot": null,
+      "_rid": 19n,
     },
     {
       "Base": 60781n,
@@ -904,6 +957,7 @@ TableRep {
       "Union": "ATU",
       "_depth": 0,
       "_pivot": null,
+      "_rid": 20n,
     },
     {
       "Base": 60771n,
@@ -914,6 +968,7 @@ TableRep {
       "Union": "ATU",
       "_depth": 0,
       "_pivot": null,
+      "_rid": 21n,
     },
     {
       "Base": 59817n,
@@ -924,6 +979,7 @@ TableRep {
       "Union": "SEIU",
       "_depth": 0,
       "_pivot": null,
+      "_rid": 22n,
     },
   ],
   "schema": {
@@ -960,6 +1016,10 @@ TableRep {
         "columnType": "VARCHAR",
         "displayName": "_pivot",
       },
+      "_rid": {
+        "columnType": "integer",
+        "displayName": "_rid",
+      },
     },
     "columns": [
       "Name",
@@ -968,6 +1028,7 @@ TableRep {
       "TCOE",
       "Job Family",
       "Union",
+      "_rid",
       "_pivot",
       "_depth",
     ],
@@ -986,6 +1047,7 @@ TableRep {
       "TCOE": 419661n,
       "Title": "General Manager",
       "Union": "Non-Represented",
+      "_rid": 1n,
     },
     {
       "Base": 312461n,
@@ -994,6 +1056,7 @@ TableRep {
       "TCOE": 399921n,
       "Title": "General Manager",
       "Union": "Non-Represented",
+      "_rid": 0n,
     },
     {
       "Base": 212647n,
@@ -1002,6 +1065,7 @@ TableRep {
       "TCOE": 288160n,
       "Title": "Assistant General Manager Operations",
       "Union": "Non-Represented",
+      "_rid": 3n,
     },
     {
       "Base": 206914n,
@@ -1010,6 +1074,7 @@ TableRep {
       "TCOE": 281548n,
       "Title": "Deputy General Manager",
       "Union": "Non-Represented",
+      "_rid": 5n,
     },
     {
       "Base": 152125n,
@@ -1018,6 +1083,7 @@ TableRep {
       "TCOE": 211941n,
       "Title": "Chief Safety Officer",
       "Union": "Non-Represented",
+      "_rid": 11n,
     },
   ],
   "schema": {
@@ -1046,6 +1112,10 @@ TableRep {
         "columnType": "VARCHAR",
         "displayName": "Union",
       },
+      "_rid": {
+        "columnType": "integer",
+        "displayName": "_rid",
+      },
     },
     "columns": [
       "Name",
@@ -1054,6 +1124,7 @@ TableRep {
       "TCOE",
       "Job Family",
       "Union",
+      "_rid",
     ],
     "dialect": "duckdb",
   },
@@ -1071,6 +1142,7 @@ TableRep {
       "TCOE": 399921n,
       "Title": "General Manager",
       "Union": "Non-Represented",
+      "_rid": 0n,
     },
     {
       "Base": 298700n,
@@ -1080,6 +1152,7 @@ TableRep {
       "TCOE": 419661n,
       "Title": "General Manager",
       "Union": "Non-Represented",
+      "_rid": 1n,
     },
     {
       "Base": 238269n,
@@ -1089,6 +1162,7 @@ TableRep {
       "TCOE": 321543n,
       "Title": "General Counsel",
       "Union": "Non-Represented",
+      "_rid": 2n,
     },
     {
       "Base": 212647n,
@@ -1098,6 +1172,7 @@ TableRep {
       "TCOE": 288160n,
       "Title": "Assistant General Manager Operations",
       "Union": "Non-Represented",
+      "_rid": 3n,
     },
     {
       "Base": 208744n,
@@ -1107,6 +1182,7 @@ TableRep {
       "TCOE": 287139n,
       "Title": "Controller-Treasurer",
       "Union": "Non-Represented",
+      "_rid": 4n,
     },
     {
       "Base": 206914n,
@@ -1116,6 +1192,7 @@ TableRep {
       "TCOE": 281548n,
       "Title": "Deputy General Manager",
       "Union": "Non-Represented",
+      "_rid": 5n,
     },
     {
       "Base": 170383n,
@@ -1125,6 +1202,7 @@ TableRep {
       "TCOE": 238211n,
       "Title": "Chief Transportation Officer",
       "Union": "Non-Represented",
+      "_rid": 6n,
     },
     {
       "Base": 165470n,
@@ -1134,6 +1212,7 @@ TableRep {
       "TCOE": 224345n,
       "Title": "Senior Attorney",
       "Union": "Non-Represented",
+      "_rid": 7n,
     },
     {
       "Base": 160289n,
@@ -1143,6 +1222,7 @@ TableRep {
       "TCOE": 220683n,
       "Title": "Senior Attorney",
       "Union": "Non-Represented",
+      "_rid": 8n,
     },
     {
       "Base": 157300n,
@@ -1152,6 +1232,7 @@ TableRep {
       "TCOE": 209709n,
       "Title": "Group Manager, Capital Projects",
       "Union": "Non-Represented",
+      "_rid": 9n,
     },
     {
       "Base": 152434n,
@@ -1161,6 +1242,7 @@ TableRep {
       "TCOE": 212535n,
       "Title": "Group Manager Systems Capital Prog",
       "Union": "Non-Represented",
+      "_rid": 10n,
     },
     {
       "Base": 152125n,
@@ -1170,6 +1252,7 @@ TableRep {
       "TCOE": 211941n,
       "Title": "Chief Safety Officer",
       "Union": "Non-Represented",
+      "_rid": 11n,
     },
     {
       "Base": 77446n,
@@ -1179,6 +1262,7 @@ TableRep {
       "TCOE": 128332n,
       "Title": "Wayside Inspector",
       "Union": "SEIU",
+      "_rid": 12n,
     },
     {
       "Base": 77446n,
@@ -1188,6 +1272,7 @@ TableRep {
       "TCOE": 124962n,
       "Title": "Structures Inspector",
       "Union": "SEIU",
+      "_rid": 13n,
     },
     {
       "Base": 77446n,
@@ -1197,6 +1282,7 @@ TableRep {
       "TCOE": 123432n,
       "Title": "Vehicle Inspector",
       "Union": "SEIU",
+      "_rid": 14n,
     },
     {
       "Base": 75701n,
@@ -1206,6 +1292,7 @@ TableRep {
       "TCOE": 127660n,
       "Title": "Revenue Protection Guard",
       "Union": "BPOA",
+      "_rid": 15n,
     },
     {
       "Base": 74068n,
@@ -1215,6 +1302,7 @@ TableRep {
       "TCOE": 104260n,
       "Title": "Transit Vehicle Mechanic",
       "Union": "SEIU",
+      "_rid": 16n,
     },
     {
       "Base": 61184n,
@@ -1224,6 +1312,7 @@ TableRep {
       "TCOE": 118799n,
       "Title": "Train Operator",
       "Union": "ATU",
+      "_rid": 17n,
     },
     {
       "Base": 130035n,
@@ -1233,6 +1322,7 @@ TableRep {
       "TCOE": 181955n,
       "Title": "Department Manager Gov't & Comm Rel",
       "Union": "Non-Represented",
+      "_rid": 18n,
     },
     {
       "Base": 60790n,
@@ -1242,6 +1332,7 @@ TableRep {
       "TCOE": 132030n,
       "Title": "Station Agent",
       "Union": "ATU",
+      "_rid": 19n,
     },
     {
       "Base": 60781n,
@@ -1251,6 +1342,7 @@ TableRep {
       "TCOE": 105854n,
       "Title": "Station Agent",
       "Union": "ATU",
+      "_rid": 20n,
     },
     {
       "Base": 60771n,
@@ -1260,6 +1352,7 @@ TableRep {
       "TCOE": 115104n,
       "Title": "Station Agent",
       "Union": "ATU",
+      "_rid": 21n,
     },
     {
       "Base": 59817n,
@@ -1269,6 +1362,7 @@ TableRep {
       "TCOE": 113775n,
       "Title": "Electrician",
       "Union": "SEIU",
+      "_rid": 22n,
     },
   ],
   "schema": {
@@ -1301,6 +1395,10 @@ TableRep {
         "columnType": "VARCHAR",
         "displayName": "Union",
       },
+      "_rid": {
+        "columnType": "integer",
+        "displayName": "_rid",
+      },
     },
     "columns": [
       "Name",
@@ -1309,6 +1407,7 @@ TableRep {
       "TCOE",
       "Job Family",
       "Union",
+      "_rid",
       "Overhead",
     ],
     "dialect": "duckdb",
@@ -1327,6 +1426,7 @@ TableRep {
       "TCOE": 399921n,
       "Title": "General Manager",
       "Union": "Non-Represented",
+      "_rid": 0n,
     },
     {
       "Base": 298700n,
@@ -1336,6 +1436,7 @@ TableRep {
       "TCOE": 419661n,
       "Title": "General Manager",
       "Union": "Non-Represented",
+      "_rid": 1n,
     },
     {
       "Base": 238269n,
@@ -1345,6 +1446,7 @@ TableRep {
       "TCOE": 321543n,
       "Title": "General Counsel",
       "Union": "Non-Represented",
+      "_rid": 2n,
     },
     {
       "Base": 212647n,
@@ -1354,6 +1456,7 @@ TableRep {
       "TCOE": 288160n,
       "Title": "Assistant General Manager Operations",
       "Union": "Non-Represented",
+      "_rid": 3n,
     },
     {
       "Base": 208744n,
@@ -1363,6 +1466,7 @@ TableRep {
       "TCOE": 287139n,
       "Title": "Controller-Treasurer",
       "Union": "Non-Represented",
+      "_rid": 4n,
     },
     {
       "Base": 206914n,
@@ -1372,6 +1476,7 @@ TableRep {
       "TCOE": 281548n,
       "Title": "Deputy General Manager",
       "Union": "Non-Represented",
+      "_rid": 5n,
     },
     {
       "Base": 170383n,
@@ -1381,6 +1486,7 @@ TableRep {
       "TCOE": 238211n,
       "Title": "Chief Transportation Officer",
       "Union": "Non-Represented",
+      "_rid": 6n,
     },
     {
       "Base": 165470n,
@@ -1390,6 +1496,7 @@ TableRep {
       "TCOE": 224345n,
       "Title": "Senior Attorney",
       "Union": "Non-Represented",
+      "_rid": 7n,
     },
     {
       "Base": 160289n,
@@ -1399,6 +1506,7 @@ TableRep {
       "TCOE": 220683n,
       "Title": "Senior Attorney",
       "Union": "Non-Represented",
+      "_rid": 8n,
     },
     {
       "Base": 157300n,
@@ -1408,6 +1516,7 @@ TableRep {
       "TCOE": 209709n,
       "Title": "Group Manager, Capital Projects",
       "Union": "Non-Represented",
+      "_rid": 9n,
     },
     {
       "Base": 152434n,
@@ -1417,6 +1526,7 @@ TableRep {
       "TCOE": 212535n,
       "Title": "Group Manager Systems Capital Prog",
       "Union": "Non-Represented",
+      "_rid": 10n,
     },
     {
       "Base": 152125n,
@@ -1426,6 +1536,7 @@ TableRep {
       "TCOE": 211941n,
       "Title": "Chief Safety Officer",
       "Union": "Non-Represented",
+      "_rid": 11n,
     },
     {
       "Base": 77446n,
@@ -1435,6 +1546,7 @@ TableRep {
       "TCOE": 128332n,
       "Title": "Wayside Inspector",
       "Union": "SEIU",
+      "_rid": 12n,
     },
     {
       "Base": 77446n,
@@ -1444,6 +1556,7 @@ TableRep {
       "TCOE": 124962n,
       "Title": "Structures Inspector",
       "Union": "SEIU",
+      "_rid": 13n,
     },
     {
       "Base": 77446n,
@@ -1453,6 +1566,7 @@ TableRep {
       "TCOE": 123432n,
       "Title": "Vehicle Inspector",
       "Union": "SEIU",
+      "_rid": 14n,
     },
     {
       "Base": 75701n,
@@ -1462,6 +1576,7 @@ TableRep {
       "TCOE": 127660n,
       "Title": "Revenue Protection Guard",
       "Union": "BPOA",
+      "_rid": 15n,
     },
     {
       "Base": 74068n,
@@ -1471,6 +1586,7 @@ TableRep {
       "TCOE": 104260n,
       "Title": "Transit Vehicle Mechanic",
       "Union": "SEIU",
+      "_rid": 16n,
     },
     {
       "Base": 61184n,
@@ -1480,6 +1596,7 @@ TableRep {
       "TCOE": 118799n,
       "Title": "Train Operator",
       "Union": "ATU",
+      "_rid": 17n,
     },
     {
       "Base": 130035n,
@@ -1489,6 +1606,7 @@ TableRep {
       "TCOE": 181955n,
       "Title": "Department Manager Gov't & Comm Rel",
       "Union": "Non-Represented",
+      "_rid": 18n,
     },
     {
       "Base": 60790n,
@@ -1498,6 +1616,7 @@ TableRep {
       "TCOE": 132030n,
       "Title": "Station Agent",
       "Union": "ATU",
+      "_rid": 19n,
     },
     {
       "Base": 60781n,
@@ -1507,6 +1626,7 @@ TableRep {
       "TCOE": 105854n,
       "Title": "Station Agent",
       "Union": "ATU",
+      "_rid": 20n,
     },
     {
       "Base": 60771n,
@@ -1516,6 +1636,7 @@ TableRep {
       "TCOE": 115104n,
       "Title": "Station Agent",
       "Union": "ATU",
+      "_rid": 21n,
     },
     {
       "Base": 59817n,
@@ -1525,6 +1646,7 @@ TableRep {
       "TCOE": 113775n,
       "Title": "Electrician",
       "Union": "SEIU",
+      "_rid": 22n,
     },
   ],
   "schema": {
@@ -1557,6 +1679,10 @@ TableRep {
         "columnType": "VARCHAR",
         "displayName": "Union",
       },
+      "_rid": {
+        "columnType": "integer",
+        "displayName": "_rid",
+      },
     },
     "columns": [
       "Name",
@@ -1565,6 +1691,7 @@ TableRep {
       "TCOE",
       "Job Family",
       "Union",
+      "_rid",
       "BasePct",
     ],
     "dialect": "duckdb",
@@ -1584,6 +1711,7 @@ TableRep {
       "TCOE": 399921n,
       "Title": "General Manager",
       "Union": "Non-Represented",
+      "_rid": 0n,
     },
     {
       "Base": 298700n,
@@ -1594,6 +1722,7 @@ TableRep {
       "TCOE": 419661n,
       "Title": "General Manager",
       "Union": "Non-Represented",
+      "_rid": 1n,
     },
     {
       "Base": 238269n,
@@ -1604,6 +1733,7 @@ TableRep {
       "TCOE": 321543n,
       "Title": "General Counsel",
       "Union": "Non-Represented",
+      "_rid": 2n,
     },
     {
       "Base": 212647n,
@@ -1614,6 +1744,7 @@ TableRep {
       "TCOE": 288160n,
       "Title": "Assistant General Manager Operations",
       "Union": "Non-Represented",
+      "_rid": 3n,
     },
     {
       "Base": 208744n,
@@ -1624,6 +1755,7 @@ TableRep {
       "TCOE": 287139n,
       "Title": "Controller-Treasurer",
       "Union": "Non-Represented",
+      "_rid": 4n,
     },
     {
       "Base": 206914n,
@@ -1634,6 +1766,7 @@ TableRep {
       "TCOE": 281548n,
       "Title": "Deputy General Manager",
       "Union": "Non-Represented",
+      "_rid": 5n,
     },
     {
       "Base": 170383n,
@@ -1644,6 +1777,7 @@ TableRep {
       "TCOE": 238211n,
       "Title": "Chief Transportation Officer",
       "Union": "Non-Represented",
+      "_rid": 6n,
     },
     {
       "Base": 165470n,
@@ -1654,6 +1788,7 @@ TableRep {
       "TCOE": 224345n,
       "Title": "Senior Attorney",
       "Union": "Non-Represented",
+      "_rid": 7n,
     },
     {
       "Base": 160289n,
@@ -1664,6 +1799,7 @@ TableRep {
       "TCOE": 220683n,
       "Title": "Senior Attorney",
       "Union": "Non-Represented",
+      "_rid": 8n,
     },
     {
       "Base": 157300n,
@@ -1674,6 +1810,7 @@ TableRep {
       "TCOE": 209709n,
       "Title": "Group Manager, Capital Projects",
       "Union": "Non-Represented",
+      "_rid": 9n,
     },
     {
       "Base": 152434n,
@@ -1684,6 +1821,7 @@ TableRep {
       "TCOE": 212535n,
       "Title": "Group Manager Systems Capital Prog",
       "Union": "Non-Represented",
+      "_rid": 10n,
     },
     {
       "Base": 152125n,
@@ -1694,6 +1832,7 @@ TableRep {
       "TCOE": 211941n,
       "Title": "Chief Safety Officer",
       "Union": "Non-Represented",
+      "_rid": 11n,
     },
     {
       "Base": 77446n,
@@ -1704,6 +1843,7 @@ TableRep {
       "TCOE": 128332n,
       "Title": "Wayside Inspector",
       "Union": "SEIU",
+      "_rid": 12n,
     },
     {
       "Base": 77446n,
@@ -1714,6 +1854,7 @@ TableRep {
       "TCOE": 124962n,
       "Title": "Structures Inspector",
       "Union": "SEIU",
+      "_rid": 13n,
     },
     {
       "Base": 77446n,
@@ -1724,6 +1865,7 @@ TableRep {
       "TCOE": 123432n,
       "Title": "Vehicle Inspector",
       "Union": "SEIU",
+      "_rid": 14n,
     },
     {
       "Base": 75701n,
@@ -1734,6 +1876,7 @@ TableRep {
       "TCOE": 127660n,
       "Title": "Revenue Protection Guard",
       "Union": "BPOA",
+      "_rid": 15n,
     },
     {
       "Base": 74068n,
@@ -1744,6 +1887,7 @@ TableRep {
       "TCOE": 104260n,
       "Title": "Transit Vehicle Mechanic",
       "Union": "SEIU",
+      "_rid": 16n,
     },
     {
       "Base": 61184n,
@@ -1754,6 +1898,7 @@ TableRep {
       "TCOE": 118799n,
       "Title": "Train Operator",
       "Union": "ATU",
+      "_rid": 17n,
     },
     {
       "Base": 130035n,
@@ -1764,6 +1909,7 @@ TableRep {
       "TCOE": 181955n,
       "Title": "Department Manager Gov't & Comm Rel",
       "Union": "Non-Represented",
+      "_rid": 18n,
     },
     {
       "Base": 60790n,
@@ -1774,6 +1920,7 @@ TableRep {
       "TCOE": 132030n,
       "Title": "Station Agent",
       "Union": "ATU",
+      "_rid": 19n,
     },
     {
       "Base": 60781n,
@@ -1784,6 +1931,7 @@ TableRep {
       "TCOE": 105854n,
       "Title": "Station Agent",
       "Union": "ATU",
+      "_rid": 20n,
     },
     {
       "Base": 60771n,
@@ -1794,6 +1942,7 @@ TableRep {
       "TCOE": 115104n,
       "Title": "Station Agent",
       "Union": "ATU",
+      "_rid": 21n,
     },
     {
       "Base": 59817n,
@@ -1804,6 +1953,7 @@ TableRep {
       "TCOE": 113775n,
       "Title": "Electrician",
       "Union": "SEIU",
+      "_rid": 22n,
     },
   ],
   "schema": {
@@ -1840,6 +1990,10 @@ TableRep {
         "columnType": "VARCHAR",
         "displayName": "Union",
       },
+      "_rid": {
+        "columnType": "integer",
+        "displayName": "_rid",
+      },
     },
     "columns": [
       "Name",
@@ -1848,6 +2002,7 @@ TableRep {
       "TCOE",
       "Job Family",
       "Union",
+      "_rid",
       "BasePct",
       "BasePctInt",
     ],
@@ -1876,6 +2031,7 @@ TableRep {
       "Title": "General Manager",
       "Union": "Non-Represented",
       "_pivot": null,
+      "_rid": 0n,
     },
     {
       "Base": 298700n,
@@ -1885,6 +2041,7 @@ TableRep {
       "Title": "General Manager",
       "Union": "Non-Represented",
       "_pivot": null,
+      "_rid": 1n,
     },
     {
       "Base": 238269n,
@@ -1894,6 +2051,7 @@ TableRep {
       "Title": "General Counsel",
       "Union": "Non-Represented",
       "_pivot": null,
+      "_rid": 2n,
     },
     {
       "Base": 212647n,
@@ -1903,6 +2061,7 @@ TableRep {
       "Title": "Assistant General Manager Operations",
       "Union": "Non-Represented",
       "_pivot": null,
+      "_rid": 3n,
     },
     {
       "Base": 208744n,
@@ -1912,6 +2071,7 @@ TableRep {
       "Title": "Controller-Treasurer",
       "Union": "Non-Represented",
       "_pivot": null,
+      "_rid": 4n,
     },
     {
       "Base": 206914n,
@@ -1921,6 +2081,7 @@ TableRep {
       "Title": "Deputy General Manager",
       "Union": "Non-Represented",
       "_pivot": null,
+      "_rid": 5n,
     },
     {
       "Base": 170383n,
@@ -1930,6 +2091,7 @@ TableRep {
       "Title": "Chief Transportation Officer",
       "Union": "Non-Represented",
       "_pivot": null,
+      "_rid": 6n,
     },
     {
       "Base": 165470n,
@@ -1939,6 +2101,7 @@ TableRep {
       "Title": "Senior Attorney",
       "Union": "Non-Represented",
       "_pivot": null,
+      "_rid": 7n,
     },
     {
       "Base": 160289n,
@@ -1948,6 +2111,7 @@ TableRep {
       "Title": "Senior Attorney",
       "Union": "Non-Represented",
       "_pivot": null,
+      "_rid": 8n,
     },
     {
       "Base": 157300n,
@@ -1957,6 +2121,7 @@ TableRep {
       "Title": "Group Manager, Capital Projects",
       "Union": "Non-Represented",
       "_pivot": null,
+      "_rid": 9n,
     },
     {
       "Base": 152434n,
@@ -1966,6 +2131,7 @@ TableRep {
       "Title": "Group Manager Systems Capital Prog",
       "Union": "Non-Represented",
       "_pivot": null,
+      "_rid": 10n,
     },
     {
       "Base": 152125n,
@@ -1975,6 +2141,7 @@ TableRep {
       "Title": "Chief Safety Officer",
       "Union": "Non-Represented",
       "_pivot": null,
+      "_rid": 11n,
     },
     {
       "Base": 77446n,
@@ -1984,6 +2151,7 @@ TableRep {
       "Title": "Wayside Inspector",
       "Union": "SEIU",
       "_pivot": null,
+      "_rid": 12n,
     },
     {
       "Base": 77446n,
@@ -1993,6 +2161,7 @@ TableRep {
       "Title": "Structures Inspector",
       "Union": "SEIU",
       "_pivot": null,
+      "_rid": 13n,
     },
     {
       "Base": 77446n,
@@ -2002,6 +2171,7 @@ TableRep {
       "Title": "Vehicle Inspector",
       "Union": "SEIU",
       "_pivot": null,
+      "_rid": 14n,
     },
     {
       "Base": 75701n,
@@ -2011,6 +2181,7 @@ TableRep {
       "Title": "Revenue Protection Guard",
       "Union": "BPOA",
       "_pivot": null,
+      "_rid": 15n,
     },
     {
       "Base": 74068n,
@@ -2020,6 +2191,7 @@ TableRep {
       "Title": "Transit Vehicle Mechanic",
       "Union": "SEIU",
       "_pivot": null,
+      "_rid": 16n,
     },
     {
       "Base": 61184n,
@@ -2029,6 +2201,7 @@ TableRep {
       "Title": "Train Operator",
       "Union": "ATU",
       "_pivot": null,
+      "_rid": 17n,
     },
     {
       "Base": 130035n,
@@ -2038,6 +2211,7 @@ TableRep {
       "Title": "Department Manager Gov't & Comm Rel",
       "Union": "Non-Represented",
       "_pivot": null,
+      "_rid": 18n,
     },
     {
       "Base": 60790n,
@@ -2047,6 +2221,7 @@ TableRep {
       "Title": "Station Agent",
       "Union": "ATU",
       "_pivot": null,
+      "_rid": 19n,
     },
     {
       "Base": 60781n,
@@ -2056,6 +2231,7 @@ TableRep {
       "Title": "Station Agent",
       "Union": "ATU",
       "_pivot": null,
+      "_rid": 20n,
     },
     {
       "Base": 60771n,
@@ -2065,6 +2241,7 @@ TableRep {
       "Title": "Station Agent",
       "Union": "ATU",
       "_pivot": null,
+      "_rid": 21n,
     },
     {
       "Base": 59817n,
@@ -2074,6 +2251,7 @@ TableRep {
       "Title": "Electrician",
       "Union": "SEIU",
       "_pivot": null,
+      "_rid": 22n,
     },
   ],
   "schema": {
@@ -2106,6 +2284,10 @@ TableRep {
         "columnType": "VARCHAR",
         "displayName": "_pivot",
       },
+      "_rid": {
+        "columnType": "integer",
+        "displayName": "_rid",
+      },
     },
     "columns": [
       "Name",
@@ -2114,6 +2296,7 @@ TableRep {
       "TCOE",
       "Job Family",
       "Union",
+      "_rid",
       "_pivot",
     ],
     "dialect": "duckdb",
@@ -2147,18 +2330,21 @@ exports[`t1 - basic sqlite tableQuery 1`] = `
 TableRep {
   "rowData": [
     {
+      "_rid": 0n,
       "email": "john@doe.com",
       "firstName": "John",
       "lastName": "Doe",
       "phoneNumber": "0123456789",
     },
     {
+      "_rid": 1n,
       "email": "jane@doe.com",
       "firstName": "Jane",
       "lastName": "Doe",
       "phoneNumber": "9876543210",
     },
     {
+      "_rid": 2n,
       "email": "james.bond@mi6.co.uk",
       "firstName": "James",
       "lastName": "Bond",
@@ -2167,6 +2353,10 @@ TableRep {
   ],
   "schema": {
     "columnMetadata": {
+      "_rid": {
+        "columnType": "integer",
+        "displayName": "_rid",
+      },
       "email": {
         "columnType": "VARCHAR",
         "displayName": "email",
@@ -2189,6 +2379,7 @@ TableRep {
       "lastName",
       "email",
       "phoneNumber",
+      "_rid",
     ],
     "dialect": "duckdb",
   },
@@ -2205,6 +2396,7 @@ TableRep {
       "TCOE": 399921n,
       "Title": "General Manager",
       "Union": "Non-Represented",
+      "_rid": 0n,
     },
     {
       "Base": 298700n,
@@ -2213,6 +2405,7 @@ TableRep {
       "TCOE": 419661n,
       "Title": "General Manager",
       "Union": "Non-Represented",
+      "_rid": 1n,
     },
     {
       "Base": 238269n,
@@ -2221,6 +2414,7 @@ TableRep {
       "TCOE": 321543n,
       "Title": "General Counsel",
       "Union": "Non-Represented",
+      "_rid": 2n,
     },
     {
       "Base": 212647n,
@@ -2229,6 +2423,7 @@ TableRep {
       "TCOE": 288160n,
       "Title": "Assistant General Manager Operations",
       "Union": "Non-Represented",
+      "_rid": 3n,
     },
     {
       "Base": 208744n,
@@ -2237,6 +2432,7 @@ TableRep {
       "TCOE": 287139n,
       "Title": "Controller-Treasurer",
       "Union": "Non-Represented",
+      "_rid": 4n,
     },
     {
       "Base": 206914n,
@@ -2245,6 +2441,7 @@ TableRep {
       "TCOE": 281548n,
       "Title": "Deputy General Manager",
       "Union": "Non-Represented",
+      "_rid": 5n,
     },
     {
       "Base": 170383n,
@@ -2253,6 +2450,7 @@ TableRep {
       "TCOE": 238211n,
       "Title": "Chief Transportation Officer",
       "Union": "Non-Represented",
+      "_rid": 6n,
     },
     {
       "Base": 165470n,
@@ -2261,6 +2459,7 @@ TableRep {
       "TCOE": 224345n,
       "Title": "Senior Attorney",
       "Union": "Non-Represented",
+      "_rid": 7n,
     },
     {
       "Base": 160289n,
@@ -2269,6 +2468,7 @@ TableRep {
       "TCOE": 220683n,
       "Title": "Senior Attorney",
       "Union": "Non-Represented",
+      "_rid": 8n,
     },
     {
       "Base": 157300n,
@@ -2277,6 +2477,7 @@ TableRep {
       "TCOE": 209709n,
       "Title": "Group Manager, Capital Projects",
       "Union": "Non-Represented",
+      "_rid": 9n,
     },
     {
       "Base": 152434n,
@@ -2285,6 +2486,7 @@ TableRep {
       "TCOE": 212535n,
       "Title": "Group Manager Systems Capital Prog",
       "Union": "Non-Represented",
+      "_rid": 10n,
     },
     {
       "Base": 152125n,
@@ -2293,6 +2495,7 @@ TableRep {
       "TCOE": 211941n,
       "Title": "Chief Safety Officer",
       "Union": "Non-Represented",
+      "_rid": 11n,
     },
     {
       "Base": 77446n,
@@ -2301,6 +2504,7 @@ TableRep {
       "TCOE": 128332n,
       "Title": "Wayside Inspector",
       "Union": "SEIU",
+      "_rid": 12n,
     },
     {
       "Base": 77446n,
@@ -2309,6 +2513,7 @@ TableRep {
       "TCOE": 124962n,
       "Title": "Structures Inspector",
       "Union": "SEIU",
+      "_rid": 13n,
     },
     {
       "Base": 77446n,
@@ -2317,6 +2522,7 @@ TableRep {
       "TCOE": 123432n,
       "Title": "Vehicle Inspector",
       "Union": "SEIU",
+      "_rid": 14n,
     },
     {
       "Base": 75701n,
@@ -2325,6 +2531,7 @@ TableRep {
       "TCOE": 127660n,
       "Title": "Revenue Protection Guard",
       "Union": "BPOA",
+      "_rid": 15n,
     },
     {
       "Base": 74068n,
@@ -2333,6 +2540,7 @@ TableRep {
       "TCOE": 104260n,
       "Title": "Transit Vehicle Mechanic",
       "Union": "SEIU",
+      "_rid": 16n,
     },
     {
       "Base": 61184n,
@@ -2341,6 +2549,7 @@ TableRep {
       "TCOE": 118799n,
       "Title": "Train Operator",
       "Union": "ATU",
+      "_rid": 17n,
     },
     {
       "Base": 130035n,
@@ -2349,6 +2558,7 @@ TableRep {
       "TCOE": 181955n,
       "Title": "Department Manager Gov't & Comm Rel",
       "Union": "Non-Represented",
+      "_rid": 18n,
     },
     {
       "Base": 60790n,
@@ -2357,6 +2567,7 @@ TableRep {
       "TCOE": 132030n,
       "Title": "Station Agent",
       "Union": "ATU",
+      "_rid": 19n,
     },
     {
       "Base": 60781n,
@@ -2365,6 +2576,7 @@ TableRep {
       "TCOE": 105854n,
       "Title": "Station Agent",
       "Union": "ATU",
+      "_rid": 20n,
     },
     {
       "Base": 60771n,
@@ -2373,6 +2585,7 @@ TableRep {
       "TCOE": 115104n,
       "Title": "Station Agent",
       "Union": "ATU",
+      "_rid": 21n,
     },
     {
       "Base": 59817n,
@@ -2381,6 +2594,7 @@ TableRep {
       "TCOE": 113775n,
       "Title": "Electrician",
       "Union": "SEIU",
+      "_rid": 22n,
     },
   ],
   "schema": {
@@ -2409,6 +2623,10 @@ TableRep {
         "columnType": "VARCHAR",
         "displayName": "Union",
       },
+      "_rid": {
+        "columnType": "integer",
+        "displayName": "_rid",
+      },
     },
     "columns": [
       "Name",
@@ -2417,6 +2635,7 @@ TableRep {
       "TCOE",
       "Job Family",
       "Union",
+      "_rid",
     ],
     "dialect": "duckdb",
   },
@@ -2433,6 +2652,7 @@ TableRep {
       "TCOE": 399921n,
       "Title": "General Manager",
       "Union": "Non-Represented",
+      "_rid": 0n,
       "foo": 99,
     },
     {
@@ -2442,6 +2662,7 @@ TableRep {
       "TCOE": 419661n,
       "Title": "General Manager",
       "Union": "Non-Represented",
+      "_rid": 1n,
       "foo": 99,
     },
     {
@@ -2451,6 +2672,7 @@ TableRep {
       "TCOE": 321543n,
       "Title": "General Counsel",
       "Union": "Non-Represented",
+      "_rid": 2n,
       "foo": 99,
     },
     {
@@ -2460,6 +2682,7 @@ TableRep {
       "TCOE": 288160n,
       "Title": "Assistant General Manager Operations",
       "Union": "Non-Represented",
+      "_rid": 3n,
       "foo": 99,
     },
     {
@@ -2469,6 +2692,7 @@ TableRep {
       "TCOE": 287139n,
       "Title": "Controller-Treasurer",
       "Union": "Non-Represented",
+      "_rid": 4n,
       "foo": 99,
     },
     {
@@ -2478,6 +2702,7 @@ TableRep {
       "TCOE": 281548n,
       "Title": "Deputy General Manager",
       "Union": "Non-Represented",
+      "_rid": 5n,
       "foo": 99,
     },
     {
@@ -2487,6 +2712,7 @@ TableRep {
       "TCOE": 238211n,
       "Title": "Chief Transportation Officer",
       "Union": "Non-Represented",
+      "_rid": 6n,
       "foo": 99,
     },
     {
@@ -2496,6 +2722,7 @@ TableRep {
       "TCOE": 224345n,
       "Title": "Senior Attorney",
       "Union": "Non-Represented",
+      "_rid": 7n,
       "foo": 99,
     },
     {
@@ -2505,6 +2732,7 @@ TableRep {
       "TCOE": 220683n,
       "Title": "Senior Attorney",
       "Union": "Non-Represented",
+      "_rid": 8n,
       "foo": 99,
     },
     {
@@ -2514,6 +2742,7 @@ TableRep {
       "TCOE": 209709n,
       "Title": "Group Manager, Capital Projects",
       "Union": "Non-Represented",
+      "_rid": 9n,
       "foo": 99,
     },
     {
@@ -2523,6 +2752,7 @@ TableRep {
       "TCOE": 212535n,
       "Title": "Group Manager Systems Capital Prog",
       "Union": "Non-Represented",
+      "_rid": 10n,
       "foo": 99,
     },
     {
@@ -2532,6 +2762,7 @@ TableRep {
       "TCOE": 211941n,
       "Title": "Chief Safety Officer",
       "Union": "Non-Represented",
+      "_rid": 11n,
       "foo": 99,
     },
     {
@@ -2541,6 +2772,7 @@ TableRep {
       "TCOE": 128332n,
       "Title": "Wayside Inspector",
       "Union": "SEIU",
+      "_rid": 12n,
       "foo": 99,
     },
     {
@@ -2550,6 +2782,7 @@ TableRep {
       "TCOE": 124962n,
       "Title": "Structures Inspector",
       "Union": "SEIU",
+      "_rid": 13n,
       "foo": 99,
     },
     {
@@ -2559,6 +2792,7 @@ TableRep {
       "TCOE": 123432n,
       "Title": "Vehicle Inspector",
       "Union": "SEIU",
+      "_rid": 14n,
       "foo": 99,
     },
     {
@@ -2568,6 +2802,7 @@ TableRep {
       "TCOE": 127660n,
       "Title": "Revenue Protection Guard",
       "Union": "BPOA",
+      "_rid": 15n,
       "foo": 99,
     },
     {
@@ -2577,6 +2812,7 @@ TableRep {
       "TCOE": 104260n,
       "Title": "Transit Vehicle Mechanic",
       "Union": "SEIU",
+      "_rid": 16n,
       "foo": 99,
     },
     {
@@ -2586,6 +2822,7 @@ TableRep {
       "TCOE": 118799n,
       "Title": "Train Operator",
       "Union": "ATU",
+      "_rid": 17n,
       "foo": 99,
     },
     {
@@ -2595,6 +2832,7 @@ TableRep {
       "TCOE": 181955n,
       "Title": "Department Manager Gov't & Comm Rel",
       "Union": "Non-Represented",
+      "_rid": 18n,
       "foo": 99,
     },
     {
@@ -2604,6 +2842,7 @@ TableRep {
       "TCOE": 132030n,
       "Title": "Station Agent",
       "Union": "ATU",
+      "_rid": 19n,
       "foo": 99,
     },
     {
@@ -2613,6 +2852,7 @@ TableRep {
       "TCOE": 105854n,
       "Title": "Station Agent",
       "Union": "ATU",
+      "_rid": 20n,
       "foo": 99,
     },
     {
@@ -2622,6 +2862,7 @@ TableRep {
       "TCOE": 115104n,
       "Title": "Station Agent",
       "Union": "ATU",
+      "_rid": 21n,
       "foo": 99,
     },
     {
@@ -2631,6 +2872,7 @@ TableRep {
       "TCOE": 113775n,
       "Title": "Electrician",
       "Union": "SEIU",
+      "_rid": 22n,
       "foo": 99,
     },
   ],
@@ -2660,6 +2902,10 @@ TableRep {
         "columnType": "VARCHAR",
         "displayName": "Union",
       },
+      "_rid": {
+        "columnType": "integer",
+        "displayName": "_rid",
+      },
       "foo": {
         "columnType": "INTEGER",
         "displayName": "foo",
@@ -2672,6 +2918,7 @@ TableRep {
       "TCOE",
       "Job Family",
       "Union",
+      "_rid",
       "foo",
     ],
     "dialect": "duckdb",

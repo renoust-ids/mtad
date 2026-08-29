@@ -29,7 +29,7 @@ import {
   SQLFromCsvJoin,
 } from "./SQLQuery";
 import { ppSQLQuery } from "./pp";
-import { defaultDialect, col, ColumnExtendExp } from "./defs";
+import { col, ColumnExtendExp } from "./defs";
 import _ = require("lodash");
 import { AggFn } from "./AggFn";
 import { LeafSchemaMap } from "./TableRep";
@@ -71,11 +71,19 @@ const tableQueryToSql = (
   const schema = tableMap[key];
   const { tableName } = query;
 
-  const selectCols = schema.columns;
+  const selectCols = schema.columns.map((cid) => {
+    if (cid === "_rid") {
+      // The _rid column maps to DuckDB's physical rowid
+      return {
+        colExp: col("rowid"),
+        colType: schema.columnType(cid),
+        as: "_rid",
+      };
+    }
+    return mkColSelItem(cid, schema.columnType(cid));
+  });
   const sel = {
-    selectCols: selectCols.map((cid) =>
-      mkColSelItem(cid, schema.columnType(cid))
-    ),
+    selectCols,
     from: tableName,
     groupBy: [],
     orderBy: [],
@@ -114,10 +122,10 @@ const projectQueryToSql = (
       let outCol = colsMap[cid];
 
       if (outCol === undefined) {
-        const sqStr = ppSQLQuery(defaultDialect, sqsql);
+        const sqStr = ppSQLQuery(dialect, sqsql);
         throw new Error(
           "projectQueryToSql: no such column " +
-            defaultDialect.quoteCol(cid) +
+            dialect.quoteCol(cid) +
             " in subquery:  " +
             sqStr
         );

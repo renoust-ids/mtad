@@ -49,6 +49,7 @@ export interface CellEditStartData {
   pivotDepth?: number;
   isAggregateRow: boolean;
   rowData: { [columnId: string]: any };
+  rid?: number;
 }
 
 let divCounter = 0;
@@ -209,6 +210,8 @@ const mkSlickColMap = (
       ci.name = he.encode(pivotColumnDisplayName);
       ci.toolTip = he.encode(pivotColumnDisplayName);
       ci.formatter = groupCellFormatter;
+      // allow sorting by pivot label (direction applied per pivot depth)
+      ci.sortable = true;
     } else {
       var displayName = cmd.displayName || colId;
       ci.name = he.encode(displayName);
@@ -353,6 +356,34 @@ function escapeTabs(cellData: any): any {
   return cellData;
 }
 
+// Extract unique row indices from SlickGrid selection ranges
+function getUniqueRowsFromRanges(ranges: any[], grid: any): number[] {
+  const rowSet = new Set<number>();
+  if (!ranges || ranges.length === 0) {
+    // No selection — use the right-clicked row
+    const activeCell = grid.getActiveCell();
+    if (activeCell) {
+      rowSet.add(activeCell.row);
+    }
+  } else {
+    for (const range of ranges) {
+      for (let r = range.fromRow; r <= range.toRow; r++) {
+        rowSet.add(r);
+      }
+    }
+  }
+  return Array.from(rowSet).sort((a, b) => a - b);
+}
+
+function getSelectionCellCount(ranges: any[]): number {
+  if (!ranges || ranges.length === 0) return 1;
+  let count = 0;
+  for (const range of ranges) {
+    count += (range.toRow - range.fromRow + 1) * (range.toCell - range.fromCell + 1);
+  }
+  return count;
+}
+
 /* Create grid from the specified set of columns */
 const createGrid = (
   containerId: string,
@@ -371,6 +402,15 @@ const createGrid = (
     onSetColumnOrder,
     onCellEditStart,
     onColumnRename,
+    onColumnDelete,
+    onColumnDuplicate,
+    onInsertColumn,
+    onDeleteRows,
+    onDuplicateRows,
+    onInsertRow,
+    onDeleteAggregateRows,
+    onDuplicateAggregateRows,
+    vpivots,
     sortKey,
     clipboard,
     openURL,
@@ -544,6 +584,7 @@ const createGrid = (
       pivotDepth: item?._depth,
       isAggregateRow: !item?._isLeaf,
       rowData,
+      rid: item?._rid != null ? Number(item._rid) : undefined,
     });
   });
 
@@ -552,6 +593,29 @@ const createGrid = (
     event.preventDefault();
     const cellInfo = grid.getCellFromEvent(event);
     if (!cellInfo) return;
+
+    // Keep the current selection if the right-clicked cell is already part of
+    // it (so the context menu acts on the whole group); otherwise select just
+    // the hovered cell. Note: setActiveCell must NOT be called on a cell that
+    // is inside the selection, because the CellSelectionModel listens to
+    // onActiveCellChanged and collapses the ranges to that single active cell.
+    const row = cellInfo.row;
+    const cell = cellInfo.cell;
+    const selModel = grid.getSelectionModel();
+    const ranges = selModel ? selModel.getSelectedRanges() : [];
+    const inSelection = ranges.some(
+      (r: any) =>
+        cellInfo.row >= r.fromRow &&
+        cellInfo.row <= r.toRow &&
+        cellInfo.cell >= r.fromCell &&
+        cellInfo.cell <= r.toCell
+    );
+    if (!inSelection) {
+      grid.setActiveCell(row, cell);
+      if (selModel) {
+        selModel.setSelectedRanges([new Slick.Range(row, cell)]);
+      }
+    }
 
     const currentDataView = grid.getData();
     const item = currentDataView.getItem(cellInfo.row);
@@ -604,6 +668,7 @@ const createGrid = (
       pivotDepth: item?._depth,
       isAggregateRow: isAggregate,
       rowData,
+      rid: item?._rid != null ? Number(item._rid) : undefined,
     };
 
     const menu = document.createElement("div");
@@ -616,13 +681,141 @@ const createGrid = (
 
     const menuItem = document.createElement("div");
     menuItem.className = "bp4-menu-item";
-    // Aggregate rows always say "Edit all"; leaf rows say "Edit"
-    menuItem.textContent = isAggregate ? "Edit all" : "Edit";
+    // Aggregate rows always say "Edit all"; leaf rows say "Edit Cell"
+    menuItem.textContent = isAggregate ? "Edit all" : "Edit Cell";
     menuItem.addEventListener("click", () => {
       menu.remove();
       onCellEditStart?.(cellEditData);
     });
     menu.appendChild(menuItem);
+
+    // Add separator
+    const sep1 = document.createElement("div");
+    sep1.className = "bp4-menu-divider";
+    menu.appendChild(sep1);
+
+    // Delete Rows item
+    const deleteRowsItem = document.createElement("div");
+    deleteRowsItem.className = "bp4-menu-item";
+    deleteRowsItem.textContent =
+      getUniqueRowsFromRanges(grid.getSelectionModel().getSelectedRanges(), grid)
+        .length > 1
+        ? "Delete Rows"
+        : "Delete Row";
+    deleteRowsItem.addEventListener("click", () => {
+      menu.remove();
+      // Get selected rows from selection model
+      const ranges = grid.getSelectionModel().getSelectedRanges();
+      const selectedRows = getUniqueRowsFromRanges(ranges, grid);
+      // Get data for each selected row
+      const dv = grid.getData();
+      const rowDataList = selectedRows
+        .map((rowIdx: number) => dv.getItem(rowIdx))
+        .filter((item: any) => item);
+      onDeleteRows?.(rowDataList);
+    });
+    menu.appendChild(deleteRowsItem);
+
+    // Duplicate Rows item
+    const dupRowsItem = document.createElement("div");
+    dupRowsItem.className = "bp4-menu-item";
+    dupRowsItem.textContent =
+      getUniqueRowsFromRanges(grid.getSelectionModel().getSelectedRanges(), grid)
+        .length > 1
+        ? "Duplicate Rows"
+        : "Duplicate Row";
+    dupRowsItem.addEventListener("click", () => {
+      menu.remove();
+      const ranges = grid.getSelectionModel().getSelectedRanges();
+      const selectedRows = getUniqueRowsFromRanges(ranges, grid);
+      const dv = grid.getData();
+      const rowDataList = selectedRows
+        .map((rowIdx: number) => dv.getItem(rowIdx))
+        .filter((item: any) => item);
+      onDuplicateRows?.(rowDataList);
+    });
+    menu.appendChild(dupRowsItem);
+
+    // Insert Row item (appends an empty row)
+    const insertRowItem = document.createElement("div");
+    insertRowItem.className = "bp4-menu-item";
+    insertRowItem.textContent = "Insert Row";
+    insertRowItem.addEventListener("click", () => {
+      menu.remove();
+      onInsertRow?.();
+    });
+    menu.appendChild(insertRowItem);
+
+    // Aggregate-only items
+    if (isAggregate) {
+      const sep2 = document.createElement("div");
+      sep2.className = "bp4-menu-divider";
+      menu.appendChild(sep2);
+
+      const delAggItem = document.createElement("div");
+      delAggItem.className = "bp4-menu-item";
+      delAggItem.textContent = "Delete All Aggregate Rows";
+      delAggItem.addEventListener("click", () => {
+        menu.remove();
+        onDeleteAggregateRows?.(item, item._depth);
+      });
+      menu.appendChild(delAggItem);
+
+      const dupAggItem = document.createElement("div");
+      dupAggItem.className = "bp4-menu-item";
+      dupAggItem.textContent = "Duplicate All Aggregate Rows";
+      dupAggItem.addEventListener("click", () => {
+        menu.remove();
+        onDuplicateAggregateRows?.(item, item._depth);
+      });
+      menu.appendChild(dupAggItem);
+    }
+
+    // Copy items (available for all rows)
+    const sep3 = document.createElement("div");
+    sep3.className = "bp4-menu-divider";
+    menu.appendChild(sep3);
+
+    const copyCellsItem = document.createElement("div");
+    copyCellsItem.className = "bp4-menu-item";
+    const cellCount = getSelectionCellCount(
+      grid.getSelectionModel().getSelectedRanges()
+    );
+    copyCellsItem.textContent = cellCount > 1 ? "Copy Cells" : "Copy Cell";
+    copyCellsItem.addEventListener("click", () => {
+      menu.remove();
+      const ranges = grid.getSelectionModel().getSelectedRanges();
+      if (ranges && ranges.length > 0) {
+        copySelectedRange(ranges[0]);
+      }
+    });
+    menu.appendChild(copyCellsItem);
+
+    const copyRowsItem = document.createElement("div");
+    copyRowsItem.className = "bp4-menu-item";
+    copyRowsItem.textContent =
+      getUniqueRowsFromRanges(grid.getSelectionModel().getSelectedRanges(), grid)
+        .length > 1
+        ? "Copy Rows"
+        : "Copy Row";
+    copyRowsItem.addEventListener("click", () => {
+      menu.remove();
+      const ranges = grid.getSelectionModel().getSelectedRanges();
+      const selectedRows = getUniqueRowsFromRanges(ranges, grid);
+      // Get visible non-metadata columns
+      const visibleCols = grid.getColumns().filter(
+        (c: any) => !c.id.startsWith("_") && c.id !== "Rec"
+      );
+      const dv = grid.getData();
+      // Build TSV with header
+      const header = visibleCols.map((c: any) => c.name).join("\t");
+      const rows = selectedRows.map((rowIdx: number) => {
+        const item = dv.getItem(rowIdx);
+        return visibleCols.map((c: any) => escapeTabs(item[c.id])).join("\t");
+      });
+      clipboard.writeText([header, ...rows].join("\r\n"));
+    });
+    menu.appendChild(copyRowsItem);
 
     document.body.appendChild(menu);
 
@@ -662,14 +855,45 @@ const createGrid = (
     menu.style.left = `${(e as MouseEvent).clientX}px`;
     menu.style.top = `${(e as MouseEvent).clientY}px`;
 
+    const insertColumnItem = document.createElement("div");
+    insertColumnItem.className = "bp4-menu-item";
+    insertColumnItem.textContent = "Insert Column";
+    insertColumnItem.addEventListener("click", () => {
+      menu.remove();
+      onInsertColumn?.(column.id);
+    });
+    menu.appendChild(insertColumnItem);
+
+    const sepCol = document.createElement("div");
+    sepCol.className = "bp4-menu-divider";
+    menu.appendChild(sepCol);
+
     const renameItem = document.createElement("div");
     renameItem.className = "bp4-menu-item";
-    renameItem.textContent = "Rename";
+    renameItem.textContent = "Rename Column";
     renameItem.addEventListener("click", () => {
       menu.remove();
       onColumnRename?.(column.id);
     });
     menu.appendChild(renameItem);
+
+    const deleteItem = document.createElement("div");
+    deleteItem.className = "bp4-menu-item";
+    deleteItem.textContent = "Delete Column";
+    deleteItem.addEventListener("click", () => {
+      menu.remove();
+      onColumnDelete?.(column.id);
+    });
+    menu.appendChild(deleteItem);
+
+    const duplicateItem = document.createElement("div");
+    duplicateItem.className = "bp4-menu-item";
+    duplicateItem.textContent = "Duplicate Column";
+    duplicateItem.addEventListener("click", () => {
+      menu.remove();
+      onColumnDuplicate?.(column.id);
+    });
+    menu.appendChild(duplicateItem);
 
     document.body.appendChild(menu);
 
@@ -869,6 +1093,15 @@ export interface DataGridProps {
   onSetColumnOrder?: (displayColumns: string[]) => void;
   onCellEditStart?: (data: CellEditStartData) => void;
   onColumnRename?: (columnId: string) => void;
+  onColumnDelete?: (columnId: string) => void;
+  onColumnDuplicate?: (columnId: string) => void;
+  onInsertColumn?: (columnId: string) => void;
+  onDeleteRows?: (rowDataList: { [columnId: string]: any }[]) => void;
+  onDuplicateRows?: (rowDataList: { [columnId: string]: any }[]) => void;
+  onInsertRow?: () => void;
+  onDeleteAggregateRows?: (item: any, depth: number) => void;
+  onDuplicateAggregateRows?: (item: any, depth: number) => void;
+  vpivots?: string[];
   openURL: OpenURLFn;
   embedded: boolean;
 }

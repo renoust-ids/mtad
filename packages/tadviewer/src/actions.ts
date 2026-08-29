@@ -152,8 +152,10 @@ export const replaceCurrentView = async (
     appState.showRecordCount
   );
 
-  // start off with all columns displayed:
-  const displayColumns = baseSchema.columns.slice();
+  // start off with all columns displayed (excluding internal _-prefixed cols):
+  const displayColumns = baseSchema.columns.filter(
+    (cid) => !cid.startsWith("_") && cid !== "Rec"
+  );
 
   const openPaths = new PathTree();
   if (!viewParams) {
@@ -524,6 +526,20 @@ export const setExportProgress = (
   update(stateRef, (s) => s.set("exportPercent", percentComplete) as AppState);
 };
 
+export const setExportVisibleOnly = (
+  visibleOnly: boolean,
+  stateRef: StateRef<AppState>
+) => {
+  update(stateRef, (s) => s.set("exportVisibleOnly", visibleOnly) as AppState);
+};
+
+export const setExportColumnOrder = (
+  columnOrder: boolean,
+  stateRef: StateRef<AppState>
+) => {
+  update(stateRef, (s) => s.set("exportColumnOrder", columnOrder) as AppState);
+};
+
 export const setFilter = (
   fe: reltab.FilterExp,
   stateRef: StateRef<AppState>
@@ -866,14 +882,19 @@ export const commitCellEdit = async (
   };
 
   // Build WHERE clause from row data, only using columns that exist in the target table
-  const whereParts: string[] = [];
-  for (const [col, val] of Object.entries(editState.rowData)) {
-    if (tableColumns.has(col)) {
-      whereParts.push(formatWhereValue(col, val));
+  // For leaf rows, use the physical rowid to target exactly one row.
+  let whereClause: string;
+  if (!editState.isAggregateRow && editState.rid != null) {
+    whereClause = `rowid = ${editState.rid}`;
+  } else {
+    const whereParts: string[] = [];
+    for (const [col, val] of Object.entries(editState.rowData)) {
+      if (tableColumns.has(col)) {
+        whereParts.push(formatWhereValue(col, val));
+      }
     }
+    whereClause = whereParts.join(" AND ");
   }
-
-  const whereClause = whereParts.join(" AND ");
   
   // Build the new value - handle different types
   let sqlValue: string;
@@ -1042,5 +1063,434 @@ export const renameColumn = async (
     });
   } catch (err) {
     console.error("[ColumnRename] Error renaming column:", err);
+  }
+};
+
+// --- Column Delete Action ---
+
+export const deleteColumn = async (
+  tableName: string,
+  columnName: string,
+  stateRef: StateRef<AppState>
+): Promise<void> => {
+  const state = mutableGet(stateRef);
+  const { dbc } = state.viewState;
+  if (!dbc) {
+    console.error("deleteColumn: no database connection");
+    return;
+  }
+
+  try {
+    await dbc.deleteColumn(tableName, columnName);
+    console.log(`[ColumnDelete] Deleted column "${columnName}" from table "${tableName}"`);
+
+    const appState = mutableGet(stateRef);
+    const showRecordCount = appState.showRecordCount;
+    const vp = appState.viewState.viewParams;
+
+    // Re-fetch schema
+    const newBQ = reltab.tableQuery(tableName);
+    const newBaseSchema = await aggtree.getBaseSchema(dbc, newBQ, showRecordCount);
+
+    // Remove column from ViewParams arrays
+    const removeFromArr = (arr: string[]): string[] =>
+      arr.filter((c) => c !== columnName);
+
+    const newVP = vp
+      .set("displayColumns", removeFromArr(vp.displayColumns))
+      .set("vpivots", removeFromArr(vp.vpivots))
+      .set("sortKey", vp.sortKey.filter(([col]) => col !== columnName))
+      .set("aggMap", (() => {
+        const m = { ...vp.aggMap };
+        delete m[columnName];
+        return m;
+      })()) as ViewParams;
+
+    update(stateRef, (st: AppState) =>
+      st.update("viewState", (vs) =>
+        vs!
+          .set("viewParams", newVP)
+          .set("baseQuery", newBQ)
+          .set("baseSchema", newBaseSchema) as ViewState
+      )
+    );
+  } catch (err) {
+    console.error("[ColumnDelete] Error deleting column:", err);
+  }
+};
+
+// --- Column Duplicate Action ---
+
+export const duplicateColumn = async (
+  tableName: string,
+  sourceColumn: string,
+  newColumn: string,
+  stateRef: StateRef<AppState>
+): Promise<void> => {
+  const state = mutableGet(stateRef);
+  const { dbc } = state.viewState;
+  if (!dbc) {
+    console.error("duplicateColumn: no database connection");
+    return;
+  }
+
+  try {
+    await dbc.duplicateColumn(tableName, sourceColumn, newColumn);
+    console.log(`[ColumnDuplicate] Duplicated column "${sourceColumn}" as "${newColumn}" in table "${tableName}"`);
+
+    const appState = mutableGet(stateRef);
+    const showRecordCount = appState.showRecordCount;
+    const vp = appState.viewState.viewParams;
+
+    // Re-fetch schema
+    const newBQ = reltab.tableQuery(tableName);
+    const newBaseSchema = await aggtree.getBaseSchema(dbc, newBQ, showRecordCount);
+
+    // Add new column after source in displayColumns
+    const newDisplayCols = [...vp.displayColumns];
+    const srcIdx = newDisplayCols.indexOf(sourceColumn);
+    if (srcIdx >= 0) {
+      newDisplayCols.splice(srcIdx + 1, 0, newColumn);
+    } else {
+      newDisplayCols.push(newColumn);
+    }
+
+    const newVP = vp
+      .set("displayColumns", newDisplayCols) as ViewParams;
+
+    update(stateRef, (st: AppState) =>
+      st.update("viewState", (vs) =>
+        vs!
+          .set("viewParams", newVP)
+          .set("baseQuery", newBQ)
+          .set("baseSchema", newBaseSchema) as ViewState
+      )
+    );
+  } catch (err) {
+    console.error("[ColumnDuplicate] Error duplicating column:", err);
+  }
+};
+
+// --- Insert Row Action ---
+
+const getTableNameFromQuery = (baseQuery: any): string | null => {
+  const getTableName = (rep: any): string | null => {
+    if (!rep) return null;
+    if (rep.tableName) return rep.tableName;
+    if (rep.from) return getTableName(rep.from);
+    return null;
+  };
+  return getTableName(baseQuery?._rep);
+};
+
+export const insertRow = async (
+  stateRef: StateRef<AppState>
+): Promise<void> => {
+  const state = mutableGet(stateRef);
+  const { dbc, baseQuery } = state.viewState;
+  if (!dbc || !baseQuery) {
+    console.error("insertRow: no database connection or baseQuery");
+    return;
+  }
+
+  const tableName = getTableNameFromQuery(baseQuery);
+  if (!tableName) {
+    console.error("insertRow: could not find table name");
+    return;
+  }
+
+  try {
+    await dbc.insertRow(tableName);
+    console.log(`[InsertRow] Inserted new empty row in "${tableName}"`);
+
+    // Trigger data refresh
+    update(stateRef, (st: AppState) => {
+      const vp = st.viewState.viewParams;
+      const newVP = vp.set("displayColumns", vp.displayColumns.slice()) as ViewParams;
+      return st.update("viewState", (vs) => vs!.set("viewParams", newVP) as ViewState);
+    });
+  } catch (err) {
+    console.error("[InsertRow] Error inserting row:", err);
+  }
+};
+
+// --- Insert Column Action ---
+
+export const insertColumn = async (
+  tableName: string,
+  columnName: string,
+  stateRef: StateRef<AppState>
+): Promise<void> => {
+  const state = mutableGet(stateRef);
+  const { dbc } = state.viewState;
+  if (!dbc) {
+    console.error("insertColumn: no database connection");
+    return;
+  }
+
+  try {
+    await dbc.insertColumn(tableName, columnName);
+    console.log(`[InsertColumn] Added column "${columnName}" to table "${tableName}"`);
+
+    const appState = mutableGet(stateRef);
+    const showRecordCount = appState.showRecordCount;
+    const vp = appState.viewState.viewParams;
+
+    // Re-fetch schema
+    const newBQ = reltab.tableQuery(tableName);
+    const newBaseSchema = await aggtree.getBaseSchema(dbc, newBQ, showRecordCount);
+
+    // Append the new column to the display columns
+    const newDisplayCols = [...vp.displayColumns, columnName];
+
+    const newVP = vp
+      .set("displayColumns", newDisplayCols) as ViewParams;
+
+    update(stateRef, (st: AppState) =>
+      st.update("viewState", (vs) =>
+        vs!
+          .set("viewParams", newVP)
+          .set("baseQuery", newBQ)
+          .set("baseSchema", newBaseSchema) as ViewState
+      )
+    );
+  } catch (err) {
+    console.error("[InsertColumn] Error inserting column:", err);
+  }
+};
+
+// --- Row Operations ---
+
+const EXCLUDE_COLS = ["Rec", "_id", "_parentId"];
+
+const formatSqlValue = (val: any): string => {
+  if (val === null || val === undefined) return "NULL";
+  if (typeof val === "number") return String(val);
+  if (typeof val === "boolean") return val ? "TRUE" : "FALSE";
+  if (val instanceof Date) return `'${val.toISOString()}'`;
+  if (typeof val === "string") {
+    const escaped = val.replace(/'/g, "''");
+    return `'${escaped}'`;
+  }
+  return `'${String(val)}'`;
+};
+
+const buildRowWhere = (rowData: { [columnId: string]: any }): string => {
+  const parts = Object.entries(rowData)
+    .filter(([k]) => !EXCLUDE_COLS.includes(k) && !k.startsWith("_"))
+    .map(([k, v]) => `"${k}" = ${formatSqlValue(v)}`);
+  return parts.join(" AND ");
+};
+
+const buildMultiRowWhere = (rowDataList: { [columnId: string]: any }[]): string => {
+  if (rowDataList.length === 0) return "1=0";
+  if (rowDataList.length === 1) return buildRowWhere(rowDataList[0]);
+  const clauses = rowDataList.map((rd) => `(${buildRowWhere(rd)})`);
+  return clauses.join(" OR ");
+};
+
+// Build a WHERE clause that targets exactly the given rows by their physical
+// rowid, if available. Returns null if no rowids are present (e.g. aggregate rows).
+const buildRowIdWhere = (
+  rowDataList: { [columnId: string]: any }[]
+): string | null => {
+  if (rowDataList.length === 0) return null;
+  // only valid when every row is a leaf row carrying a physical rowid
+  const allLeaf = rowDataList.every((rd) => rd._isLeaf);
+  if (!allLeaf) return null;
+  const rids = rowDataList
+    .map((rd) => rd._rid)
+    .filter((r) => r != null)
+    .map((r) => Number(r));
+  if (rids.length === 0) return null;
+  return `rowid IN (${rids.join(", ")})`;
+};
+
+// Build a WHERE clause that targets every leaf row rolling up into an
+// aggregate row. The pivot path of an aggregate row is materialized in its
+// `_path` columns: `_path[i]` holds the value of the i-th pivot column
+// (vpivots[i]) for every level i < depth. Map each path element back onto its
+// pivot column so the clause matches exactly the underlying leaf rows.
+const buildAggregateRowWhere = (
+  item: { [columnId: string]: any },
+  vpivots: string[],
+  depth: number
+): string => {
+  const parts: string[] = [];
+  for (let i = 0; i < depth && i < vpivots.length; i++) {
+    const col = vpivots[i];
+    const value = item["_path" + i] ?? item[col];
+    parts.push(`"${col}" = ${formatSqlValue(value)}`);
+  }
+  // depth 0 (root row) has no pivot columns -> match everything
+  if (parts.length === 0) return "1=1";
+  return parts.join(" AND ");
+};
+
+// --- Delete Rows Action ---
+
+export const deleteRows = async (
+  rowDataList: { [columnId: string]: any }[],
+  stateRef: StateRef<AppState>
+): Promise<void> => {
+  const state = mutableGet(stateRef);
+  const { dbc, baseQuery } = state.viewState;
+  if (!dbc || !baseQuery) {
+    console.error("deleteRows: no database connection or baseQuery");
+    return;
+  }
+
+  const getTableName = (rep: any): string | null => {
+    if (!rep) return null;
+    if (rep.tableName) return rep.tableName;
+    if (rep.from) return getTableName(rep.from);
+    return null;
+  };
+  const tableName = getTableName((baseQuery as any)._rep);
+  if (!tableName) {
+    console.error("deleteRows: could not find table name");
+    return;
+  }
+
+  try {
+    const whereClause = buildRowIdWhere(rowDataList) ?? buildMultiRowWhere(rowDataList);
+    await dbc.deleteRows(tableName, whereClause);
+    console.log(`[DeleteRows] Deleted ${rowDataList.length} row(s) from "${tableName}"`);
+
+    // Trigger data refresh
+    update(stateRef, (st: AppState) => {
+      const vp = st.viewState.viewParams;
+      const newVP = vp.set("displayColumns", vp.displayColumns.slice()) as ViewParams;
+      return st.update("viewState", (vs) => vs!.set("viewParams", newVP) as ViewState);
+    });
+  } catch (err) {
+    console.error("[DeleteRows] Error deleting rows:", err);
+  }
+};
+
+// --- Duplicate Rows Action ---
+
+export const duplicateRows = async (
+  rowDataList: { [columnId: string]: any }[],
+  stateRef: StateRef<AppState>
+): Promise<void> => {
+  const state = mutableGet(stateRef);
+  const { dbc, baseQuery } = state.viewState;
+  if (!dbc || !baseQuery) {
+    console.error("duplicateRows: no database connection or baseQuery");
+    return;
+  }
+
+  const getTableName = (rep: any): string | null => {
+    if (!rep) return null;
+    if (rep.tableName) return rep.tableName;
+    if (rep.from) return getTableName(rep.from);
+    return null;
+  };
+  const tableName = getTableName((baseQuery as any)._rep);
+  if (!tableName) {
+    console.error("duplicateRows: could not find table name");
+    return;
+  }
+
+  try {
+    const whereClause = buildRowIdWhere(rowDataList) ?? buildMultiRowWhere(rowDataList);
+    await dbc.duplicateRows(tableName, whereClause);
+    console.log(`[DuplicateRows] Duplicated ${rowDataList.length} row(s) in "${tableName}"`);
+
+    // Trigger data refresh
+    update(stateRef, (st: AppState) => {
+      const vp = st.viewState.viewParams;
+      const newVP = vp.set("displayColumns", vp.displayColumns.slice()) as ViewParams;
+      return st.update("viewState", (vs) => vs!.set("viewParams", newVP) as ViewState);
+    });
+  } catch (err) {
+    console.error("[DuplicateRows] Error duplicating rows:", err);
+  }
+};
+
+// --- Aggregate Row Operations ---
+
+export const deleteAllAggregateRows = async (
+  item: any,
+  depth: number,
+  stateRef: StateRef<AppState>
+): Promise<void> => {
+  const state = mutableGet(stateRef);
+  const { dbc, baseQuery, viewParams } = state.viewState;
+  if (!dbc || !baseQuery) {
+    console.error("deleteAllAggregateRows: no database connection or baseQuery");
+    return;
+  }
+
+  const getTableName = (rep: any): string | null => {
+    if (!rep) return null;
+    if (rep.tableName) return rep.tableName;
+    if (rep.from) return getTableName(rep.from);
+    return null;
+  };
+  const tableName = getTableName((baseQuery as any)._rep);
+  if (!tableName) {
+    console.error("deleteAllAggregateRows: could not find table name");
+    return;
+  }
+
+  try {
+    // Build WHERE from the aggregate row's pivot path: each _path[i] value
+    // mapped back onto vpivots[i]
+    const whereClause = buildAggregateRowWhere(item, viewParams.vpivots, depth);
+
+    await dbc.deleteRows(tableName, whereClause);
+    console.log(`[DeleteAllAggregate] Deleted aggregate rows for depth ${depth} in "${tableName}"`);
+
+    // Trigger data refresh
+    update(stateRef, (st: AppState) => {
+      const vp = st.viewState.viewParams;
+      const newVP = vp.set("displayColumns", vp.displayColumns.slice()) as ViewParams;
+      return st.update("viewState", (vs) => vs!.set("viewParams", newVP) as ViewState);
+    });
+  } catch (err) {
+    console.error("[DeleteAllAggregate] Error deleting aggregate rows:", err);
+  }
+};
+
+export const duplicateAllAggregateRows = async (
+  item: any,
+  depth: number,
+  stateRef: StateRef<AppState>
+): Promise<void> => {
+  const state = mutableGet(stateRef);
+  const { dbc, baseQuery, viewParams } = state.viewState;
+  if (!dbc || !baseQuery) {
+    console.error("duplicateAllAggregateRows: no database connection or baseQuery");
+    return;
+  }
+
+  const getTableName = (rep: any): string | null => {
+    if (!rep) return null;
+    if (rep.tableName) return rep.tableName;
+    if (rep.from) return getTableName(rep.from);
+    return null;
+  };
+  const tableName = getTableName((baseQuery as any)._rep);
+  if (!tableName) {
+    console.error("duplicateAllAggregateRows: could not find table name");
+    return;
+  }
+
+  try {
+    const whereClause = buildAggregateRowWhere(item, viewParams.vpivots, depth);
+
+    await dbc.duplicateRows(tableName, whereClause);
+    console.log(`[DuplicateAllAggregate] Duplicated aggregate rows for depth ${depth} in "${tableName}"`);
+
+    // Trigger data refresh
+    update(stateRef, (st: AppState) => {
+      const vp = st.viewState.viewParams;
+      const newVP = vp.set("displayColumns", vp.displayColumns.slice()) as ViewParams;
+      return st.update("viewState", (vs) => vs!.set("viewParams", newVP) as ViewState);
+    });
+  } catch (err) {
+    console.error("[DuplicateAllAggregate] Error duplicating aggregate rows:", err);
   }
 };

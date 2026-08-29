@@ -142,5 +142,5 @@ git push origin v0.0.1
 - [ ] Release draft créée sur GitHub
 
 ## Mission
-- La mission est décrite dans le fichier vibe/celledit/mission.md
-- Demarre par la lecture de vibe/celledit/STATE_HANDOFF.md
+- La mission est décrite dans le fichier vibe/improveui/mission.md
+- Demarre par la lecture de vibe/improveui/STATE_HANDOFF.md

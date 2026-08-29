@@ -334,10 +334,12 @@ test("basic DuckDb types", async () => {
   expect(rowData).toMatchInlineSnapshot(`
     [
       {
+        "_rid": 0n,
         "b": true,
         "i": 99,
       },
       {
+        "_rid": 1n,
         "b": false,
         "i": 87,
       },
@@ -363,9 +365,11 @@ test("DuckDb date type", async () => {
   expect(rowData).toMatchInlineSnapshot(`
     [
       {
+        "_rid": 0n,
         "d": 1991-07-21T00:00:00.000Z,
       },
       {
+        "_rid": 1n,
         "d": 2022-02-11T00:00:00.000Z,
       },
     ]
@@ -417,12 +421,14 @@ test("DuckDb timestamp types", async () => {
         "1991-07-21T11:30:00.000Z",
         "1991-07-21T11:30:00.000Z",
         "1991-07-21",
+        "0",
       ],
       [
         "2022-02-11T14:15:45.000Z",
         "2022-02-11T14:15:45.000Z",
         "2022-02-11T14:15:45.000Z",
         "2022-02-11",
+        "1",
       ],
     ]
   `);

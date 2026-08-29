@@ -3,7 +3,7 @@ import { mutableGet, StateRef } from "oneref";
 import * as React from "react";
 import { useRef } from "react";
 import * as reltab from "reltab";
-import { Dialog, Button, Intent } from "@blueprintjs/core";
+import { Dialog, Button, Intent, Alert } from "@blueprintjs/core";
 import { AppState } from "../AppState";
 import { DataRow } from "../PagedDataView";
 import { ViewState, CellEditState } from "../ViewState";
@@ -200,6 +200,7 @@ const GridPaneInternal: React.FunctionComponent<GridPaneProps> = ({
         isPivot: data.isPivot,
         pivotDepth: data.pivotDepth,
         rowData: data.rowData,
+        rid: data.rid,
       }, stateRef);
     },
     [stateRef]
@@ -258,6 +259,171 @@ const GridPaneInternal: React.FunctionComponent<GridPaneProps> = ({
     setRenameState((s) => ({ ...s, isOpen: false }));
   }, []);
 
+  // Column delete confirmation state
+  const [deleteState, setDeleteState] = React.useState<{
+    isOpen: boolean;
+    columnId: string;
+  }>({ isOpen: false, columnId: "" });
+
+  const handleColumnDelete = React.useCallback((columnId: string) => {
+    setDeleteState({ isOpen: true, columnId });
+  }, []);
+
+  const handleDeleteConfirm = React.useCallback(async () => {
+    const { columnId } = deleteState;
+    const baseQuery = viewState.baseQuery as any;
+    const getTableName = (rep: any): string | null => {
+      if (!rep) return null;
+      if (rep.tableName) return rep.tableName;
+      if (rep.from) return getTableName(rep.from);
+      return null;
+    };
+    const tableName = getTableName(baseQuery?._rep);
+    if (!tableName) {
+      console.error("deleteColumn: could not find table name");
+      setDeleteState({ isOpen: false, columnId: "" });
+      return;
+    }
+    await actions.deleteColumn(tableName, columnId, stateRef);
+    setDeleteState({ isOpen: false, columnId: "" });
+  }, [deleteState, viewState.baseQuery, stateRef]);
+
+  const handleDeleteCancel = React.useCallback(() => {
+    setDeleteState({ isOpen: false, columnId: "" });
+  }, []);
+
+  // Column duplicate state
+  const [duplicateState, setDuplicateState] = React.useState<{
+    isOpen: boolean;
+    sourceColumn: string;
+    newColumn: string;
+  }>({ isOpen: false, sourceColumn: "", newColumn: "" });
+
+  const handleColumnDuplicate = React.useCallback((columnId: string) => {
+    setDuplicateState({ isOpen: true, sourceColumn: columnId, newColumn: `${columnId}_2` });
+  }, []);
+
+  const handleDuplicateSave = React.useCallback(async () => {
+    const { sourceColumn, newColumn } = duplicateState;
+    if (!newColumn.trim() || newColumn === sourceColumn) {
+      setDuplicateState({ isOpen: false, sourceColumn: "", newColumn: "" });
+      return;
+    }
+    const baseQuery = viewState.baseQuery as any;
+    const getTableName = (rep: any): string | null => {
+      if (!rep) return null;
+      if (rep.tableName) return rep.tableName;
+      if (rep.from) return getTableName(rep.from);
+      return null;
+    };
+    const tableName = getTableName(baseQuery?._rep);
+    if (!tableName) {
+      console.error("duplicateColumn: could not find table name");
+      setDuplicateState({ isOpen: false, sourceColumn: "", newColumn: "" });
+      return;
+    }
+    await actions.duplicateColumn(tableName, sourceColumn, newColumn.trim(), stateRef);
+    setDuplicateState({ isOpen: false, sourceColumn: "", newColumn: "" });
+  }, [duplicateState, viewState.baseQuery, stateRef]);
+
+  const handleDuplicateCancel = React.useCallback(() => {
+    setDuplicateState({ isOpen: false, sourceColumn: "", newColumn: "" });
+  }, []);
+
+  // Insert column state
+  const [insertColumnState, setInsertColumnState] = React.useState<{
+    isOpen: boolean;
+    newColumn: string;
+  }>({ isOpen: false, newColumn: "" });
+
+  const genUniqueColumnName = React.useCallback(
+    (baseName: string): string => {
+      const existing = new Set(
+        (viewState.baseSchema ? viewState.baseSchema.columns : []).filter(
+          (cid) => !cid.startsWith("_") && cid !== "Rec"
+        )
+      );
+      let candidate = baseName;
+      let i = 2;
+      while (existing.has(candidate)) {
+        candidate = `${baseName}_${i}`;
+        i++;
+      }
+      return candidate;
+    },
+    [viewState.baseSchema]
+  );
+
+  const handleInsertColumn = React.useCallback(
+    (columnId: string) => {
+      const suggested = genUniqueColumnName(
+        columnId ? `${columnId}_new` : "new_column"
+      );
+      setInsertColumnState({ isOpen: true, newColumn: suggested });
+    },
+    [genUniqueColumnName]
+  );
+
+  const handleInsertColumnSave = React.useCallback(async () => {
+    const { newColumn } = insertColumnState;
+    if (!newColumn.trim()) {
+      setInsertColumnState({ isOpen: false, newColumn: "" });
+      return;
+    }
+    const baseQuery = viewState.baseQuery as any;
+    const getTableName = (rep: any): string | null => {
+      if (!rep) return null;
+      if (rep.tableName) return rep.tableName;
+      if (rep.from) return getTableName(rep.from);
+      return null;
+    };
+    const tableName = getTableName(baseQuery?._rep);
+    if (!tableName) {
+      console.error("insertColumn: could not find table name");
+      setInsertColumnState({ isOpen: false, newColumn: "" });
+      return;
+    }
+    await actions.insertColumn(tableName, newColumn.trim(), stateRef);
+    setInsertColumnState({ isOpen: false, newColumn: "" });
+  }, [insertColumnState, viewState.baseQuery, stateRef]);
+
+  const handleInsertColumnCancel = React.useCallback(() => {
+    setInsertColumnState({ isOpen: false, newColumn: "" });
+  }, []);
+
+  // Row operations from cell selection
+  const handleDeleteRows = React.useCallback(
+    async (rowDataList: { [columnId: string]: any }[]) => {
+      await actions.deleteRows(rowDataList, stateRef);
+    },
+    [stateRef]
+  );
+
+  const handleDuplicateRows = React.useCallback(
+    async (rowDataList: { [columnId: string]: any }[]) => {
+      await actions.duplicateRows(rowDataList, stateRef);
+    },
+    [stateRef]
+  );
+
+  const handleInsertRow = React.useCallback(async () => {
+    await actions.insertRow(stateRef);
+  }, [stateRef]);
+
+  const handleDeleteAggregateRows = React.useCallback(
+    async (item: any, depth: number) => {
+      await actions.deleteAllAggregateRows(item, depth, stateRef);
+    },
+    [stateRef]
+  );
+
+  const handleDuplicateAggregateRows = React.useCallback(
+    async (item: any, depth: number) => {
+      await actions.duplicateAllAggregateRows(item, depth, stateRef);
+    },
+    [stateRef]
+  );
+
   const dataGridProps: DataGridProps = {
     dataView,
     showColumnHistograms,
@@ -277,6 +443,15 @@ const GridPaneInternal: React.FunctionComponent<GridPaneProps> = ({
     onSetColumnOrder,
     onCellEditStart: handleEditStart,
     onColumnRename: handleColumnRename,
+    onColumnDelete: handleColumnDelete,
+    onColumnDuplicate: handleColumnDuplicate,
+    onInsertColumn: handleInsertColumn,
+    onDeleteRows: handleDeleteRows,
+    onDuplicateRows: handleDuplicateRows,
+    onInsertRow: handleInsertRow,
+    onDeleteAggregateRows: handleDeleteAggregateRows,
+    onDuplicateAggregateRows: handleDuplicateAggregateRows,
+    vpivots: viewParams.vpivots,
     sortKey,
     isPivoted,
     clipboard,
@@ -326,6 +501,81 @@ const GridPaneInternal: React.FunctionComponent<GridPaneProps> = ({
               disabled={!renameState.newName.trim() || renameState.newName === renameState.columnId}
             >
               Rename
+            </Button>
+          </div>
+        </div>
+      </Dialog>
+      <Alert
+        isOpen={deleteState.isOpen}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        intent={Intent.DANGER}
+        confirmButtonText="Yes, Delete"
+        cancelButtonText="Cancel"
+      >
+        <p>
+          Are you sure you want to delete column <strong>"{deleteState.columnId}"</strong>?
+          This will drop all its content.
+        </p>
+      </Alert>
+      <Dialog
+        isOpen={duplicateState.isOpen}
+        title="Duplicate Column"
+        onClose={handleDuplicateCancel}
+        canOutsideClickClose={true}
+      >
+        <div className="bp4-dialog-body">
+          <label className="bp4-label">
+            New name for duplicate of "{duplicateState.sourceColumn}":
+            <input
+              className="bp4-input bp4-fill"
+              type="text"
+              value={duplicateState.newColumn}
+              onChange={(e) => setDuplicateState((s) => ({ ...s, newColumn: e.target.value }))}
+              autoFocus
+            />
+          </label>
+        </div>
+        <div className="bp4-dialog-footer">
+          <div className="bp4-dialog-footer-actions">
+            <Button onClick={handleDuplicateCancel}>Cancel</Button>
+            <Button
+              intent={Intent.PRIMARY}
+              onClick={handleDuplicateSave}
+              disabled={!duplicateState.newColumn.trim() || duplicateState.newColumn === duplicateState.sourceColumn}
+            >
+              Duplicate
+            </Button>
+          </div>
+        </div>
+      </Dialog>
+      <Dialog
+        isOpen={insertColumnState.isOpen}
+        title="Insert Column"
+        onClose={handleInsertColumnCancel}
+        canOutsideClickClose={true}
+      >
+        <div className="bp4-dialog-body">
+          <label className="bp4-label">
+            Name for the new empty column:
+            <input
+              className="bp4-input bp4-fill"
+              type="text"
+              value={insertColumnState.newColumn}
+              onChange={(e) => setInsertColumnState((s) => ({ ...s, newColumn: e.target.value }))}
+              autoFocus
+            />
+          </label>
+        </div>
+        <div className="bp4-dialog-footer">
+          <div className="bp4-dialog-footer-actions">
+            <Button onClick={handleInsertColumnCancel}>Cancel</Button>
+            <Button
+              intent={Intent.PRIMARY}
+              onClick={handleInsertColumnSave}
+              disabled={!insertColumnState.newColumn.trim()}
+            >
+              Insert
             </Button>
           </div>
         </div>

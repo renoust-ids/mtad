@@ -32,6 +32,8 @@ with columns re-ordered:
 
 ## New Features in MTad
 
+The sections below summarize what MTad adds on top of the original Tad. See [doc/features.md](doc/features.md) for a full feature reference, including the SQL executed behind each operation.
+
 ### Cell Editing
 
 MTad supports editing cell values directly in the data grid:
@@ -41,11 +43,21 @@ MTad supports editing cell values directly in the data grid:
 - Edit **pivot labels** on aggregate rows (renames all occurrences of the pivot value)
 - Edit **aggregate cells** to update values grouped by pivot columns
 
+### Row & Column Insertion
+
+- **Right-click** on any cell and choose **Insert Row** to append a new empty row to the table (executes `INSERT INTO ... DEFAULT VALUES`)
+- **Right-click** on a column header and choose **Insert Column** to add a new empty column; a dialog suggests a unique name (e.g. `<column>_new`, `new_column`, `new_column_2`, ...) that you can edit before confirming (executes `ALTER TABLE ... ADD COLUMN`)
+
 ### Column Management
 
 - **Right-click** on column headers to rename columns (executes `ALTER TABLE RENAME COLUMN`)
 - Column reorder via drag-and-drop
 - Column sorting (ascending/descending)
+
+### Grid Interaction Refinements
+
+- **Hover highlight** — hovering a cell draws a thick dark blue border around it instead of filling it, so the underlying value stays readable at all times
+- **Selections survive right-clicks** — right-clicking a cell that is part of an existing multi-cell selection keeps the selection intact, so context menu actions (delete, duplicate, copy, ...) act on the whole selected group rather than collapsing to a single cell
 
 ### CSV Materialization
 
@@ -156,13 +168,15 @@ used to build the MTad desktop application:
 
 - [**reltab**](./packages/reltab) - The core abstraction used in MTad for programmatically constructing and executing relational SQL queries. This also defines the driver interface implemented by specific database back-ends, and a small, transport-agnostic remoting layer to allow queries and results to be transmitted between a web browser
   (or electron renderer process) and a reltab backend server.
-  - Key methods: `execSql()` for DML statements, `getSqlForQuery()` for SQL generation, `renameColumn()` for schema changes
+  - Key methods: `execSql()` for DML statements, `getSqlForQuery()` for SQL generation, `renameColumn()` for schema changes, `insertRow()` and `insertColumn()` for adding rows and columns
 - [**reltab-duckdb**](./packages/reltab-duckdb/) -- reltab driver for DuckDb
 - [**aggtree**](./packages/aggtree/) - A library built on top of reltab for constructing pivot trees from relational queries.
 - [**tadviewer**](./packages/tadviewer/) - The core MTad pivot table UI as a standalone, embeddable React component.
   - Cell editing with double-click and right-click context menu
+  - Insert rows and columns from the right-click context menus
   - Column rename via header context menu
   - Pivot-aware editing (aggregate rows vs leaf rows)
+  - Multi-cell selections preserved on right-click; hover draws a thick border highlight
 - [**tad-app**](./packages/tad-app/) - The MTad desktop application, built with Electron
 
 ## Original Tad Packages

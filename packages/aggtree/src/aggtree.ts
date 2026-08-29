@@ -137,7 +137,7 @@ export class VPivotTree {
       id: "_pivot",
       displayName: "_pivot",
     };
-    const aggCols = this.baseSchema.columns;
+    const aggCols = this.baseSchema.columns.filter((cid) => cid !== "_rid");
     const aggMap = this.aggMap;
     const gbAggs: any =
       aggMap != null ? aggCols.map((cid) => [aggMap[cid], cid]) : aggCols;
@@ -157,6 +157,16 @@ export class VPivotTree {
           displayName: "_pivot",
         })
         .groupBy(["_pivot"], gbAggs);
+      // aggregate rows group by the pivot (and thus not _rid), so there is no
+      // physical rowid here; materialize _rid as a typed NULL so it stays
+      // present and matches the leaf columns for UNION ALL.
+      const ridType = this.baseSchema.columnType("_rid");
+      if (ridType != null) {
+        pathQuery = pathQuery.extend(
+          "_rid",
+          reltab.cast(reltab.constVal(null), ridType)
+        );
+      }
     } else {
       // leaf level
       const leafExp =
@@ -215,7 +225,10 @@ export class VPivotTree {
   getSortQuery(depth: number): QueryExp {
     let sortQuery = this.baseQuery; // recCountQuery
 
-    const sortCols = this.sortKey.map((p) => p[0]);
+    // _pivot is a computed label column (no base column), so it is handled by
+    // the per-depth _path sort instead of the _sortVal mechanism below.
+    const sortKeyFilt = this.sortKey.filter(([c]) => c !== "_pivot");
+    const sortCols = sortKeyFilt.map((p) => p[0]);
     const aggMap = this.aggMap;
     const sortColAggs: any =
       aggMap != null ? sortCols.map((cid) => [aggMap[cid], cid]) : sortCols;
@@ -314,25 +327,32 @@ export class VPivotTree {
     }
     let stq: reltab.QueryExp = jtq;
 
+    // Pivot labels have no base column: when the user sorts by the pivot
+    // column, apply their chosen direction to the per-depth _path sort; the
+    // _sortVal mechanism only applies to the remaining non-pivot sort keys.
+    const pivotDir =
+      this.sortKey.find(([c]) => c === "_pivot")?.[1] ?? true;
+    const sortKeyFilt = this.sortKey.filter(([c]) => c !== "_pivot");
+
     if (this.pivotColumns.length > 0 || this.sortKey.length > 0) {
       for (let i = 0; i < this.pivotColumns.length; i++) {
         tsortKey.push(["_sortVal_" + i.toString(), true]);
 
         // sort keys for this depth:
-        let dsortKey: [string, boolean][] = _.range(0, this.sortKey.length).map(
-          (j) => ["_sortVal_" + i + "_" + j, this.sortKey[j][1]]
+        let dsortKey: [string, boolean][] = sortKeyFilt.map(
+          ([, asc], idx) => ["_sortVal_" + i + "_" + idx, asc]
         );
 
         tsortKey = tsortKey.concat(dsortKey); // splice in path at this depth:
 
-        tsortKey.push(["_path" + i, true]);
+        tsortKey.push(["_path" + i, pivotDir]);
       }
 
       // Add the final _sortVal_i:
       const maxDepth = this.pivotColumns.length;
       tsortKey.push(["_sortVal_" + maxDepth.toString(), true]); // Finally, add the sort key columns itself for leaf level:
 
-      tsortKey = tsortKey.concat(this.sortKey);
+      tsortKey = tsortKey.concat(sortKeyFilt);
     }
 
     if (tsortKey.length > 0) {
@@ -379,14 +399,22 @@ export function vpivot(
   }
   const hiddenCols = ["_depth", "_pivot", "_isRoot"];
   const outCols = baseSchema.columns.concat(hiddenCols);
-  const gbCols = baseSchema.columns.slice();
+  const gbCols = baseSchema.columns.filter((cid) => cid !== "_rid");
   const gbAggs: AggColSpec[] =
     aggMap != null ? gbCols.map((cid) => [aggMap[cid], cid]) : gbCols;
   let rootQuery = null;
 
   if (showRoot) {
+    const ridType = baseSchema.columnType("_rid");
     rootQuery = baseQuery
-      .groupBy([], gbAggs)
+      .groupBy([], gbAggs);
+    if (ridType != null) {
+      rootQuery = rootQuery.extend(
+        "_rid",
+        reltab.cast(reltab.constVal(null), ridType)
+      );
+    }
+    rootQuery = rootQuery
       .extend("_pivot", asString(constVal(null)))
       .extend("_depth", constVal(0))
       .extend("_isRoot", constVal(true))

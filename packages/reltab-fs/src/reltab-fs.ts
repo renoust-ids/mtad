@@ -166,16 +166,18 @@ export class FSDriver implements DbDriver {
   }
 
   // Get a table name that can be used in queries:
+  // Always re-imports from disk to ensure the in-memory table
+  // reflects the original file data (discards any session modifications).
   async getTableName(dsPath: DataSourcePath): Promise<string> {
     const targetPath = this.getTargetPath(dsPath);
     let importInfo = this.importMap[targetPath];
+    let tableName: string;
     if (!importInfo) {
       log.debug(
         "getTableName: no entry found for ",
         targetPath,
         ", importing..."
       );
-      let tableName: string;
       const extName = path.extname(targetPath);
       if (extName === ".parquet") {
         tableName = await reltabDuckDB.nativeParquetImport(
@@ -185,47 +187,34 @@ export class FSDriver implements DbDriver {
       } else {
         tableName = await reltabDuckDB.nativeCSVImport(this.dbc.db, targetPath);
       }
-      if (isIPFSPath(targetPath)) {
-        importInfo = {
-          tableName,
-        };
-      } else {
-        const fileStats = await fsPromises.stat(targetPath);
-        importInfo = {
-          tableName,
-          importModTime: fileStats.mtime,
-        };
-      }
-      this.importMap[targetPath] = importInfo;
+      importInfo = { tableName };
     } else {
-      log.debug(" getTableName: ", targetPath, " ---> ", importInfo.tableName);
-      if (importInfo.importModTime !== undefined) {
-        const fileStats = await fsPromises.stat(targetPath);
-        if (fileStats.mtime > importInfo.importModTime) {
-          log.debug(
-            "**** detected updated file, re-importing: ",
-            targetPath,
-            fileStats.mtime
-          );
-          const extName = path.extname(targetPath);
-          const tableName = importInfo.tableName;
-          if (extName === ".parquet") {
-            await reltabDuckDB.nativeParquetImport(
-              this.dbc.db,
-              targetPath,
-              tableName
-            );
-          } else {
-            await reltabDuckDB.nativeCSVImport(
-              this.dbc.db,
-              targetPath,
-              tableName
-            );
-          }
-          importInfo.importModTime = fileStats.mtime;
-        }
+      // Always re-import to discard any in-memory modifications
+      log.debug(
+        "getTableName: re-importing to discard session modifications: ",
+        targetPath
+      );
+      tableName = importInfo.tableName;
+      const extName = path.extname(targetPath);
+      if (extName === ".parquet") {
+        await reltabDuckDB.nativeParquetImport(
+          this.dbc.db,
+          targetPath,
+          tableName
+        );
+      } else {
+        await reltabDuckDB.nativeCSVImport(
+          this.dbc.db,
+          targetPath,
+          tableName
+        );
       }
     }
+    if (!isIPFSPath(targetPath)) {
+      const fileStats = await fsPromises.stat(targetPath);
+      importInfo.importModTime = fileStats.mtime;
+    }
+    this.importMap[targetPath] = importInfo;
     return importInfo.tableName;
   }
 

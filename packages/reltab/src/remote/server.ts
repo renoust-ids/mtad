@@ -16,6 +16,12 @@ import {
   DbConnExecSqlRequest,
   DbConnGetSqlForQueryRequest,
   DbConnRenameColumnRequest,
+  DbConnDeleteColumnRequest,
+  DbConnDuplicateColumnRequest,
+  DbConnDeleteRowsRequest,
+  DbConnDuplicateRowsRequest,
+  DbConnInsertRowRequest,
+  DbConnInsertColumnRequest,
   ReltabConnection,
 } from "./Connection";
 import {
@@ -161,6 +167,66 @@ const dbConnRenameColumn = async (
   log.info("renameColumn: executed in", prettyHRTime(elapsed));
 };
 
+const dbConnDeleteColumn = async (
+  conn: DataSourceConnection,
+  req: DbConnDeleteColumnRequest
+): Promise<void> => {
+  const hrstart = process.hrtime();
+  await conn.deleteColumn(req.tableName, req.columnName);
+  const elapsed = process.hrtime(hrstart);
+  log.info("deleteColumn: executed in", prettyHRTime(elapsed));
+};
+
+const dbConnDuplicateColumn = async (
+  conn: DataSourceConnection,
+  req: DbConnDuplicateColumnRequest
+): Promise<void> => {
+  const hrstart = process.hrtime();
+  await conn.duplicateColumn(req.tableName, req.sourceColumn, req.newColumn);
+  const elapsed = process.hrtime(hrstart);
+  log.info("duplicateColumn: executed in", prettyHRTime(elapsed));
+};
+
+const dbConnDeleteRows = async (
+  conn: DataSourceConnection,
+  req: DbConnDeleteRowsRequest
+): Promise<void> => {
+  const hrstart = process.hrtime();
+  await conn.deleteRows(req.tableName, req.whereClause);
+  const elapsed = process.hrtime(hrstart);
+  log.info("deleteRows: executed in", prettyHRTime(elapsed));
+};
+
+const dbConnDuplicateRows = async (
+  conn: DataSourceConnection,
+  req: DbConnDuplicateRowsRequest
+): Promise<void> => {
+  const hrstart = process.hrtime();
+  await conn.duplicateRows(req.tableName, req.whereClause);
+  const elapsed = process.hrtime(hrstart);
+  log.info("duplicateRows: executed in", prettyHRTime(elapsed));
+};
+
+const dbConnInsertRow = async (
+  conn: DataSourceConnection,
+  req: DbConnInsertRowRequest
+): Promise<void> => {
+  const hrstart = process.hrtime();
+  await conn.insertRow(req.tableName);
+  const elapsed = process.hrtime(hrstart);
+  log.info("insertRow: executed in", prettyHRTime(elapsed));
+};
+
+const dbConnInsertColumn = async (
+  conn: DataSourceConnection,
+  req: DbConnInsertColumnRequest
+): Promise<void> => {
+  const hrstart = process.hrtime();
+  await conn.insertColumn(req.tableName, req.columnName);
+  const elapsed = process.hrtime(hrstart);
+  log.info("insertColumn: executed in", prettyHRTime(elapsed));
+};
+
 // an EngineReqHandler wraps a req in an EngineReq that carries an
 // db engine identifier (DataSourceId) that is used to identify
 // a particular Db instance for dispatching the Db request.
@@ -191,6 +257,12 @@ const handleDbConnGetColumnStatsMap = mkEngineReqHandler(
 const handleDbConnExecSql = mkEngineReqHandler(dbConnExecSql);
 const handleDbConnGetSqlForQuery = mkEngineReqHandler(dbConnGetSqlForQuery);
 const handleDbConnRenameColumn = mkEngineReqHandler(dbConnRenameColumn);
+const handleDbConnDeleteColumn = mkEngineReqHandler(dbConnDeleteColumn);
+const handleDbConnDuplicateColumn = mkEngineReqHandler(dbConnDuplicateColumn);
+const handleDbConnDeleteRows = mkEngineReqHandler(dbConnDeleteRows);
+const handleDbConnDuplicateRows = mkEngineReqHandler(dbConnDuplicateRows);
+const handleDbConnInsertRow = mkEngineReqHandler(dbConnInsertRow);
+const handleDbConnInsertColumn = mkEngineReqHandler(dbConnInsertColumn);
 
 let providerRegistry: { [providerName: string]: DataSourceProvider } = {};
 
@@ -384,6 +456,30 @@ export const serverInit = (ts: TransportServer) => {
   ts.registerInvokeHandler(
     "DataSourceConnection.renameColumn",
     simpleJSONHandler(exceptionHandler(handleDbConnRenameColumn))
+  );
+  ts.registerInvokeHandler(
+    "DataSourceConnection.deleteColumn",
+    simpleJSONHandler(exceptionHandler(handleDbConnDeleteColumn))
+  );
+  ts.registerInvokeHandler(
+    "DataSourceConnection.duplicateColumn",
+    simpleJSONHandler(exceptionHandler(handleDbConnDuplicateColumn))
+  );
+  ts.registerInvokeHandler(
+    "DataSourceConnection.deleteRows",
+    simpleJSONHandler(exceptionHandler(handleDbConnDeleteRows))
+  );
+  ts.registerInvokeHandler(
+    "DataSourceConnection.duplicateRows",
+    simpleJSONHandler(exceptionHandler(handleDbConnDuplicateRows))
+  );
+  ts.registerInvokeHandler(
+    "DataSourceConnection.insertRow",
+    simpleJSONHandler(exceptionHandler(handleDbConnInsertRow))
+  );
+  ts.registerInvokeHandler(
+    "DataSourceConnection.insertColumn",
+    simpleJSONHandler(exceptionHandler(handleDbConnInsertColumn))
   );
 };
 

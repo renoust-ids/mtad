@@ -5,7 +5,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
     <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
-    <title>Tad Quick Start</title>
+    <title>MTad Quick Start</title>
     <!-- Bootstrap -->
     <link href="css/bootstrap.min.css" rel="stylesheet">
     <style>
@@ -18,10 +18,10 @@
     <main>
       <div class="container">
         <h1>Quick Start</h1>
-        <p class="lead">Welcome to Tad!</p>
-        <p>If you are reading this message, you have successfully installed the Tad desktop app!<p>
-        <h3>What Tad Is</h3>
-        The Tad desktop app lets you quickly explore tabular data files in several common file formats, including:
+        <p class="lead">Welcome to MTad!</p>
+        <p>If you are reading this message, you have successfully installed the MTad desktop app!<p>
+        <h3>What MTad Is</h3>
+        The MTad desktop app lets you quickly explore tabular data files in several common file formats, including:
         <br><br>
         <dl class="row">
         <dt class="col-sm-2"><code>.csv</code></dt>
@@ -33,6 +33,10 @@
         <dt class="col-sm-2"><code>.sqlite</code></dt>
         <dd class="col-sm-10"><a href="https://www.sqlite.org/index.html" onclick='tadOpenExternal(event,"https://www.sqlite.org/index.html")''>SQLite</a> database files</dd>
         </dl>
+        <P>
+        MTad builds on the Tad pivot-table viewer and adds rich data editing and manipulation:
+        you can edit cell values in place, rename columns, and insert new empty rows and columns
+        directly from the data grid (see <a href="#editing">Editing Your Data</a> below).
 
         <P>
           The primary feature that Tad provides for exploring and analyzing files is a <a href="https://en.wikipedia.org/wiki/Pivot_table"
@@ -145,6 +149,31 @@ $ tad somefile.csv
         <li><b>Additional Properties</b> > <b>Format</b> can be used to set formatting properties (number of decimal places, etc) of each column.  You can set defaults for each column type, 
           or fomatting properties of a specific column.</li>
         </ul>
+        <h4 id="editing">Editing Your Data</h4>
+        <P>
+        MTad goes beyond exploration: you can edit and restructure your data directly in the grid.
+        The changes are applied to the underlying table via SQL (the same in-memory DuckDb database does the heavy lifting).
+        <P>
+        <h5>Editing Cell Values</h5>
+        <ul>
+        <li><b>Double-click</b> any cell to open the edit dialog. Input is validated against the column type (dates, numbers, booleans, strings).</li>
+        <li>On pivot-tree rows, <b>Edit all</b> renames the pivot label everywhere it occurs; on aggregate rows it updates the grouped value with automatic group-by awareness.</li>
+        </ul>
+        <h5>Row &amp; Column Insertion</h5>
+        <ul>
+        <li><b>Insert Row</b> - right-click any cell and choose <b>Insert Row</b> to append a new empty row to the table.</li>
+        <li><b>Insert Column</b> - right-click a column header and choose <b>Insert Column</b>. A dialog suggests a unique name (based on the clicked column) which you can edit, then press <b>Insert</b> to append a new empty column.</li>
+        <li><b>Rename Column</b> - right-click a column header and choose <b>Rename Column</b> to change the column's name.</li>
+        </ul>
+        <h5>Cell Context Menu</h5>
+        <P>
+        Right-clicking a cell opens a context menu with <b>Edit Cell</b>, <b>Delete Row(s)</b>, <b>Duplicate Row(s)</b>, <b>Insert Row</b>, and copy options (<b>Copy Cell</b>, <b>Copy Row</b>). On aggregate rows additional options let you <b>Delete All Aggregate Rows</b> or <b>Duplicate All Aggregate Rows</b>.
+        </P>
+        <h5>Grid Interaction Notes</h5>
+        <ul>
+        <li>Hovering over a cell draws a thick dark blue border around it, so cell values remain readable while you navigate.</li>
+        <li>Multi-cell selections are preserved when you right-click: if the clicked cell is part of a selection, the context menu keeps acting on the whole selected group instead of collapsing to the clicked cell.</li>
+        </ul>
         <h4>Data Sources</h4>
         Clicking the "databases" icon on the left of the Tad window will open the <i>Data Sources</i> sidebar. This will show
         a hierarchical tree browser of data sources you have open. 
@@ -179,7 +208,7 @@ $ tad -f --show-queries somefile.csv
         <P>
         <h3>And Finally...</h3>
         <P>
-        Have fun! I hope you find Tad a useful utility for viewing and analyzing data. <a href="mailto:tad-feedback@tadviewer.com" onclick='tadOpenExternal(event,"mailto:tad-feedback@tadviewer.com")'>  Feedback welcome</a>.
+        Have fun! I hope you find MTad a useful utility for viewing, analyzing and editing data. <a href="mailto:tad-feedback@tadviewer.com" onclick='tadOpenExternal(event,"mailto:tad-feedback@tadviewer.com")'>  Feedback welcome</a>.
         <P>
       </div>
     </main>

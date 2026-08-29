@@ -59,6 +59,36 @@ export interface DbConnRenameColumnRequest {
   newName: string;
 }
 
+export interface DbConnDeleteColumnRequest {
+  tableName: string;
+  columnName: string;
+}
+
+export interface DbConnDuplicateColumnRequest {
+  tableName: string;
+  sourceColumn: string;
+  newColumn: string;
+}
+
+export interface DbConnDeleteRowsRequest {
+  tableName: string;
+  whereClause: string;
+}
+
+export interface DbConnDuplicateRowsRequest {
+  tableName: string;
+  whereClause: string;
+}
+
+export interface DbConnInsertRowRequest {
+  tableName: string;
+}
+
+export interface DbConnInsertColumnRequest {
+  tableName: string;
+  columnName: string;
+}
+
 export type EngineReq<T> = { engine: DataSourceId; req: T };
 
 // remote invoke a DataSourceConnection member function, using DataSourceId to
@@ -217,6 +247,70 @@ class RemoteDataSourceConnection implements DataSourceConnection {
       this.tconn,
       this.sourceId,
       "renameColumn",
+      req
+    ).then(decodeResult);
+  }
+
+  async deleteColumn(tableName: string, columnName: string): Promise<void> {
+    const req: DbConnDeleteColumnRequest = { tableName, columnName };
+    await invokeDbFunctionRaw(
+      this.tconn,
+      this.sourceId,
+      "deleteColumn",
+      req
+    ).then(decodeResult);
+  }
+
+  async duplicateColumn(
+    tableName: string,
+    sourceColumn: string,
+    newColumn: string
+  ): Promise<void> {
+    const req: DbConnDuplicateColumnRequest = { tableName, sourceColumn, newColumn };
+    await invokeDbFunctionRaw(
+      this.tconn,
+      this.sourceId,
+      "duplicateColumn",
+      req
+    ).then(decodeResult);
+  }
+
+  async deleteRows(tableName: string, whereClause: string): Promise<void> {
+    const req: DbConnDeleteRowsRequest = { tableName, whereClause };
+    await invokeDbFunctionRaw(
+      this.tconn,
+      this.sourceId,
+      "deleteRows",
+      req
+    ).then(decodeResult);
+  }
+
+  async duplicateRows(tableName: string, whereClause: string): Promise<void> {
+    const req: DbConnDuplicateRowsRequest = { tableName, whereClause };
+    await invokeDbFunctionRaw(
+      this.tconn,
+      this.sourceId,
+      "duplicateRows",
+      req
+    ).then(decodeResult);
+  }
+
+  async insertRow(tableName: string): Promise<void> {
+    const req: DbConnInsertRowRequest = { tableName };
+    await invokeDbFunctionRaw(
+      this.tconn,
+      this.sourceId,
+      "insertRow",
+      req
+    ).then(decodeResult);
+  }
+
+  async insertColumn(tableName: string, columnName: string): Promise<void> {
+    const req: DbConnInsertColumnRequest = { tableName, columnName };
+    await invokeDbFunctionRaw(
+      this.tconn,
+      this.sourceId,
+      "insertColumn",
       req
     ).then(decodeResult);
   }

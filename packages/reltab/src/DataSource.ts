@@ -117,6 +117,28 @@ export interface DataSourceConnection {
     oldName: string,
     newName: string
   ): Promise<void>;
+
+  // Delete a column from a table
+  deleteColumn(tableName: string, columnName: string): Promise<void>;
+
+  // Duplicate a column in a table (adds newColumn with same values as sourceColumn)
+  duplicateColumn(
+    tableName: string,
+    sourceColumn: string,
+    newColumn: string
+  ): Promise<void>;
+
+  // Delete rows matching a WHERE clause
+  deleteRows(tableName: string, whereClause: string): Promise<void>;
+
+  // Duplicate rows matching a WHERE clause (INSERT INTO ... SELECT * FROM ... WHERE)
+  duplicateRows(tableName: string, whereClause: string): Promise<void>;
+
+  // Insert a single empty row (all columns NULL) into a table
+  insertRow(tableName: string): Promise<void>;
+
+  // Add a new empty (all NULL) column to a table
+  insertColumn(tableName: string, columnName: string): Promise<void>;
 }
 
 /**
@@ -213,6 +235,14 @@ export class DbDataSource implements DataSourceConnection {
       switch (leafQuery.operator) {
         case "table":
           schema = await this.db.getTableSchema(leafQuery.tableName);
+          if (schema) {
+            // add a unique physical row identifier (DuckDB rowid) as a hidden
+            // column so downstream operations can target individual rows
+            schema = schema.extend("_rid", {
+              columnType: "integer",
+              displayName: "_rid",
+            });
+          }
           break;
         case "sql":
           schema = await this.db.getSqlQuerySchema(leafQuery.sqlQuery);
@@ -276,6 +306,53 @@ export class DbDataSource implements DataSourceConnection {
     newName: string
   ): Promise<void> {
     const sql = `ALTER TABLE "${tableName}" RENAME COLUMN "${oldName}" TO "${newName}"`;
+    await this.db.runSqlQuery(sql);
+    // Invalidate cached schema for this table
+    const leafDep = { operator: "table", tableName } as const;
+    const leafKey = JSON.stringify(leafDep);
+    delete this.tableMap[leafKey];
+  }
+
+  async deleteColumn(tableName: string, columnName: string): Promise<void> {
+    const sql = `ALTER TABLE "${tableName}" DROP COLUMN "${columnName}"`;
+    await this.db.runSqlQuery(sql);
+    const leafDep = { operator: "table", tableName } as const;
+    const leafKey = JSON.stringify(leafDep);
+    delete this.tableMap[leafKey];
+  }
+
+  async duplicateColumn(
+    tableName: string,
+    sourceColumn: string,
+    newColumn: string
+  ): Promise<void> {
+    // Two-step approach: add column, then copy values
+    const addSql = `ALTER TABLE "${tableName}" ADD COLUMN "${newColumn}" VARCHAR`;
+    await this.db.runSqlQuery(addSql);
+    const updateSql = `UPDATE "${tableName}" SET "${newColumn}" = "${sourceColumn}"`;
+    await this.db.runSqlQuery(updateSql);
+    const leafDep = { operator: "table", tableName } as const;
+    const leafKey = JSON.stringify(leafDep);
+    delete this.tableMap[leafKey];
+  }
+
+  async deleteRows(tableName: string, whereClause: string): Promise<void> {
+    const sql = `DELETE FROM "${tableName}" WHERE ${whereClause}`;
+    await this.db.runSqlQuery(sql);
+  }
+
+  async duplicateRows(tableName: string, whereClause: string): Promise<void> {
+    const sql = `INSERT INTO "${tableName}" SELECT * FROM "${tableName}" WHERE ${whereClause}`;
+    await this.db.runSqlQuery(sql);
+  }
+
+  async insertRow(tableName: string): Promise<void> {
+    const sql = `INSERT INTO "${tableName}" DEFAULT VALUES`;
+    await this.db.runSqlQuery(sql);
+  }
+
+  async insertColumn(tableName: string, columnName: string): Promise<void> {
+    const sql = `ALTER TABLE "${tableName}" ADD COLUMN "${columnName}" VARCHAR`;
     await this.db.runSqlQuery(sql);
     // Invalidate cached schema for this table
     const leafDep = { operator: "table", tableName } as const;
