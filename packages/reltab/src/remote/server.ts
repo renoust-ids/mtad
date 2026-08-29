@@ -20,6 +20,8 @@ import {
   DbConnDuplicateColumnRequest,
   DbConnDeleteRowsRequest,
   DbConnDuplicateRowsRequest,
+  DbConnInsertRowRequest,
+  DbConnInsertColumnRequest,
   ReltabConnection,
 } from "./Connection";
 import {
@@ -205,6 +207,26 @@ const dbConnDuplicateRows = async (
   log.info("duplicateRows: executed in", prettyHRTime(elapsed));
 };
 
+const dbConnInsertRow = async (
+  conn: DataSourceConnection,
+  req: DbConnInsertRowRequest
+): Promise<void> => {
+  const hrstart = process.hrtime();
+  await conn.insertRow(req.tableName);
+  const elapsed = process.hrtime(hrstart);
+  log.info("insertRow: executed in", prettyHRTime(elapsed));
+};
+
+const dbConnInsertColumn = async (
+  conn: DataSourceConnection,
+  req: DbConnInsertColumnRequest
+): Promise<void> => {
+  const hrstart = process.hrtime();
+  await conn.insertColumn(req.tableName, req.columnName);
+  const elapsed = process.hrtime(hrstart);
+  log.info("insertColumn: executed in", prettyHRTime(elapsed));
+};
+
 // an EngineReqHandler wraps a req in an EngineReq that carries an
 // db engine identifier (DataSourceId) that is used to identify
 // a particular Db instance for dispatching the Db request.
@@ -239,6 +261,8 @@ const handleDbConnDeleteColumn = mkEngineReqHandler(dbConnDeleteColumn);
 const handleDbConnDuplicateColumn = mkEngineReqHandler(dbConnDuplicateColumn);
 const handleDbConnDeleteRows = mkEngineReqHandler(dbConnDeleteRows);
 const handleDbConnDuplicateRows = mkEngineReqHandler(dbConnDuplicateRows);
+const handleDbConnInsertRow = mkEngineReqHandler(dbConnInsertRow);
+const handleDbConnInsertColumn = mkEngineReqHandler(dbConnInsertColumn);
 
 let providerRegistry: { [providerName: string]: DataSourceProvider } = {};
 
@@ -448,6 +472,14 @@ export const serverInit = (ts: TransportServer) => {
   ts.registerInvokeHandler(
     "DataSourceConnection.duplicateRows",
     simpleJSONHandler(exceptionHandler(handleDbConnDuplicateRows))
+  );
+  ts.registerInvokeHandler(
+    "DataSourceConnection.insertRow",
+    simpleJSONHandler(exceptionHandler(handleDbConnInsertRow))
+  );
+  ts.registerInvokeHandler(
+    "DataSourceConnection.insertColumn",
+    simpleJSONHandler(exceptionHandler(handleDbConnInsertColumn))
   );
 };
 

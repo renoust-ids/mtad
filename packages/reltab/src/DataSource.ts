@@ -133,6 +133,12 @@ export interface DataSourceConnection {
 
   // Duplicate rows matching a WHERE clause (INSERT INTO ... SELECT * FROM ... WHERE)
   duplicateRows(tableName: string, whereClause: string): Promise<void>;
+
+  // Insert a single empty row (all columns NULL) into a table
+  insertRow(tableName: string): Promise<void>;
+
+  // Add a new empty (all NULL) column to a table
+  insertColumn(tableName: string, columnName: string): Promise<void>;
 }
 
 /**
@@ -338,6 +344,20 @@ export class DbDataSource implements DataSourceConnection {
   async duplicateRows(tableName: string, whereClause: string): Promise<void> {
     const sql = `INSERT INTO "${tableName}" SELECT * FROM "${tableName}" WHERE ${whereClause}`;
     await this.db.runSqlQuery(sql);
+  }
+
+  async insertRow(tableName: string): Promise<void> {
+    const sql = `INSERT INTO "${tableName}" DEFAULT VALUES`;
+    await this.db.runSqlQuery(sql);
+  }
+
+  async insertColumn(tableName: string, columnName: string): Promise<void> {
+    const sql = `ALTER TABLE "${tableName}" ADD COLUMN "${columnName}" VARCHAR`;
+    await this.db.runSqlQuery(sql);
+    // Invalidate cached schema for this table
+    const leafDep = { operator: "table", tableName } as const;
+    const leafKey = JSON.stringify(leafDep);
+    delete this.tableMap[leafKey];
   }
 }
 

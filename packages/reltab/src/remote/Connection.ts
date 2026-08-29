@@ -80,6 +80,15 @@ export interface DbConnDuplicateRowsRequest {
   whereClause: string;
 }
 
+export interface DbConnInsertRowRequest {
+  tableName: string;
+}
+
+export interface DbConnInsertColumnRequest {
+  tableName: string;
+  columnName: string;
+}
+
 export type EngineReq<T> = { engine: DataSourceId; req: T };
 
 // remote invoke a DataSourceConnection member function, using DataSourceId to
@@ -282,6 +291,26 @@ class RemoteDataSourceConnection implements DataSourceConnection {
       this.tconn,
       this.sourceId,
       "duplicateRows",
+      req
+    ).then(decodeResult);
+  }
+
+  async insertRow(tableName: string): Promise<void> {
+    const req: DbConnInsertRowRequest = { tableName };
+    await invokeDbFunctionRaw(
+      this.tconn,
+      this.sourceId,
+      "insertRow",
+      req
+    ).then(decodeResult);
+  }
+
+  async insertColumn(tableName: string, columnName: string): Promise<void> {
+    const req: DbConnInsertColumnRequest = { tableName, columnName };
+    await invokeDbFunctionRaw(
+      this.tconn,
+      this.sourceId,
+      "insertColumn",
       req
     ).then(decodeResult);
   }
