@@ -54,3 +54,13 @@
 ### Vérification build CI (push GitHub)
 - `.github/workflows/build.yml` : ajout de la branche `improveui` au trigger `push` (elle ne l'était pas → le push n'aurait pas déclenché de build). Commit + push de la branche pour lancer les jobs mac / windows / linux et vérifier le build de bout en bout.
 - Objectif : checker que le bundle tad-app + packaging electron-builder passent sur les 3 plateformes.
+
+### Documentation des nouvelles features
+- **README.md** : nouvelle section "Row & Column Insertion" (Insert Row / Insert Column + SQL sous-jacent), sous-section "Grid Interaction Refinements" (hover border `#5a6375`, sélection préservée au right-click), mise à jour des bullet points packages (methode `insertRow()`/`insertColumn()` de reltab, features de tadviewer) + lien vers `doc/features.md`.
+- **Packages Quick Start Guide** (`packages/tad-app/html/userdocs/quickstart.html`, chargé en static via `build:html`) : titre + intro rebrandés MTad, nouvelle section "Editing Your Data" (cell edit, Insert Row/Column, Rename Column, contexte menu complet, notes d'interaction hover/sélection).
+- **Site landing page** (`doc/site/index.html`) : 3 nouveaux feature cards (Row & Column Insertion, Grid Interaction Refinements, Selection-Aware Context Menus), liste "Based on Tad" enrichie, News + Release Notes passés à **MTad 0.0.3** (février 2026) avec les 4 features.
+- **Nouveau** `doc/features.md` : référence consolidée et complète des features (viewing/analysis, cell editing, row & column manipulation, row operations, grid interaction, CSV materialization) + tableau "Under the Hood" SQL généré par reltab pour chaque opération. Lié depuis README et `doc/building.md`.
+- **Commit** : `docs: document insert row/column, hover border, and selection-aware context menus` (851a8a1) — poussé, CI (run #26) re-trigger.
+
+### CI (run #26, commit 50b032e puis 851a8a1)
+- Jobs mac / windows / linux : toujours in_progress au dernier check (~20+ min), en attente de la confirmation.
