@@ -596,21 +596,23 @@ const createGrid = (
 
     // Keep the current selection if the right-clicked cell is already part of
     // it (so the context menu acts on the whole group); otherwise select just
-    // the hovered cell.
+    // the hovered cell. Note: setActiveCell must NOT be called on a cell that
+    // is inside the selection, because the CellSelectionModel listens to
+    // onActiveCellChanged and collapses the ranges to that single active cell.
     const row = cellInfo.row;
     const cell = cellInfo.cell;
-    grid.setActiveCell(row, cell);
     const selModel = grid.getSelectionModel();
-    if (selModel) {
-      const ranges = selModel.getSelectedRanges();
-      const inSelection = ranges.some(
-        (r: any) =>
-          cellInfo.row >= r.fromRow &&
-          cellInfo.row <= r.toRow &&
-          cellInfo.cell >= r.fromCell &&
-          cellInfo.cell <= r.toCell
-      );
-      if (!inSelection) {
+    const ranges = selModel ? selModel.getSelectedRanges() : [];
+    const inSelection = ranges.some(
+      (r: any) =>
+        cellInfo.row >= r.fromRow &&
+        cellInfo.row <= r.toRow &&
+        cellInfo.cell >= r.fromCell &&
+        cellInfo.cell <= r.toCell
+    );
+    if (!inSelection) {
+      grid.setActiveCell(row, cell);
+      if (selModel) {
         selModel.setSelectedRanges([new Slick.Range(row, cell)]);
       }
     }
