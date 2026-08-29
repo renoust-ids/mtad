@@ -631,6 +631,35 @@ export const ensureDistinctColVals = (colId: string, stateRef: StateRef<AppState
 };
 */
 
+// --- Column Histogram Dialog Actions ---
+
+export type ColumnHistogramData =
+  | reltab.NumericColumnHistogramData
+  | reltab.CategoricalDistributionData;
+
+// Fetch the data backing the column histogram dialog for one column.
+// Numeric columns get a binned histogram, everything else gets categorical
+// frequency data. binCount (optional) lets the dialog re-bin numeric columns.
+export async function loadColumnHistogramData(
+  dbc: DataSourceConnection,
+  baseQuery: reltab.QueryExp,
+  baseSchema: reltab.Schema,
+  colId: string,
+  binCount?: number
+): Promise<ColumnHistogramData | null> {
+  const kind = baseSchema.columnType(colId).kind;
+  if (kind === "integer" || kind === "real") {
+    return reltab.getColumnHistogramDataForBins(
+      dbc,
+      baseQuery,
+      baseSchema,
+      colId,
+      binCount
+    );
+  }
+  return reltab.getColumnFrequencyData(dbc, baseQuery, colId);
+}
+
 // --- Join CSV Dialog Actions ---
 
 export const openJoinCsvDialog = (
