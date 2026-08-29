@@ -66,6 +66,14 @@ class ConnectionPool {
   }
 }
 
+const parseNullableNumber = (s: unknown): number | null => {
+  if (s == null || typeof s === "boolean") {
+    return null;
+  }
+  const n = Number(s);
+  return Number.isNaN(n) ? null : n;
+};
+
 const parsePercentage = (s: string | number | undefined): number | null => {
   if (s == undefined) {
     return null;
@@ -165,6 +173,8 @@ export function columnStatsFromSummarize(
       const approxUnique = Number.parseInt(row.approx_unique as string);
       const count = Number.parseInt(row.count as string);
       const pctNull = parsePercentage(row.null_percentage as string);
+      const mean = parseNullableNumber(row.avg);
+      const std = parseNullableNumber(row.std);
       const columnStats: NumericSummaryStats = {
         statsType: "numeric",
         min: minVal,
@@ -172,6 +182,8 @@ export function columnStatsFromSummarize(
         approxUnique,
         count,
         pctNull,
+        mean,
+        std,
       };
       columnStatsMap[colId] = columnStats;
     }
