@@ -1,8 +1,7 @@
 # STATE HANDOFF - Improve UI
 
 ## Current State
-- **Branch**: `improveui` (created from master v0.0.3)
-- **Status**: Steps 1–10 implemented AND E2E-validated by the user ("all works"). Working tree clean (stray CSVs removed, package-lock aligned 0.0.3). Branch pushed to origin; `.github/workflows/build.yml` now also triggers on `improveui` pushes to verify the multi-platform build in CI. Next: check GitHub Actions run; eventually merge improveui → main + tag for release.
+- **Branch**: `improveui` merged into `master` (merge commit `716f226`), pushed to origin. GitHub Actions run #26 (triggered by `improveui` push) completed **success** on mac/windows/linux; the `release` job was skipped (no `v*` tag). Steps 1–10 implemented AND E2E-validated by the user ("all works"). Documentation updated (README, Quick Start Guide, landing page, new `doc/features.md`). Next: optionally tag `v0.0.4` to trigger the auto-draft release.
 
 ## Goal
 Implement UI improvements: column/row/cell manipulation via context menus and export options.
