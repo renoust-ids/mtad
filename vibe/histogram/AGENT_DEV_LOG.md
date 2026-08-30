@@ -116,3 +116,8 @@
 ### Reste à faire
 - E2E avec l'utilisateur (renommage, slider éditable, colonne catégorielle avec min freq à 0, colonnes date/time/timestamp sur `examples/histogram_test.csv`).
 - Push branche `histograms`.
+### Step 6c — Fix crash filtre temporel (0 résultat)
+- **Cause** : le brush temporel créait un filtre `ge(epoch(col(colId)), constVal(…))` dont le lhs n'est pas un `ColRef` ; `FilterEditorRow` appelle `relExp.lhsCol()` au montage → `Uncaught Error: Unexpected non-colref arg expType` (crash en ouvrant l'éditeur de filtre sur une vue à 0 résultat).
+- **Fix** : `setHistogramBrushFilter` filtre désormais sur `col(colId)` avec le range epoch reconverti en littéral typé (date→`YYYY-MM-DD`, time→`HH:MM:SS`, timestamp→`YYYY-MM-DD HH:MM:SS`) ; DuckDB caste implicitement le littéral (vérifié : `birth_date BETWEEN '2024-01-15' AND '2024-02-19'` → 2 lignes, `start_time 08:30-09:00` → 2 lignes). `FilterEditorRow` : garde défensive (lhs non-colref → sélecteur colonne vide au lieu de crash).
+- **Validation** : tadviewer `npx tsc` ok ; webpack prod 17 warnings ; tad-app webpack OK ; probe reltab-duckdb OK.
+- **Commit** : `d984ded` `fix(tadviewer): keep brush filters on raw column so filter editor survives`
