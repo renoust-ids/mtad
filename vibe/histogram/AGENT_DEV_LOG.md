@@ -90,3 +90,29 @@
 - Docs : README (section "Column Histograms"), `doc/features.md`, `quickstart.html`, `doc/site/index.html` (carte feature + News 0.0.4). Commit `efe4e92`.
 - `.github/workflows/build.yml` : branche `histograms` ajoutée aux triggers de push.
 - Reste : E2E avec l'utilisateur, push branche `histograms`.
+## 2026-08-30 — Step 6 : Renommage, sliders éditables, état vide catégoriel, colonnes temporelles
+
+### Step 6a — reltab : support temporel (date / time / timestamp)
+- `ColumnType.ts` : `temporalKinds` (`date|time|datetime|timestamp`), helpers `isTemporalKind` / `isTemporal`.
+- `defs.ts` : nouvel opérateur unaire `epoch` (ValExp) ; SQL : `date_part('epoch', …)` (dialect `"duckdb"`), `strftime('%s', …)` (dialect `"sqlite"`), throw sinon. `getSchema.ts` : `epoch` → `coreColumnTypes.real`.
+- Problème DuckDB rencontré : `SUMMARIZE` échoue sur `DATE` brut (`Binder Error: No function matches stddev(DATE)`). Solution : stats numériques obtenues sur la conversion epoch (`getTemporalColumnNumericStats` sur une dérivée `extend("__epoch", epoch(col))` seul).
+- Autre piège : une dérivée projetée à une seule colonne (`project(["__epoch"])`) est flaténisée par l'optimiseur ; le query de tailles référençait l'alias `"__epoch"` dans le même SELECT alors que la FROM ne l'expose pas (`Binder Error: Referenced column "__epoch" not found in FROM clause`). Fix : `columnHistogramQuery` accepte désormais un `valExp` optionnel ; pour le temporel on passe `epoch(col(colId))` **inline** sur la requête de base (pas de colonne dérivée matérialisée pour l'histogramme).
+- `nativeCSVImport` DOIT être utilisé avec `reltab.getConnection({providerName:"duckdb", resourceId:":memory:"})` (pas d'API `DataSource.open`) ; `getSchema(query)` exige une query.
+- Tests : `test/temporal.histo.auto.test.ts` (2 tests) + fixture `test/support/tcol.csv` (id, birth_date, start_time, created_at, note). TIME = secondes depuis minuit local (~32400), date/timestamp = epoch années 2020 ; assertions ajustées en conséquence.
+- **Validation** : reltab `npx tsc -p tsconfig-build.json` + `npm test` (5 suites / 22 tests) ; reltab-duckdb `histo.auto` (2 suites / 5 tests + 4 snapshots) et `temporal.histo.auto` (2 tests) au vert.
+
+### Step 6b — tadviewer : dialog Distribution
+- Renommage utilisateur "Histogram" → "Distribution" (titre du dialog `${displayName} - Distribution`, menu DataGrid + appMenu "Distribution").
+- Nouveau composant `EditableNumber` : double-clic sur la valeur affichée (soulignée pointillés) → input `type=number` ; Entrée/blur commit (clampé [min,max], arrondi), Escape annule. Utilisé pour Bins (2-50) et Min freq.
+- Fix état vide catégoriel (cause racine : avec le défaut 2% de totalCount, quand tous les counts < seuil, `bars.length===0` retournait un node sans contrôles) : le slider `minOccControl` + readout sont désormais toujours rendus au-dessus du message "No values above the selected minimum frequency (try lowering it).".
+- `actions.ts` : `loadColumnHistogramData` route les kinds temporels vers la voie bins ; `setHistogramBrushFilter` filtre via `reltab.epoch(col(colId))` pour le temporel.
+- `HistogramDialog.tsx` : détection `viewKind` + `temporal` via `getViewQueryAndSchema()` (déclarée en `function` pour le hoisting) ; `fmtX` (date→`YYYY-MM-DD`, time→`HH:MM`, timestamp→`YYYY-MM-DD HH:MM`, epoch = s×1000) pour ticks, tooltip (hover `fmtX(binMin)–fmtX(binMax)`) et stats Min/Max/Mean via `fmtStat` ; `handleBrushEnd` arrondit les valeurs temporelles/entières.
+- `examples/histogram_test.csv` : 1000 lignes (schema cell_edit_test), âge/salaire gaussiens (26 salaires null), `notes` catégoriel (47 vides), 499 noms distincts.
+- **Validation** : tadviewer `npx tsc` ok ; webpack prod 17 warnings pré-existants ; tad-app webpack OK.
+- **Commits** :
+- `5c5f30d` `feat(reltab): histogram date/time/timestamp columns over epoch-second values`
+- `aeee905` `feat(tadviewer): rename Histogram to Distribution, editable slider values, temporal column support`
+
+### Reste à faire
+- E2E avec l'utilisateur (renommage, slider éditable, colonne catégorielle avec min freq à 0, colonnes date/time/timestamp sur `examples/histogram_test.csv`).
+- Push branche `histograms`.
