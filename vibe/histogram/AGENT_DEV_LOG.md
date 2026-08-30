@@ -135,3 +135,8 @@
 - **Validation** : `npx tsc` ok ; webpack prod 17 warnings ; tad-app webpack OK.
 - **Commit** :
 - `34a434a` `feat(tadviewer): show T:/A:-prefixed filter string on tab hover`
+
+### Step 6f — Préfixe T:/A: à la modification + limite de longueur
+- Modification (éditeur ouvert) : le résumé de l'onglet actif est préfixé `T: `/`A: ` (comme le survol). Préfixe affiché → longueur maximale réduite de 4 caractères avant cropping (max 60 sinon) pour que le préfixe ne change pas la largeur visible.
+- **Validation** : `npx tsc` ok ; webpack prod 17 warnings ; tad-app webpack OK.
+- **Commit** : `91f0253` `feat(tadviewer): prefix active filter summary while editing and cap its width`
