@@ -5,6 +5,8 @@ export type NumericSummaryStats = {
   approxUnique: number | null;
   count: number;
   pctNull: number | null;
+  mean?: number | null;
+  std?: number | null;
 };
 
 export type TextSummaryStats = {

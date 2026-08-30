@@ -23,6 +23,7 @@ import {
   NumericColumnHistogramData,
   SubExp,
   FilterExp,
+  UnaryRelExp,
 } from "reltab";
 import * as util from "./util";
 import { QueryView } from "./QueryView";
@@ -550,6 +551,20 @@ export const setFilter = (
   );
 };
 
+// Convert a numeric epoch-second value (as produced by the temporal
+// histogram machinery) to a string literal comparable with the raw temporal
+// column of the given kind.
+const epochToTemporalString = (kind: reltab.ColumnKind, epochSec: number): string => {
+  const d = new Date(epochSec * 1000);
+  if (kind === "date") {
+    return d.toISOString().slice(0, 10);
+  }
+  if (kind === "time") {
+    return d.toISOString().slice(11, 19);
+  }
+  return d.toISOString().slice(0, 19);
+};
+
 export const setHistogramBrushFilter = (
   colId: string,
   range: [number, number] | null,
@@ -558,7 +573,7 @@ export const setHistogramBrushFilter = (
   let baseFE: FilterExp;
   if (range !== null) {
     const appState = mutableGet(stateRef);
-    const prevFE = appState.viewState.viewParams.filterExp;
+    const prevFE = appState.viewState.viewParams.analyticsFilterExp;
     // ensure that prevFE is either null or a top-level "AND" operator:
     if (prevFE != null) {
       if (prevFE.op !== "AND") {
@@ -581,13 +596,34 @@ export const setHistogramBrushFilter = (
     } else {
       baseFE = and();
     }
+    // Temporal columns are histogrammed over epoch-second values, but the
+    // stored filter must reference the raw column (the filter editor and
+    // other code assume a colref left-hand side). Convert the epoch range
+    // back to a column-typed literal (e.g. DATE '2024-01-15'), which DuckDB
+    // implicitly casts in comparisons.
+    const kind = appState.viewState.baseSchema.columnType(colId).kind;
+    const lhs = col(colId);
+    if (reltab.isTemporalKind(kind)) {
+      const nextFE = baseFE
+        .ge(lhs, constVal(epochToTemporalString(kind, range[0])))
+        .le(lhs, constVal(epochToTemporalString(kind, range[1])));
+      update(
+        stateRef,
+        vpUpdate(
+          (viewParams) =>
+            viewParams.set("analyticsFilterExp", nextFE) as ViewParams
+        )
+      );
+      return;
+    }
     const nextFE = baseFE
-      .ge(col(colId), constVal(range[0]))
-      .le(col(colId), constVal(range[1]));
+      .ge(lhs, constVal(range[0]))
+      .le(lhs, constVal(range[1]));
     update(
       stateRef,
       vpUpdate(
-        (viewParams) => viewParams.set("filterExp", nextFE) as ViewParams
+        (viewParams) =>
+          viewParams.set("analyticsFilterExp", nextFE) as ViewParams
       )
     );
   }
@@ -630,6 +666,150 @@ export const ensureDistinctColVals = (colId: string, stateRef: StateRef<AppState
   });
 };
 */
+
+// --- Column Histogram Dialog Actions ---
+
+export type ColumnHistogramData =
+  | reltab.NumericColumnHistogramData
+  | reltab.CategoricalDistributionData;
+
+// Open the column histogram dialog for a column.
+export const openColumnHistogram = (
+  colId: string,
+  stateRef: StateRef<AppState>
+) => {
+  const app = mutableGet(stateRef);
+  if (app.viewState == null) {
+    return;
+  }
+  update(stateRef, (s) => s.set("histogramDialogColId", colId) as AppState);
+};
+
+export const closeColumnHistogram = (stateRef: StateRef<AppState>) => {
+  update(stateRef, (s) => s.set("histogramDialogColId", null) as AppState);
+};
+
+// Remove all filter clauses that reference colId from a filter expression.
+// Mirrors the cleanup logic in setHistogramBrushFilter but also handles
+// unary (IS NULL / NOT NULL) clauses.
+export const filterExpWithoutCol = (
+  baseFE: FilterExp,
+  colId: string
+): FilterExp => {
+  const cleanedArgs = baseFE.opArgs.filter((subExp: SubExp) => {
+    if (subExp.expType === "UnaryRelExp") {
+      const arg = (subExp as UnaryRelExp).arg;
+      if (arg.expType === "ColRef" && arg.colName === colId) {
+        return false;
+      }
+      return true;
+    }
+    if (subExp.expType === "BinRelExp") {
+      const lhs = (subExp as reltab.BinRelExp).lhs;
+      if (lhs.expType === "ColRef" && lhs.colName === colId) {
+        return false;
+      }
+      return true;
+    }
+    return true;
+  });
+  return new FilterExp("AND", cleanedArgs);
+};
+
+// Set (or clear) a categorical (IN / IS NULL) filter for a column, applied to
+// the analytics filter expression. Empty values and no null -> filter is
+// cleared for the column.
+export const setCategoryHistogramFilter = (
+  colId: string,
+  values: string[],
+  includeNull: boolean,
+  stateRef: StateRef<AppState>
+) => {
+  const appState = mutableGet(stateRef);
+  const prevFE = appState.viewState.viewParams.analyticsFilterExp;
+  if (prevFE != null && prevFE.op !== "AND") {
+    log.info(
+      "setCategoryHistogramFilter: unexpected structure for current filter expression, ignoring"
+    );
+    return;
+  }
+  const baseFE = prevFE == null ? and() : filterExpWithoutCol(prevFE, colId);
+  let nextFE = baseFE;
+  if (values.length > 0) {
+    nextFE = nextFE.chainBinRelExp(
+      "IN",
+      col(colId),
+      constVal(values as unknown as reltab.Scalar)
+    );
+  }
+  if (includeNull) {
+    nextFE = nextFE.isNull(col(colId));
+  }
+  update(
+    stateRef,
+    vpUpdate(
+      (viewParams) =>
+        viewParams.set("analyticsFilterExp", nextFE) as ViewParams
+    )
+  );
+};
+
+// Set the analytics filter expression directly (e.g. from the Analytics
+// Filters editor in the footer).
+export const setAnalyticsFilter = (
+  fe: reltab.FilterExp,
+  stateRef: StateRef<AppState>
+) => {
+  update(
+    stateRef,
+    vpUpdate(
+      (viewParams) =>
+        viewParams.set("analyticsFilterExp", fe) as ViewParams
+    )
+  );
+};
+
+// Enable or disable application of the analytics filter to the view.
+export const setApplyAnalyticsFilters = (
+  apply: boolean,
+  stateRef: StateRef<AppState>
+) => {
+  update(
+    stateRef,
+    vpUpdate(
+      (viewParams) => viewParams.set("applyAnalyticsFilters", apply) as ViewParams
+    )
+  );
+};
+
+// Fetch the data backing the column histogram dialog for one column.
+// Numeric columns get a binned histogram, everything else gets categorical
+// frequency data. binCount (optional) lets the dialog re-bin numeric columns.
+// query/schema are the (possibly pivoted / aggregated) query and schema whose
+// data the histogram should describe.
+export async function loadColumnHistogramData(
+  dbc: DataSourceConnection,
+  query: reltab.QueryExp,
+  schema: reltab.Schema,
+  colId: string,
+  binCount?: number
+): Promise<ColumnHistogramData | null> {
+  const kind = schema.columnType(colId).kind;
+  if (
+    kind === "integer" ||
+    kind === "real" ||
+    reltab.isTemporalKind(kind)
+  ) {
+    return reltab.getColumnHistogramDataForBins(
+      dbc,
+      query,
+      schema,
+      colId,
+      binCount
+    );
+  }
+  return reltab.getColumnFrequencyData(dbc, query, colId);
+}
 
 // --- Join CSV Dialog Actions ---
 

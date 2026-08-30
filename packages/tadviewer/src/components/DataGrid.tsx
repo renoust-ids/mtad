@@ -405,6 +405,7 @@ const createGrid = (
     onColumnDelete,
     onColumnDuplicate,
     onInsertColumn,
+    onColumnHistogram,
     onDeleteRows,
     onDuplicateRows,
     onInsertRow,
@@ -895,6 +896,19 @@ const createGrid = (
     });
     menu.appendChild(duplicateItem);
 
+    const sepHisto = document.createElement("div");
+    sepHisto.className = "bp4-menu-divider";
+    menu.appendChild(sepHisto);
+
+    const histogramItem = document.createElement("div");
+    histogramItem.className = "bp4-menu-item";
+    histogramItem.textContent = "Distribution";
+    histogramItem.addEventListener("click", () => {
+      menu.remove();
+      onColumnHistogram?.(column.id);
+    });
+    menu.appendChild(histogramItem);
+
     document.body.appendChild(menu);
 
     // Close menu on outside click
@@ -1096,6 +1110,7 @@ export interface DataGridProps {
   onColumnDelete?: (columnId: string) => void;
   onColumnDuplicate?: (columnId: string) => void;
   onInsertColumn?: (columnId: string) => void;
+  onColumnHistogram?: (columnId: string) => void;
   onDeleteRows?: (rowDataList: { [columnId: string]: any }[]) => void;
   onDuplicateRows?: (rowDataList: { [columnId: string]: any }[]) => void;
   onInsertRow?: () => void;

@@ -66,8 +66,23 @@ class ConnectionPool {
   }
 }
 
-const parsePercentage = (s: string | undefined): number | null => {
-  if (s != undefined && s.endsWith("%")) {
+const parseNullableNumber = (s: unknown): number | null => {
+  if (s == null || typeof s === "boolean") {
+    return null;
+  }
+  const n = Number(s);
+  return Number.isNaN(n) ? null : n;
+};
+
+const parsePercentage = (s: string | number | undefined): number | null => {
+  if (s == undefined) {
+    return null;
+  }
+  if (typeof s === "number") {
+    // DuckDB SUMMARIZE returns null_percentage as a number (e.g. 16.67 = 16.67%)
+    return s / 100.0;
+  }
+  if (s.endsWith("%")) {
     const noPct = s.replace(/%$/, "");
     const ret = Number.parseFloat(noPct) / 100.0;
     return ret;
@@ -158,6 +173,8 @@ export function columnStatsFromSummarize(
       const approxUnique = Number.parseInt(row.approx_unique as string);
       const count = Number.parseInt(row.count as string);
       const pctNull = parsePercentage(row.null_percentage as string);
+      const mean = parseNullableNumber(row.avg);
+      const std = parseNullableNumber(row.std);
       const columnStats: NumericSummaryStats = {
         statsType: "numeric",
         min: minVal,
@@ -165,6 +182,8 @@ export function columnStatsFromSummarize(
         approxUnique,
         count,
         pctNull,
+        mean,
+        std,
       };
       columnStatsMap[colId] = columnStats;
     }

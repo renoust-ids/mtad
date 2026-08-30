@@ -11,6 +11,7 @@ import * as actions from "../actions";
 import * as util from "../util";
 import { CellEditStartData, DataGrid, DataGridProps } from "./DataGrid";
 import { CellEditModal } from "./CellEditModal";
+import HistogramDialog from "./HistogramDialog";
 import { SimpleClipboard } from "./SimpleClipboard";
 
 import { CellClickData } from "./CellClickData";
@@ -330,6 +331,29 @@ const GridPaneInternal: React.FunctionComponent<GridPaneProps> = ({
     setDuplicateState({ isOpen: false, sourceColumn: "", newColumn: "" });
   }, []);
 
+  // Column histogram dialog state (lives in AppState so it can be opened
+  // from the app menu)
+  const handleOpenHistogram = React.useCallback(
+    (columnId: string) => actions.openColumnHistogram(columnId, stateRef),
+    [stateRef]
+  );
+
+  const handleCloseHistogram = React.useCallback(
+    () => actions.closeColumnHistogram(stateRef),
+    [stateRef]
+  );
+
+  const handleSelectHistogramColumn = React.useCallback(
+    (columnId: string) => actions.openColumnHistogram(columnId, stateRef),
+    [stateRef]
+  );
+
+  const handleCategoryFilter = React.useCallback(
+    (colId: string, values: string[], includeNull: boolean) =>
+      actions.setCategoryHistogramFilter(colId, values, includeNull, stateRef),
+    [stateRef]
+  );
+
   // Insert column state
   const [insertColumnState, setInsertColumnState] = React.useState<{
     isOpen: boolean;
@@ -446,6 +470,7 @@ const GridPaneInternal: React.FunctionComponent<GridPaneProps> = ({
     onColumnDelete: handleColumnDelete,
     onColumnDuplicate: handleColumnDuplicate,
     onInsertColumn: handleInsertColumn,
+    onColumnHistogram: handleOpenHistogram,
     onDeleteRows: handleDeleteRows,
     onDuplicateRows: handleDuplicateRows,
     onInsertRow: handleInsertRow,
@@ -580,6 +605,15 @@ const GridPaneInternal: React.FunctionComponent<GridPaneProps> = ({
           </div>
         </div>
       </Dialog>
+      <HistogramDialog
+        appState={appState}
+        stateRef={stateRef}
+        colId={appState.histogramDialogColId}
+        onClose={handleCloseHistogram}
+        onSelectColumn={handleSelectHistogramColumn}
+        onBrushFilter={onHistogramBrushFilter}
+        onCategoryFilter={handleCategoryFilter}
+      />
     </>
   );
 };
@@ -598,7 +632,9 @@ const gridPanePropsEqual = (oldProps: any, nextProps: any): boolean => {
   const ret =
     util.shallowEqual(vs, nvs) &&
     oldProps.appState.showColumnHistograms ===
-      nextProps.appState.showColumnHistograms;
+      nextProps.appState.showColumnHistograms &&
+    oldProps.appState.histogramDialogColId ===
+      nextProps.appState.histogramDialogColId;
   return ret;
 };
 

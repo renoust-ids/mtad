@@ -44,16 +44,20 @@ Avant de commencer, crée un fichier `AGENT_DEV_LOG.md` à la racine. Pour **cha
 3. Ne fais jamais de commit global (`git commit -am "wip"`). Ne groupe pas le backend et l'UI dans le même commit.
 
 # MISSION ACTUELLE
-Intégrer une fonctionnalité de "Jointure de CSV" (Merge/Join CSV). Cette fonction doit permettre à l'utilisateur de charger un second CSV, de définir les clés de jointure, le type de jointure (INNER, LEFT, etc.), et de générer une nouvelle table affichée dans l'UI.
+Intégrer une fonctionnalité d'**histogramme interactif de colonne** (branche `histograms`) : item "Histogram" dans le menu contextuel d'un en-tête de colonne (clic droit) → ouvre un dialog interactif (Blueprint `Dialog`) affichant la distribution de la colonne avec toutes les options d'affichage :
+- **Numérique** : histogramme binné (défaut Sturges, nombre de bins ajustable), échelle log Y, inclusion/exclusion des nulls, brush → filtre valeur sur la colonne (réutilise `actions.setHistogramBrushFilter`), panneau de statistiques (count, nulls, min, max, mean, approx_unique).
+- **Non-numérique** : bar chart catégoriel de la distribution de fréquences par valeur.
+
+La fondation historique existe déjà (reltab `histogram.ts`, `victory`, actions brush) ; le travail consiste à exposer une version interactive complète via le menu contextuel.
 
 # PROTOCOLE DE RELEASE (MTad)
 
 ## Informations sur le projet
 - **Nom du produit** : MTad (application Electron)
 - **App ID** : `com.mtad.app`
-- **Version actuelle** : `0.0.1`
+- **Version actuelle** : `0.0.4`
 - **Dépôt** : https://github.com/renoust-ids/mtad
-- **Branche principale** : `main`
+- **Branche principale** : `master`
 - **Auteur** : Benjamin Renoust (from Antony Courtney)
 
 ## Plateformes cibles
@@ -142,5 +146,6 @@ git push origin v0.0.1
 - [ ] Release draft créée sur GitHub
 
 ## Mission
-- La mission est décrite dans le fichier vibe/improveui/mission.md
-- Demarre par la lecture de vibe/improveui/STATE_HANDOFF.md
+- La mission est décrite dans le fichier `vibe/histogram/mission.md`
+- Le plan d'implémentation est dans `vibe/histogram/global_plan.md`
+- Demarre par la lecture de `vibe/histogram/STATE_HANDOFF.md`

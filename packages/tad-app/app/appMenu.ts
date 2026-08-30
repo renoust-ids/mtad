@@ -132,6 +132,14 @@ export const createMenu = () => {
     { label: "Zoom In", accelerator: "CmdOrCtrl+Plus", role: "zoomIn" },
     { label: "Zoom Out", accelerator: "CmdOrCtrl+-", role: "zoomOut" },
   ];
+  const analyticsSubmenu: MenuItemConstructorOptions[] = [
+  {
+    label: "Distribution",
+    click: (item: MenuItem, focusedWindow: BrowserWindow | undefined) => {
+      focusedWindow?.webContents.send("open-column-histogram", {});
+    },
+  },
+];
   const debugSubmenu: MenuItemConstructorOptions[] = [
     {
       role: "toggleDevTools",
@@ -183,6 +191,10 @@ export const createMenu = () => {
     {
       label: "View",
       submenu: viewSubmenu,
+    },
+    {
+      label: "Analytics",
+      submenu: analyticsSubmenu,
     },
   ];
 

@@ -55,6 +55,14 @@ test("basic column stats and bin count", async () => {
 
   expect(tcoeColumnStats).toMatchSnapshot();
 
+  if (tcoeColumnStats.mean != null) {
+    expect(tcoeColumnStats.mean).toBeGreaterThan(tcoeColumnStats.min ?? 0);
+    expect(tcoeColumnStats.mean).toBeLessThan(tcoeColumnStats.max ?? Infinity);
+  }
+  if (tcoeColumnStats.std != null) {
+    expect(tcoeColumnStats.std).toBeGreaterThan(0);
+  }
+
   const binCount = binsForColumn(tcoeColumnStats);
 
   console.log("*** number of histogram bins: ", binCount);

@@ -257,6 +257,18 @@ const init = async () => {
       actions.openJoinCsvDialog(leftColumns, stateRef);
     });
 
+    ipcRenderer.on("open-column-histogram", (event, req) => {
+      const curState = mutableGet(stateRef);
+      const schema =
+        curState.viewState?.dataView?.schema ?? curState.viewState?.baseSchema;
+      const colId =
+        (req?.colId as string | undefined) ??
+        schema?.columns.find((cid) => !cid.startsWith("_") && cid !== "Rec");
+      if (colId != null) {
+        actions.openColumnHistogram(colId, stateRef);
+      }
+    });
+
     document.addEventListener("copy", function (e) {});
 
     ipcRenderer.send("render-init-complete");

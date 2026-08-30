@@ -175,7 +175,9 @@ const requestQueryView = async (
     aggMap[cid] = viewParams.getAggFn(baseSchema, cid);
   }
 
-  const filterQuery = baseQuery.filter(viewParams.filterExp);
+  // combine the table filter and (optionally) the analytics filter:
+  const filterExp = viewParams.combinedFilterExp();
+  const filterQuery = baseQuery.filter(filterExp);
   const ptree = await aggtree.vpivot(
     rt,
     filterQuery,
@@ -195,7 +197,7 @@ const requestQueryView = async (
   const filterRowCount = await fastFilterRowCount(
     rt,
     baseRowCount,
-    viewParams.filterExp,
+    filterExp,
     filterQuery,
     onViewRowCount,
     onViewRowCountResolved

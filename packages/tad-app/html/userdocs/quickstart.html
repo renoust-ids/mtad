@@ -169,6 +169,26 @@ $ tad somefile.csv
         <P>
         Right-clicking a cell opens a context menu with <b>Edit Cell</b>, <b>Delete Row(s)</b>, <b>Duplicate Row(s)</b>, <b>Insert Row</b>, and copy options (<b>Copy Cell</b>, <b>Copy Row</b>). On aggregate rows additional options let you <b>Delete All Aggregate Rows</b> or <b>Duplicate All Aggregate Rows</b>.
         </P>
+        <h5>Distribution</h5>
+        <P>
+        Right-click a column header and choose <b>Distribution</b> (or use the <b>Analytics</b> application menu) to inspect a single column with an interactive chart, computed on demand:
+        <ul>
+        <li>Numeric columns show a <b>binned histogram</b> with a live bin-count control (double-click the value to type it directly), an optional <b>log scale</b>, an optional <b>null bar</b>, and a statistics panel (bins, count, nulls, unique, min, max, mean, std).</li>
+        <li><b>Brush to filter</b> - drag across the bars to instantly filter the grid to that numeric range (as an <i>analytics</i> filter).</li>
+        <li>Date / time / timestamp columns are binned with <b>type-aware labels</b> (<code>YYYY-MM-DD</code>, <code>HH:MM</code>, ...).</li>
+        <li>Other columns show a <b>categorical bar chart</b> of the most frequent values, with a <b>min-frequency</b> threshold and click-to-select bars that filter the grid to the selected values.</li>
+        <li><b>Apply Table Filters</b> (default on) computes the chart over the table-filtered subset of the data.</li>
+        </ul>
+        </P>
+        <h5>Table &amp; Analytics Filters</h5>
+        <P>
+        The footer groups filters into two tabs:
+        <ul>
+        <li><b>Table Filters</b> - the filter saved with the view (right-click the tabs to open the editor).</li>
+        <li><b>Analytics Filters</b> - filters created by brushing or selecting bars in the Distribution dialog; applied on top of the table filter while <b>Apply Analytics Filters</b> is checked.</li>
+        <li>Hovering a tab or editing a filter prefixes its SQL summary with <code>T: </code> or <code>A: </code>; the <b>✕</b> icon to the right of each tab clears that filter.</li>
+        </ul>
+        </P>
         <h5>Grid Interaction Notes</h5>
         <ul>
         <li>Hovering over a cell draws a thick dark blue border around it, so cell values remain readable while you navigate.</li>

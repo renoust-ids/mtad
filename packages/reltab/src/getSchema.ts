@@ -236,6 +236,8 @@ export const getOrInferColumnType = (
         case "floor":
         case "ceil":
           return dialect.coreColumnTypes.real;
+        case "epoch":
+          return dialect.coreColumnTypes.real;
         default:
           const invalid: never = colExp;
           throw new Error(`Unknown unary expression expType: ${invalid}`);

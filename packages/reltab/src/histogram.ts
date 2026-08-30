@@ -3,14 +3,24 @@
  * Column histograms using reltab
  */
 
-import { ColumnType, colIsNumeric } from "./ColumnType";
+import { ColumnType, colIsNumeric, isTemporal } from "./ColumnType";
 import { DataSourceConnection } from "./DataSource";
 import { QueryExp } from "./QueryExp";
 import { ColumnStatsMap, NumericSummaryStats } from "./ColumnStats";
 import { Schema } from "./Schema";
 import { TableRep } from "./TableRep";
 import { nice, thresholdSturges } from "./d3utils";
-import { constVal, cast, minus, col, divide, floor } from "./defs";
+import {
+  constVal,
+  cast,
+  minus,
+  col,
+  divide,
+  floor,
+  epoch,
+  Scalar,
+  type ValExp,
+} from "./defs";
 import { DuckDBDialect } from "./dialectRegistry";
 
 export interface Bin {
@@ -50,7 +60,9 @@ export function columnHistogramQuery(
   baseQuery: QueryExp,
   colId: string,
   colType: ColumnType,
-  colStats: NumericSummaryStats
+  colStats: NumericSummaryStats,
+  requestedBinCount?: number,
+  valExp?: ValExp
 ): NumericColumnHistogramQuery | null {
   const minVal = colStats.min;
   const maxVal = colStats.max;
@@ -58,11 +70,19 @@ export function columnHistogramQuery(
   if (minVal == null || maxVal == null || minVal === maxVal) {
     return null;
   }
-  const binCount = binsForColumn(colStats);
+  const binCount =
+    requestedBinCount != null && requestedBinCount > 0
+      ? requestedBinCount
+      : binsForColumn(colStats);
 
   const [niceMinVal, niceMaxVal] = nice(minVal, maxVal, binCount);
 
   const binWidth = (niceMaxVal - niceMinVal) / binCount;
+
+  // The value histogrammed over. Defaults to the column itself; temporal
+  // columns pass an epoch-conversion expression so bins are computed over
+  // integer epoch seconds without materializing a derived column.
+  const valueExp = valExp ?? col(colId);
 
   // add a column with bin number:
   const binQuery = baseQuery
@@ -73,7 +93,7 @@ export function columnHistogramQuery(
         floor(
           divide(
             minus(
-              cast(col(colId), doubleType),
+              cast(valueExp, doubleType),
               cast(constVal(niceMinVal), doubleType)
             ),
             cast(constVal(binWidth), doubleType)
@@ -151,6 +171,183 @@ export function getNumericColumnHistogramData(
 export type ColumnHistogramMap = {
   [colId: string]: NumericColumnHistogramData;
 };
+
+/*
+ *
+ * Single-column histogram data for one column, computed on demand.
+ * Returns null if the column is not numeric, has no stats, or has empty range.
+ *
+ * Same as getSingleColumnHistogramData, but with an explicit requested bin
+ * count (used by dialog bin-count sliders). When binCount is omitted, the
+ * bin count is derived from the column stats via Sturges' rule.
+ */
+// Name of the numeric column that temporarily carries the epoch-second values
+// of a temporal column while histogramming / summarizing it.
+export const temporalValueColName = "__epoch";
+
+/**
+ * Build a query whose only column is the epoch-second value of colId. This
+ * lets the numeric histogram machinery (and SUMMARIZE-based column stats) run
+ * against a single numeric column instead of the raw date/time value, which
+ * SUMMARIZE cannot aggregate.
+ */
+export function temporalValueQuery(
+  baseQuery: QueryExp,
+  colId: string
+): QueryExp {
+  return baseQuery
+    .extend(temporalValueColName, epoch(col(colId)))
+    .project([temporalValueColName]);
+}
+
+/**
+ * Numeric summary stats for the epoch-second conversion of a temporal column.
+ * Returns null when the stats are missing or non-numeric.
+ */
+export async function getTemporalColumnNumericStats(
+  dsConn: DataSourceConnection,
+  baseQuery: QueryExp,
+  colId: string
+): Promise<NumericSummaryStats | null> {
+  const statsMap = await dsConn.getColumnStatsMap(
+    temporalValueQuery(baseQuery, colId)
+  );
+  const s = statsMap[temporalValueColName];
+  return s != null && s.statsType === "numeric" ? s : null;
+}
+
+export async function getColumnHistogramDataForBins(
+  dsConn: DataSourceConnection,
+  baseQuery: QueryExp,
+  baseSchema: Schema,
+  colId: string,
+  binCount?: number,
+  colStats?: NumericSummaryStats
+): Promise<NumericColumnHistogramData | null> {
+  const colType = baseSchema.columnType(colId);
+  if (!colIsNumeric(colType) && !isTemporal(colType)) {
+    return null;
+  }
+
+  // For temporal columns (date/time/datetime/timestamp) the bins are computed
+  // over the values converted to epoch seconds inline (via the valExp
+  // override), rather than over a materialized derived column. Stats are the
+  // numeric stats of the epoch conversion, fetched via
+  // getTemporalColumnNumericStats.
+  const valExp = isTemporal(colType) ? epoch(col(colId)) : null;
+  const histoColType = isTemporal(colType) ? doubleType : colType;
+
+  let stats = colStats;
+  if (stats == null) {
+    if (valExp != null) {
+      const s = await getTemporalColumnNumericStats(dsConn, baseQuery, colId);
+      if (s == null) {
+        return null;
+      }
+      stats = s;
+    } else {
+      const statsMap = await dsConn.getColumnStatsMap(baseQuery);
+      const s = statsMap[colId];
+      if (s == null || s.statsType !== "numeric") {
+        return null;
+      }
+      stats = s;
+    }
+  }
+
+  const histoInfo = columnHistogramQuery(
+    baseQuery,
+    colId,
+    histoColType,
+    stats,
+    binCount,
+    valExp ?? undefined
+  );
+  if (histoInfo == null) {
+    return null;
+  }
+  const histoRes = await dsConn.evalQuery(histoInfo.histoQuery);
+  return getNumericColumnHistogramData(colId, histoInfo, histoRes);
+}
+
+export function getSingleColumnHistogramData(
+  dsConn: DataSourceConnection,
+  baseQuery: QueryExp,
+  baseSchema: Schema,
+  colId: string,
+  colStats?: NumericSummaryStats
+): Promise<NumericColumnHistogramData | null> {
+  return getColumnHistogramDataForBins(
+    dsConn,
+    baseQuery,
+    baseSchema,
+    colId,
+    undefined,
+    colStats
+  );
+}
+
+// a single categorical value with its frequency
+export type CategoricalBin = {
+  value: Exclude<Scalar, bigint>;
+  count: number;
+};
+
+// categorical distribution data for rendering a bar chart (non-numeric columns)
+export interface CategoricalDistributionData {
+  colId: string;
+  binData: CategoricalBin[]; // sorted by count descending
+  nullCount: number;
+  totalCount: number;
+}
+
+/**
+ * Build the QueryExp that computes per-value frequencies for a single column.
+ * Produces SQL of the form:
+ *   SELECT "__col", "colId", count("__freq") as "__freq"
+ *   FROM ( ... ) GROUP BY "__col", "colId"
+ */
+export function columnFrequencyQuery(
+  baseQuery: QueryExp,
+  colId: string
+): QueryExp {
+  return baseQuery
+    .extend("__col", constVal(colId))
+    .extend("__freq", constVal(1))
+    .groupBy(["__col", colId], [["count", "__freq"]]);
+}
+
+/**
+ * Evaluate the frequency query for a single column and map the result to
+ * CategoricalDistributionData. Null values are counted separately.
+ */
+export async function getColumnFrequencyData(
+  dsConn: DataSourceConnection,
+  baseQuery: QueryExp,
+  colId: string
+): Promise<CategoricalDistributionData> {
+  const freqQuery = columnFrequencyQuery(baseQuery, colId);
+  const res = await dsConn.evalQuery(freqQuery);
+
+  const binData: CategoricalBin[] = [];
+  let nullCount = 0;
+  let totalCount = 0;
+
+  for (const row of res.rowData) {
+    const value = row[colId];
+    const count = Number(row.__freq);
+    totalCount += count;
+    if (value == null || typeof value === "bigint") {
+      nullCount += count;
+    } else {
+      binData.push({ value, count });
+    }
+  }
+
+  binData.sort((l, r) => r.count - l.count);
+
+  return { colId, binData, nullCount, totalCount };
+}
 
 /**
  * Get the monster query for creating the full column histogram map for all

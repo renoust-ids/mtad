@@ -114,7 +114,17 @@ export const FilterEditorRow: React.FunctionComponent<FilterEditorRowProps> = ({
   onDeleteRow,
   onUpdate,
 }: FilterEditorRowProps) => {
-  const [columnId, setColumnId] = useState(relExp ? relExp.lhsCol() : null);
+  // lhsCol() throws for non-colref left-hand sides (e.g. computed-value
+  // filters); fall back to an empty column selector rather than crashing.
+  let expColumnId: string | null = null;
+  if (relExp != null) {
+    try {
+      expColumnId = relExp.lhsCol();
+    } catch {
+      expColumnId = null;
+    }
+  }
+  const [columnId, setColumnId] = useState<string | null>(expColumnId);
   const [op, setOp] = useState(relExp ? relExp.op : null);
   const [value, setValue] = useState(getExpVal(relExp));
 

@@ -6,6 +6,7 @@ import { AppState } from "../AppState";
 import { ViewState } from "../ViewState";
 import { StateRef } from "oneref";
 import { useState } from "react";
+import { Button } from "@blueprintjs/core";
 import { getDefaultDialect } from "reltab";
 
 export interface FooterProps {
@@ -15,70 +16,178 @@ export interface FooterProps {
   rightFooterSlot?: JSX.Element;
 }
 
+type FilterTab = "table" | "analytics";
+
+// The summary is cropped once it exceeds MAX_FILTER_STR_CHARS characters.
+// When a "T:"/"A:" prefix is shown the maximum is reduced by this many
+// characters before cropping, so the prefixed text occupies the same width.
+const MAX_FILTER_STR_CHARS = 60;
+const MAX_FILTER_STR_PREFIX_PAD = 4;
+
+const cropFilterStr = (s: string, max: number): string =>
+  s.length > max ? s.slice(0, max - 1).trimEnd() + "…" : s;
+
 export const Footer: React.FunctionComponent<FooterProps> = (
   props: FooterProps
 ) => {
   const { appState, stateRef, rightFooterSlot = undefined, onFilter } = props;
+  const [tab, setTab] = useState<FilterTab>("table");
   const [expanded, setExpanded] = useState(false);
   const [dirty, setDirty] = useState(false);
-  const [prevFilter, setPrevFilter] = useState<reltab.FilterExp | null>(null);
+  const [hoverTab, setHoverTab] = useState<FilterTab | null>(null);
+  const [prevTable, setPrevTable] = useState<reltab.FilterExp | null>(null);
+  const [prevAnalytics, setPrevAnalytics] = useState<reltab.FilterExp | null>(
+    null
+  );
 
   // console.log("Footer: ", appState.toJS());
 
   const viewState = appState.viewState;
+  const viewParams = viewState.viewParams;
+  const tableFE = viewParams.filterExp;
+  const analyticsFE = viewParams.analyticsFilterExp;
 
-  const setExpandedState = (nextState: boolean) => {
-    if (nextState && !dirty) {
-      // snap current filter into prevFilter:
-      setExpanded(nextState);
-      setPrevFilter(viewState.viewParams.filterExp);
+  const handleTabClick = (nextTab: FilterTab) => {
+    if (!expanded || tab !== nextTab) {
+      // expanding (or switching) the editor for nextTab; snap its current
+      // filter into the "previous" slot for cancel, unless we're mid-edit:
+      if (!dirty) {
+        if (nextTab === "table") {
+          setPrevTable(tableFE);
+        } else {
+          setPrevAnalytics(analyticsFE);
+        }
+      }
+      setTab(nextTab);
+      setExpanded(true);
       setDirty(true);
     } else {
-      setExpanded(nextState);
+      // clicking the active tab collapses the editor:
+      setExpanded(false);
     }
   };
 
-  const handleFilterButtonClicked = (event: any) => {
-    event.preventDefault();
-    const nextState = !expanded;
-    setExpandedState(nextState);
-  };
-
-  const handleFilterCancel = () => {
-    // restore previous filter:
-    const fe = prevFilter || new reltab.FilterExp();
-    actions.setFilter(fe, stateRef);
-    setExpandedState(false);
+  const handleCancel = () => {
+    // restore previous filter for the active tab:
+    const fe =
+      tab === "table"
+        ? prevTable || new reltab.FilterExp()
+        : prevAnalytics || new reltab.FilterExp();
+    if (tab === "table") {
+      actions.setFilter(fe, stateRef);
+    } else {
+      actions.setAnalyticsFilter(fe, stateRef);
+    }
+    setExpanded(false);
     setDirty(false);
-    setPrevFilter(null);
+    setPrevTable(null);
+    setPrevAnalytics(null);
   };
 
-  const handleFilterApply = (filterExp: reltab.FilterExp) => {
-    actions.setFilter(filterExp, stateRef);
-    onFilter?.(filterExp);
+  const handleApply = (filterExp: reltab.FilterExp) => {
+    if (tab === "table") {
+      actions.setFilter(filterExp, stateRef);
+      onFilter?.(filterExp);
+    } else {
+      actions.setAnalyticsFilter(filterExp, stateRef);
+    }
   };
 
-  const handleFilterDone = () => {
-    setExpandedState(false);
+  const handleDone = () => {
+    setExpanded(false);
     setDirty(false);
-    setPrevFilter(null);
+    setPrevTable(null);
+    setPrevAnalytics(null);
   };
 
-  const filterExp = appState.viewState.viewParams.filterExp;
-  const filterStr = filterExp.toSqlWhere(getDefaultDialect());
+  const handleClear = (target: FilterTab) => {
+    const fe = new reltab.FilterExp();
+    if (target === "table") {
+      actions.setFilter(fe, stateRef);
+      onFilter?.(fe);
+    } else {
+      actions.setAnalyticsFilter(fe, stateRef);
+    }
+    setExpanded(false);
+    setDirty(false);
+    setPrevTable(null);
+    setPrevAnalytics(null);
+  };
+
+  const handleApplyAnalyticsChange = (event: any) => {
+    actions.setApplyAnalyticsFilters(event.target.checked, stateRef);
+  };
+
+  const activeFE = tab === "table" ? tableFE : analyticsFE;
+  // Show the active tab's filter string while modifying a filter (editor
+  // open), prefixing it with "T:" (table) or "A:" (analytics). Hovering a tab
+  // overrides with that tab's prefixed string. When a prefix is shown the
+  // string is cropped at MAX_FILTER_STR_CHARS minus MAX_FILTER_STR_PREFIX_PAD.
+  const hoveredFE =
+    hoverTab != null
+      ? hoverTab === "table"
+        ? tableFE
+        : analyticsFE
+      : null;
+  const summaryFE = hoveredFE != null ? hoveredFE : activeFE;
+  const showPrefix = hoverTab != null || expanded;
+  const prefixForTable = (hoverTab != null ? hoverTab : tab) === "table";
+  const prefix = showPrefix ? (prefixForTable ? "T: " : "A: ") : "";
+  const maxLen = showPrefix
+    ? MAX_FILTER_STR_CHARS - MAX_FILTER_STR_PREFIX_PAD
+    : MAX_FILTER_STR_CHARS;
+  const filterStr =
+    prefix + cropFilterStr(summaryFE.toSqlWhere(getDefaultDialect()), maxLen);
 
   const expandClass = expanded ? "footer-expanded" : "footer-collapsed";
 
-  const editorComponent = expanded ? (
-    <FilterEditor
-      appState={appState}
-      stateRef={stateRef}
-      schema={viewState.baseSchema}
-      filterExp={filterExp}
-      onCancel={handleFilterCancel}
-      onApply={handleFilterApply}
-      onDone={handleFilterDone}
+  const clearButton = (target: FilterTab, title: string) => (
+    <Button
+      minimal
+      small
+      icon="cross"
+      title={title}
+      onClick={(event: React.MouseEvent) => {
+        event.preventDefault();
+        event.stopPropagation();
+        handleClear(target);
+      }}
+      style={{ marginLeft: -6, marginRight: 10, verticalAlign: "middle" }}
     />
+  );
+
+  const editorComponent = expanded ? (
+    <>
+      {tab === "analytics" && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "4px 8px",
+          }}
+        >
+          <input
+            type="checkbox"
+            id="apply-analytics-filters"
+            checked={viewParams.applyAnalyticsFilters}
+            onChange={handleApplyAnalyticsChange}
+          />
+          <label htmlFor="apply-analytics-filters" style={{ marginBottom: 0 }}>
+            Apply Analytics Filters
+          </label>
+        </div>
+      )}
+      <FilterEditor
+        appState={appState}
+        stateRef={stateRef}
+        schema={viewState.baseSchema}
+        filterExp={activeFE}
+        onCancel={handleCancel}
+        onApply={handleApply}
+        onDone={handleDone}
+      />
+    </>
   ) : null;
 
   let rowCountBlock = null;
@@ -113,9 +222,39 @@ export const Footer: React.FunctionComponent<FooterProps> = (
     <div className={"footer " + expandClass}>
       <div className="footer-top-row">
         <div className="footer-filter-block">
-          <a onClick={(event) => handleFilterButtonClicked(event)} tabIndex={0}>
-            Filter
+          <a
+            onClick={(event) => {
+              event.preventDefault();
+              handleTabClick("table");
+            }}
+            onMouseEnter={() => setHoverTab("table")}
+            onMouseLeave={() => setHoverTab(null)}
+            tabIndex={0}
+            style={{
+              marginRight: 2,
+              fontWeight: tab === "table" && expanded ? 600 : "normal",
+            }}
+          >
+            Table Filters
           </a>
+          {clearButton("table", "Clear table filters")}
+          <a
+            onClick={(event) => {
+              event.preventDefault();
+              handleTabClick("analytics");
+            }}
+            onMouseEnter={() => setHoverTab("analytics")}
+            onMouseLeave={() => setHoverTab(null)}
+            tabIndex={0}
+            style={{
+              marginRight: 2,
+              fontWeight:
+                tab === "analytics" && expanded ? 600 : "normal",
+            }}
+          >
+            Analytics Filters
+          </a>
+          {clearButton("analytics", "Clear analytics filters")}
           <span className="filter-summary"> {filterStr}</span>
         </div>
         <div className="footer-right-block">

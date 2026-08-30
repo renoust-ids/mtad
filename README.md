@@ -59,6 +59,25 @@ MTad supports editing cell values directly in the data grid:
 - **Hover highlight** — hovering a cell draws a thick dark blue border around it instead of filling it, so the underlying value stays readable at all times
 - **Selections survive right-clicks** — right-clicking a cell that is part of an existing multi-cell selection keeps the selection intact, so context menu actions (delete, duplicate, copy, ...) act on the whole selected group rather than collapsing to a single cell
 
+### Distribution Dialog
+
+- **Right-click** a column header (or use the **Analytics ▸ Distribution** menu) to open an interactive **Distribution** chart for that column, computed on demand
+- **Numeric columns** get a binned histogram with a live-updating bin-count control (double-click the value to type it directly), an optional log scale, a null bar, and a statistics panel (count, nulls, unique, min, max, mean, std)
+- **Temporal columns** (date / time / timestamp) are binned over their epoch values and labeled with the original type-aware format (`YYYY-MM-DD`, `HH:MM`, ...)
+- **Non-numeric columns** get a categorical bar chart of the most frequent values with a configurable **min-frequency** threshold and click-to-select bars that filter the grid
+- **Brush to filter**: drag across the bars to apply a numeric range filter to the grid in real time
+- **Pivot-aware**: on pivoted views the chart is computed over the grouped query results
+- See [doc/analytics.md](doc/analytics.md) for the full walkthrough and screenshots
+
+### Table & Analytics Filters
+
+MTad distinguishes between the query filter of the view and ad-hoc exploration filters:
+
+- The footer groups filters into two tabs: **Table Filters** (persisted with the view) and **Analytics Filters** (created by brushing the Distribution dialog or clicking categorical bars)
+- Each tab shows a live **SQL summary** of its filter; hovering a tab or editing its filter prefixes the summary with `T: ` (table) or `A: ` (analytics), and an **✕ icon** next to each tab clears that filter
+- An **Apply Analytics Filters** checkbox in the footer controls whether analytics filters affect the current view
+- The Distribution dialog has its own **Apply Table Filters** switch so exploration always runs against your intended subset
+
 ### CSV Materialization
 
 - Join CSV files and materialize the result as a new DuckDB table
@@ -169,6 +188,7 @@ used to build the MTad desktop application:
 - [**reltab**](./packages/reltab) - The core abstraction used in MTad for programmatically constructing and executing relational SQL queries. This also defines the driver interface implemented by specific database back-ends, and a small, transport-agnostic remoting layer to allow queries and results to be transmitted between a web browser
   (or electron renderer process) and a reltab backend server.
   - Key methods: `execSql()` for DML statements, `getSqlForQuery()` for SQL generation, `renameColumn()` for schema changes, `insertRow()` and `insertColumn()` for adding rows and columns
+  - Binned and categorical single-column distribution queries, including temporal (date/time/timestamp) columns
 - [**reltab-duckdb**](./packages/reltab-duckdb/) -- reltab driver for DuckDb
 - [**aggtree**](./packages/aggtree/) - A library built on top of reltab for constructing pivot trees from relational queries.
 - [**tadviewer**](./packages/tadviewer/) - The core MTad pivot table UI as a standalone, embeddable React component.
@@ -177,6 +197,8 @@ used to build the MTad desktop application:
   - Column rename via header context menu
   - Pivot-aware editing (aggregate rows vs leaf rows)
   - Multi-cell selections preserved on right-click; hover draws a thick border highlight
+  - Interactive Distribution dialog (binned histograms, categorical bars, temporal columns) with brush-to-filter
+  - Split Table / Analytics filters with live SQL summaries and apply toggles
 - [**tad-app**](./packages/tad-app/) - The MTad desktop application, built with Electron
 
 ## Original Tad Packages
