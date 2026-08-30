@@ -145,3 +145,13 @@
 - Dans le footer, une petite icône x (Blueprint `cross`) à droite de chaque onglet remet à vide le filtre correspondant (table → `setFilter`, analytics → `setAnalyticsFilter`), replie l'éditeur et jette les modifications en cours. Le clear table propage aussi `onFilter`.
 - **Validation** : `npx tsc` ok ; webpack prod 17 warnings ; tad-app webpack OK.
 - **Commit** : `7327837` `feat(tadviewer): add xx icon to clear table and analytics filters`
+
+### Step 7 — Docs, screenshots, merge, release v0.0.5
+- **Docs** : README (sections Distribution + Table & Analytics Filters), `doc/features.md` (détail + tableau SQL sous le capot), nouveau `doc/analytics.md` (walkthrough avec captures), quickstart in-app, news du site `doc/site/index.html` (0.0.5).
+- **Captures** (`doc/screenshots/tad-*.png`, 8) : générées via CDP (Electron relancé avec `--remote-debugging-port` + script Node WebSocket) — grid `histogram_test.csv`, distribution numérique salary, brush → filtre analytics (`A: "salary">=31666.67 AND ...`, 973/1000 lignes), distribution temporelle birth_date, catégoriel notes, éditeurs de filtres footer (T:/A: + icônes x).
+- **Validation** : reltab `npx tsc -p tsconfig-build.json` + `npm test` (5 suites / 22 tests) ; reltab-duckdb `histo.auto` (2 suites / 5 tests / 4 snapshots) + `temporal.histo.auto` (2 tests) au vert ; tadviewer `npx tsc` + webpack prod ; tad-app webpack prod.
+- **Commit docs** : `16dd94b` `docs: document Distribution dialog, Table/Analytics filters, and add screenshots`.
+- **Merge** : `5eaa9f0` `Merge histograms: Distribution dialog, temporal columns, Table/Analytics filters` (--no-ff sur master).
+- **CI** : `5a35f16` `ci: run build pipeline on master pushes`.
+- **Release** : tag annoté `v0.0.5` créé sur master (déclenche les builds Linux/mac/Windows + draft release GitHub automatique).
+- **Note découverte** : cliquer "Done" dans l'éditeur de filtres applique le brouillon local — si un filtre analytics a été créé par brush pendant que l'éditeur affichait un brouillon vide, "Done" écrase le filtre brush (comportement logique de l'éditeur, à connaître lors de l'E2E).

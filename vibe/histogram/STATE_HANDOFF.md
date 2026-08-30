@@ -1,12 +1,13 @@
 # STATE HANDOFF - Histograms
 
 ## Current State
-- **Branch** : `histograms` (créé depuis master / v0.0.4)
-- **Status** : Steps 1-4 implémentés et commités (backend reltab + reltab-duckdb + action tadviewer + dialog UI). Step 5 docs/CI terminé côté fichiers, reste commit docs → E2E utilisateur → push.
-- **Dernier commit** : `5c67711` feat(tadviewer): add interactive Histogram dialog and header menu item
+- **Branche** : `histograms` MERGÉE dans `master` (merge commit `5eaa9f0`) ; tag de release **`v0.0.5`** créé sur master.
+- **Status** : Steps 1-6 terminés (backend reltab + reltab-duckdb + dialog UI + temporal + split Table/Analytics filters + footer). Step 5 docs/CI/screenshots terminés et commités. Docs commit `16dd94b`, CI master `5a35f16`. Tests reltab 22/22 + reltab-duckdb histo/temporal au vert.
+- **HEAD master** : `5a35f16` (après merge histograms + CI master)
+- **Reste** : E2E utilisateur, push branches/tag (CI multi-plateforme → draft release automatisé), publication release GitHub.
 
 ## Goal
-Item "Histogram" dans le menu contextuel d'en-tête de colonne → dialog interactif : histogramme numérique (options bins / log Y / nulls, brush → filtre colonne, panneau stats) ou bar chart catégoriel pour les colonnes non-numériques.
+Item "Distribution" dans le menu contextuel d'en-tête de colonne (+ menu Analytics) → dialog interactif : histogramme numérique (bins éditables / log Y / nulls / brush → filtre analytics, panneau stats), bar chart catégoriel (min freq, click-to-filter), colonnes temporelles (date/time/timestamp), split Table/Analytics filters dans le footer.
 
 ## Key Files
 - `vibe/histogram/mission.md` — Mission
@@ -42,4 +43,4 @@ Item "Histogram" dans le menu contextuel d'en-tête de colonne → dialog intera
 - Docs mission dans `vibe/histogram/`.
 
 ## Next Step
-Committer docs + build.yml + AGENT_DEV_LOG/STATE_HANDOFF (`docs: ...`), ouvrir l'app branchée et : E2E avec l'utilisateur (dialog, slider bins, brush, log, nulls, catégoriel, edge cases), corriger si besoin, puis **push branche `histograms`**.
+E2E avec l'utilisateur : dialog Distribution (numeric/temporal/catégoriel, bins éditable, brush, log, nulls, min freq, Apply Table Filters), footer Table/Analytics (toggles, préfixes T:/A:, icônes x, crop), vérifier les 8 captures `doc/screenshots/tad-*.png`, puis **push `master` + tag `v0.0.5`** → CI build multi-plateforme → publier la draft release GitHub (softprops draft:true génère les notes).
