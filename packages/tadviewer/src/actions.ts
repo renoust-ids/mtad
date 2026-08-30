@@ -573,7 +573,7 @@ export const setHistogramBrushFilter = (
   let baseFE: FilterExp;
   if (range !== null) {
     const appState = mutableGet(stateRef);
-    const prevFE = appState.viewState.viewParams.filterExp;
+    const prevFE = appState.viewState.viewParams.analyticsFilterExp;
     // ensure that prevFE is either null or a top-level "AND" operator:
     if (prevFE != null) {
       if (prevFE.op !== "AND") {
@@ -610,7 +610,8 @@ export const setHistogramBrushFilter = (
       update(
         stateRef,
         vpUpdate(
-          (viewParams) => viewParams.set("filterExp", nextFE) as ViewParams
+          (viewParams) =>
+            viewParams.set("analyticsFilterExp", nextFE) as ViewParams
         )
       );
       return;
@@ -621,7 +622,8 @@ export const setHistogramBrushFilter = (
     update(
       stateRef,
       vpUpdate(
-        (viewParams) => viewParams.set("filterExp", nextFE) as ViewParams
+        (viewParams) =>
+          viewParams.set("analyticsFilterExp", nextFE) as ViewParams
       )
     );
   }
@@ -714,8 +716,8 @@ export const filterExpWithoutCol = (
   return new FilterExp("AND", cleanedArgs);
 };
 
-// Set (or clear) a categorical (IN / IS NULL) filter for a column, applied on
-// top of the current filter expression. Empty values and no null -> filter is
+// Set (or clear) a categorical (IN / IS NULL) filter for a column, applied to
+// the analytics filter expression. Empty values and no null -> filter is
 // cleared for the column.
 export const setCategoryHistogramFilter = (
   colId: string,
@@ -724,7 +726,7 @@ export const setCategoryHistogramFilter = (
   stateRef: StateRef<AppState>
 ) => {
   const appState = mutableGet(stateRef);
-  const prevFE = appState.viewState.viewParams.filterExp;
+  const prevFE = appState.viewState.viewParams.analyticsFilterExp;
   if (prevFE != null && prevFE.op !== "AND") {
     log.info(
       "setCategoryHistogramFilter: unexpected structure for current filter expression, ignoring"
@@ -746,7 +748,36 @@ export const setCategoryHistogramFilter = (
   update(
     stateRef,
     vpUpdate(
-      (viewParams) => viewParams.set("filterExp", nextFE) as ViewParams
+      (viewParams) =>
+        viewParams.set("analyticsFilterExp", nextFE) as ViewParams
+    )
+  );
+};
+
+// Set the analytics filter expression directly (e.g. from the Analytics
+// Filters editor in the footer).
+export const setAnalyticsFilter = (
+  fe: reltab.FilterExp,
+  stateRef: StateRef<AppState>
+) => {
+  update(
+    stateRef,
+    vpUpdate(
+      (viewParams) =>
+        viewParams.set("analyticsFilterExp", fe) as ViewParams
+    )
+  );
+};
+
+// Enable or disable application of the analytics filter to the view.
+export const setApplyAnalyticsFilters = (
+  apply: boolean,
+  stateRef: StateRef<AppState>
+) => {
+  update(
+    stateRef,
+    vpUpdate(
+      (viewParams) => viewParams.set("applyAnalyticsFilters", apply) as ViewParams
     )
   );
 };

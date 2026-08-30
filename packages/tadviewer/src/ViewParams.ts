@@ -89,6 +89,8 @@ export interface ViewParamsProps {
   columnFormats: FormatsMap;
   showHiddenCols: boolean;
   filterExp: reltab.FilterExp; // toggle element membership in array:
+  analyticsFilterExp: reltab.FilterExp; // filter produced by distribution interactions
+  applyAnalyticsFilters: boolean; // whether analyticsFilterExp is applied to the view
 }
 
 const defaultViewParamsProps: ViewParamsProps = {
@@ -105,6 +107,8 @@ const defaultViewParamsProps: ViewParamsProps = {
   columnFormats: Immutable.Map<string, FormatOptions>(),
   showHiddenCols: false,
   filterExp: new reltab.FilterExp(),
+  analyticsFilterExp: new reltab.FilterExp(),
+  applyAnalyticsFilters: true,
 };
 
 const defaultCellFormatter =
@@ -138,6 +142,31 @@ export class ViewParams
   public readonly columnFormats!: FormatsMap;
   public readonly showHiddenCols!: boolean;
   public readonly filterExp!: reltab.FilterExp; // toggle element membership in array:
+  public readonly analyticsFilterExp!: reltab.FilterExp;
+  public readonly applyAnalyticsFilters!: boolean;
+
+  // The filter actually applied to the view: table filters always apply; the
+  // analytics filter only applies when applyAnalyticsFilters is set. Nested
+  // FilterExp operands are handled by reltab's toSqlWhere.
+  combinedFilterExp(): reltab.FilterExp {
+    const parts: reltab.SubExp[] = [];
+    if (this.filterExp.opArgs.length > 0) {
+      parts.push(this.filterExp);
+    }
+    if (
+      this.applyAnalyticsFilters &&
+      this.analyticsFilterExp.opArgs.length > 0
+    ) {
+      parts.push(this.analyticsFilterExp);
+    }
+    if (parts.length === 0) {
+      return new reltab.FilterExp();
+    }
+    if (parts.length === 1) {
+      return parts[0] as reltab.FilterExp;
+    }
+    return new reltab.FilterExp("AND", parts);
+  }
 
   toggleArrElem(propName: string, cid: string): ViewParams {
     const arr = this.get(propName as keyof ViewParamsProps) as any[];
@@ -282,7 +311,14 @@ export class ViewParams
   }
 
   static deserialize(js: any): ViewParams {
-    const { defaultFormats, openPaths, filterExp, columnFormats, ...rest } = js;
+    const {
+      defaultFormats,
+      openPaths,
+      filterExp,
+      analyticsFilterExp,
+      columnFormats,
+      ...rest
+    } = js;
     const defaultFormatsObj = FormatDefaults.deserialize(defaultFormats);
     const openPathsObj = new PathTree(openPaths._rep);
     let filterExpObj;
@@ -291,6 +327,14 @@ export class ViewParams
       filterExpObj = reltab.FilterExp.deserialize(filterExp);
     } else {
       filterExpObj = new reltab.FilterExp();
+    }
+
+    let analyticsFilterExpObj;
+
+    if (analyticsFilterExp) {
+      analyticsFilterExpObj = reltab.FilterExp.deserialize(analyticsFilterExp);
+    } else {
+      analyticsFilterExpObj = new reltab.FilterExp();
     }
 
     const deserColumnFormats = _.mapValues(
@@ -308,6 +352,7 @@ export class ViewParams
       .set("defaultFormats", defaultFormatsObj)
       .set("openPaths", openPathsObj)
       .set("filterExp", filterExpObj)
+      .set("analyticsFilterExp", analyticsFilterExpObj)
       .set("columnFormats", columnFormatsMap as FormatsMap);
     return retVP as ViewParams;
   }

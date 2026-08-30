@@ -23,7 +23,7 @@ import {
 } from "victory";
 import { mutableGet, StateRef } from "oneref";
 import { AppState } from "../AppState";
-import { ColumnKind } from "reltab";
+import { ColumnKind, getDefaultDialect } from "reltab";
 import { ColumnHistogramData, loadColumnHistogramData } from "../actions";
 
 export interface HistogramDialogProps {
@@ -161,6 +161,7 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
   const [minOccSliderVal, setMinOccSliderVal] = useState<number | null>(null);
   const [logY, setLogY] = useState(false);
   const [showNulls, setShowNulls] = useState(true);
+  const [applyTableFilters, setApplyTableFilters] = useState(true);
   const [hoverInfo, setHoverInfo] = useState<HoverInfo | null>(null);
   const [selectedCats, setSelectedCats] = useState<Set<string>>(new Set());
   const [selectedNull, setSelectedNull] = useState(false);
@@ -197,7 +198,8 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
 
   // The query and schema whose data the histogram should describe. When a
   // pivot is active this is the aggregated (tree) query and its schema, so
-  // the histogram reflects the aggregated cells; otherwise the base query.
+  // the histogram reflects the aggregated cells; otherwise the base query (or
+  // its table-filtered subset when "Apply Table Filters" is checked).
   function getViewQueryAndSchema(): {
     query: reltab.QueryExp;
     schema: reltab.Schema;
@@ -208,15 +210,38 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
       return null;
     }
     const isPivoted = vs.viewParams.vpivots.length > 0;
-    return {
-      query:
-        isPivoted && vs.queryView != null ? vs.queryView.query : vs.baseQuery,
-      schema:
-        isPivoted && vs.dataView?.schema != null
-          ? vs.dataView.schema
-          : vs.baseSchema,
-    };
+    if (isPivoted) {
+      return {
+        query:
+          vs.queryView != null ? vs.queryView.query : vs.baseQuery,
+        schema:
+          vs.dataView?.schema != null
+            ? vs.dataView.schema
+            : vs.baseSchema,
+      };
+    }
+    // Flat view: optionally render over the table-filtered subset. Analytics
+    // filters are intentionally excluded, since they are the output of
+    // distribution interactions (rendering over them would be self-referential).
+    let query = vs.baseQuery;
+    const tableFE = vs.viewParams.filterExp;
+    if (applyTableFilters && tableFE != null && tableFE.opArgs.length > 0) {
+      query = vs.baseQuery.filter(tableFE);
+    }
+    return { query, schema: vs.baseSchema };
   }
+
+  // String key that changes whenever the table filter (or the apply toggle)
+  // changes, so the histogram effects reload when the filtered subset changes.
+  const tableFilterKey = !applyTableFilters
+    ? ""
+    : (() => {
+        const app = mutableGet(stateRef);
+        const fe = app.viewState?.viewParams.filterExp;
+        return fe != null && fe.opArgs.length > 0
+          ? fe.toSqlWhere(getDefaultDialect())
+          : "";
+      })();
 
   useEffect(() => {
     if (colId == null) {
@@ -287,7 +312,7 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [colId, stateRef]);
+  }, [colId, stateRef, tableFilterKey]);
 
   // re-bin with an explicit count without touching stats
   useEffect(() => {
@@ -323,7 +348,7 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [binCount, colId, stateRef]);
+  }, [binCount, colId, stateRef, tableFilterKey]);
 
   const handleBrushEnd = (brushInfo: any) => {
     if (colId == null) return;
@@ -812,6 +837,14 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
             label="Show nulls"
             checked={showNulls}
             onChange={() => setShowNulls(!showNulls)}
+          />
+          <Switch
+            label="Apply Table Filters"
+            checked={applyTableFilters}
+            onChange={() => {
+              setApplyTableFilters(!applyTableFilters);
+              setHoverInfo(null);
+            }}
           />
         </div>
         {renderStatsPanel()}
