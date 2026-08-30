@@ -134,3 +134,4 @@
 - Survol "Table Filters" → chaîne table préfixée `T: ` ; survol "Analytics Filters" → chaîne analytics préfixée `A: `. Sans survol, chaîne de l'onglet actif (inchangée). États `hoverTab` + handlers `onMouseEnter`/`onMouseLeave`.
 - **Validation** : `npx tsc` ok ; webpack prod 17 warnings ; tad-app webpack OK.
 - **Commit** :
+- `34a434a` `feat(tadviewer): show T:/A:-prefixed filter string on tab hover`
