@@ -73,7 +73,20 @@
 - **Validation** : tadviewer `npx tsc` ok + webpack 17 warnings ; tad-app `npx webpack --mode production` compilé avec succès.
 - **Commits** : `979b878` `feat(tadviewer): add pinned tooltip, Analytics menu, categorical bar filter and pivot-aware histograms`
 
-### Step 5 — En cours
-- Docs : README (section "Column Histograms"), `doc/features.md`, `quickstart.html`, `doc/site/index.html` (carte feature + News 0.0.4).
+### Step 4d — Fix régression + menu simplifié
+- **Cause** : `GridPane` est `React.memo(GridPaneInternal, gridPanePropsEqual)` ; le comparateur ne testait pas `appState.histogramDialogColId` → l'ouverture du dialog ne re-rendait plus la grille (fenêtre invisible).
+- **Fix** : comparaison ajoutée dans le comparateur.
+- **Menu** : suppression des sous-menus par colonne → un seul item "Analytics > Histogram" qui envoie `{ colId }` sans `colId` ; le renderer choisit alors la première colonne affichable du schema de la vue. IPC `update-histogram-menu-columns`, `histogramColumns`, `updateHistogramMenuColumns` supprimés.
+- **Validation** : tadviewer `npx tsc` + webpack 17 warnings ; tad-app webpack OK.
+- **Commit** : `dac433c` `fix(tadviewer): re-render GridPane when histogram dialog opens; simplify Analytics menu to single Histogram item`
+
+### Step 4e — Couleurs barres + paramètre min occurrence (catégoriel)
+- Palette : barres default `#A3D5FF`, sélectionnées `#FCD5CE` (numérique : via brush actif, une bin est mise en valeur si `[binMin, binMax]` intersecte `[brushMinVal, brushMaxVal]` ; catégoriel : `isCatSelected`). Barre null conservée `#8A9BA8`.
+- Catégoriel : nouveau paramètre **Min freq** (slider 0-50% de totalCount, défaut = arrondi de 2% de totalCount) ; les valeurs < seuil sont masquées avant le cap MAX_CATEGORIES.
+- **Validation** : `npx tsc` ok ; webpack 17 warnings pré-existants.
+- **Commit** : `52c80f9` `feat(tadviewer): highlight selected histogram bars and add categorical min-frequency parameter`
+
+### Step 5 — Terminé (partiel docs/CI)
+- Docs : README (section "Column Histograms"), `doc/features.md`, `quickstart.html`, `doc/site/index.html` (carte feature + News 0.0.4). Commit `efe4e92`.
 - `.github/workflows/build.yml` : branche `histograms` ajoutée aux triggers de push.
-- Reste : commit docs/CI + AGENT_DEV_LOG/STATE_HANDOFF, E2E avec l'utilisateur, push branche `histograms`.
+- Reste : E2E avec l'utilisateur, push branche `histograms`.

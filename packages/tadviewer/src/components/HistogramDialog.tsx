@@ -78,6 +78,8 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [binCount, setBinCount] = useState<number | null>(null);
   const [sliderVal, setSliderVal] = useState<number | null>(null);
+  const [minOccVal, setMinOccVal] = useState<number | null>(null);
+  const [minOccSliderVal, setMinOccSliderVal] = useState<number | null>(null);
   const [logY, setLogY] = useState(false);
   const [showNulls, setShowNulls] = useState(true);
   const [hoverInfo, setHoverInfo] = useState<HoverInfo | null>(null);
@@ -130,6 +132,8 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
     setStats(null);
     setBinCount(null);
     setSliderVal(null);
+    setMinOccVal(null);
+    setMinOccSliderVal(null);
     setHoverInfo(null);
     setSelectedCats(new Set());
     setSelectedNull(false);
@@ -225,15 +229,19 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
     onBrushFilter(colId, [minVal, maxVal]);
   };
 
-  const categoricalBars = (catData: reltab.CategoricalDistributionData): CatBar[] => {
-    const values = catData.binData.slice(0, MAX_CATEGORIES);
-    const bars: CatBar[] = [
-      ...values.map((b) => ({
-        value: String(b.value),
-        count: b.count,
-        isNull: false,
-      })),
-    ];
+  const categoricalBars = (
+    catData: reltab.CategoricalDistributionData
+  ): CatBar[] => {
+    const minOcc =
+      minOccSliderVal ?? minOccVal ?? Math.round(catData.totalCount * 0.02);
+    const values = catData.binData
+      .filter((b) => b.count >= minOcc)
+      .slice(0, MAX_CATEGORIES);
+    const bars: CatBar[] = values.map((b) => ({
+      value: String(b.value),
+      count: b.count,
+      isNull: false,
+    }));
     if (showNulls && catData.nullCount > 0) {
       bars.push({ value: "(null)", count: catData.nullCount, isNull: true });
     }
@@ -371,6 +379,21 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
       useGrouping: true,
     };
 
+    // Highlight the bars that fall inside the current brush selection
+    const brushActive =
+      numData.brushMaxVal - numData.brushMinVal <
+      numData.niceMaxVal - numData.niceMinVal - 1e-9;
+    const binColor = (d: any): string => {
+      if (
+        brushActive &&
+        d.binMid >= numData.brushMinVal &&
+        d.binMid <= numData.brushMaxVal
+      ) {
+        return "#FCD5CE";
+      }
+      return "#A3D5FF";
+    };
+
     const chart = (
       <VictoryChart
         height={260}
@@ -405,7 +428,7 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
           }}
         />
         <VictoryBar
-          style={{ data: { fill: "#137CBD" } }}
+          style={{ data: { fill: binColor } }}
           data={chartData}
           x="binMid"
           y="count"
@@ -434,6 +457,10 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
       return <p className="bp4-text-muted">No non-null values to display.</p>;
     }
 
+    const minOccDefault = Math.round(catData.totalCount * 0.02);
+    const minOccCurrent = minOccSliderVal ?? minOccVal ?? minOccDefault;
+    const minOccMax = Math.max(10, Math.round(catData.totalCount * 0.5));
+
     const chart = (
       <VictoryChart
         height={260}
@@ -458,7 +485,7 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
         <VictoryBar
           style={{
             data: {
-              fill: (d: any) => (isCatSelected(d.value) ? "#137CBD" : "#BFCCD6"),
+              fill: (d: any) => (isCatSelected(d.value) ? "#FCD5CE" : "#A3D5FF"),
             },
           }}
           data={bars}
@@ -485,10 +512,49 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
     );
     return (
       <div>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            marginBottom: 6,
+          }}
+        >
+          <span
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              whiteSpace: "nowrap",
+              marginRight: 10,
+            }}
+          >
+            Min freq:
+          </span>
+          <div style={{ flexGrow: 1 }}>
+            <Slider
+              min={0}
+              max={minOccMax}
+              stepSize={1}
+              value={minOccCurrent}
+              labelRenderer={false}
+              onChange={(v) => setMinOccSliderVal(v)}
+              onRelease={(v) => setMinOccVal(v)}
+            />
+          </div>
+          <span
+            style={{
+              fontSize: 12,
+              marginLeft: 10,
+              whiteSpace: "nowrap",
+            }}
+          >
+            {countLabel(Math.round(minOccCurrent))}
+          </span>
+        </div>
         {renderChartWrap(chart)}
         <div className="bp4-text-muted" style={{ fontSize: 12, marginTop: 4 }}>
           Click a bar to filter the grid to that value; click it again to
-          remove it. Select several to combine them.
+          remove it. Select several to combine them. Values with fewer
+          occurrences than the minimum are hidden.
         </div>
       </div>
     );
