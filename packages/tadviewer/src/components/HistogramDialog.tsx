@@ -383,11 +383,13 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
     const brushActive =
       numData.brushMaxVal - numData.brushMinVal <
       numData.niceMaxVal - numData.niceMinVal - 1e-9;
-    const binColor = (d: any): string => {
+    const binColor = (p: any): string => {
+      const mid = p?.datum?.binMid;
       if (
         brushActive &&
-        d.binMid >= numData.brushMinVal &&
-        d.binMid <= numData.brushMaxVal
+        mid != null &&
+        mid >= numData.brushMinVal &&
+        mid <= numData.brushMaxVal
       ) {
         return "#FCD5CE";
       }
@@ -485,7 +487,8 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
         <VictoryBar
           style={{
             data: {
-              fill: (d: any) => (isCatSelected(d.value) ? "#FCD5CE" : "#A3D5FF"),
+              fill: (p: any) =>
+                isCatSelected(String(p.datum?.value)) ? "#FCD5CE" : "#A3D5FF",
             },
           }}
           data={bars}
