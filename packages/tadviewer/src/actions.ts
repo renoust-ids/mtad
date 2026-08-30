@@ -551,6 +551,20 @@ export const setFilter = (
   );
 };
 
+// Convert a numeric epoch-second value (as produced by the temporal
+// histogram machinery) to a string literal comparable with the raw temporal
+// column of the given kind.
+const epochToTemporalString = (kind: reltab.ColumnKind, epochSec: number): string => {
+  const d = new Date(epochSec * 1000);
+  if (kind === "date") {
+    return d.toISOString().slice(0, 10);
+  }
+  if (kind === "time") {
+    return d.toISOString().slice(11, 19);
+  }
+  return d.toISOString().slice(0, 19);
+};
+
 export const setHistogramBrushFilter = (
   colId: string,
   range: [number, number] | null,
@@ -582,11 +596,25 @@ export const setHistogramBrushFilter = (
     } else {
       baseFE = and();
     }
-    // Temporal columns are histogrammed over epoch-second values, so the
-    // brush range must filter on the same converted expression.
+    // Temporal columns are histogrammed over epoch-second values, but the
+    // stored filter must reference the raw column (the filter editor and
+    // other code assume a colref left-hand side). Convert the epoch range
+    // back to a column-typed literal (e.g. DATE '2024-01-15'), which DuckDB
+    // implicitly casts in comparisons.
     const kind = appState.viewState.baseSchema.columnType(colId).kind;
-    const lhs =
-      reltab.isTemporalKind(kind) ? reltab.epoch(col(colId)) : col(colId);
+    const lhs = col(colId);
+    if (reltab.isTemporalKind(kind)) {
+      const nextFE = baseFE
+        .ge(lhs, constVal(epochToTemporalString(kind, range[0])))
+        .le(lhs, constVal(epochToTemporalString(kind, range[1])));
+      update(
+        stateRef,
+        vpUpdate(
+          (viewParams) => viewParams.set("filterExp", nextFE) as ViewParams
+        )
+      );
+      return;
+    }
     const nextFE = baseFE
       .ge(lhs, constVal(range[0]))
       .le(lhs, constVal(range[1]));
