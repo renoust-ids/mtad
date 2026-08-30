@@ -24,6 +24,7 @@ export const Footer: React.FunctionComponent<FooterProps> = (
   const [tab, setTab] = useState<FilterTab>("table");
   const [expanded, setExpanded] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [hoverTab, setHoverTab] = useState<FilterTab | null>(null);
   const [prevTable, setPrevTable] = useState<reltab.FilterExp | null>(null);
   const [prevAnalytics, setPrevAnalytics] = useState<reltab.FilterExp | null>(
     null
@@ -94,7 +95,13 @@ export const Footer: React.FunctionComponent<FooterProps> = (
   };
 
   const activeFE = tab === "table" ? tableFE : analyticsFE;
-  const filterStr = activeFE.toSqlWhere(getDefaultDialect());
+  // Hovering a tab shows that tab's filter string, prefixed with "T:" (table)
+  // or "A:" (analytics). Without a hover the active tab's string is shown.
+  const summaryFE = hoverTab != null ? (hoverTab === "table" ? tableFE : analyticsFE) : activeFE;
+  const summaryPrefix = hoverTab === "table" ? "T: " : "A: ";
+  const filterStr =
+    (hoverTab != null ? summaryPrefix : "") +
+    summaryFE.toSqlWhere(getDefaultDialect());
 
   const expandClass = expanded ? "footer-expanded" : "footer-collapsed";
 
@@ -169,6 +176,8 @@ export const Footer: React.FunctionComponent<FooterProps> = (
               event.preventDefault();
               handleTabClick("table");
             }}
+            onMouseEnter={() => setHoverTab("table")}
+            onMouseLeave={() => setHoverTab(null)}
             tabIndex={0}
             style={{
               marginRight: 10,
@@ -183,6 +192,8 @@ export const Footer: React.FunctionComponent<FooterProps> = (
               event.preventDefault();
               handleTabClick("analytics");
             }}
+            onMouseEnter={() => setHoverTab("analytics")}
+            onMouseLeave={() => setHoverTab(null)}
             tabIndex={0}
             style={{
               marginRight: 10,
