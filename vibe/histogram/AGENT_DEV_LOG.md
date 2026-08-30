@@ -140,3 +140,8 @@
 - Modification (éditeur ouvert) : le résumé de l'onglet actif est préfixé `T: `/`A: ` (comme le survol). Préfixe affiché → longueur maximale réduite de 4 caractères avant cropping (max 60 sinon) pour que le préfixe ne change pas la largeur visible.
 - **Validation** : `npx tsc` ok ; webpack prod 17 warnings ; tad-app webpack OK.
 - **Commit** : `91f0253` `feat(tadviewer): prefix active filter summary while editing and cap its width`
+
+### Step 6g — Icône x pour effacer chaque filtre
+- Dans le footer, une petite icône x (Blueprint `cross`) à droite de chaque onglet remet à vide le filtre correspondant (table → `setFilter`, analytics → `setAnalyticsFilter`), replie l'éditeur et jette les modifications en cours. Le clear table propage aussi `onFilter`.
+- **Validation** : `npx tsc` ok ; webpack prod 17 warnings ; tad-app webpack OK.
+- **Commit** : `7327837` `feat(tadviewer): add xx icon to clear table and analytics filters`
