@@ -179,9 +179,6 @@ const appInit = (options: any) => {
       throw new Error(`Failed to read CSV headers: ${msg}`);
     }
   });
-  ipcMain.on("update-histogram-menu-columns", (event, columns) => {
-    appMenu.updateHistogramMenuColumns(columns);
-  });
   appMenu.createMenu(); // log.log('appInit: done')
 };
 

@@ -16,15 +16,6 @@ const separatorMenuItem: MenuItemConstructorOptions = {
   type: "separator",
 };
 
-export interface HistogramColumn {
-  id: string;
-  label: string;
-}
-
-// Columns to list in the Analytics > Histogram submenu, pushed from the
-// renderer whenever the current view schema changes.
-let histogramColumns: HistogramColumn[] = [];
-
 const aboutTadMenuItem = () => {
   return {
     label: "About MTad",
@@ -141,23 +132,14 @@ export const createMenu = () => {
     { label: "Zoom In", accelerator: "CmdOrCtrl+Plus", role: "zoomIn" },
     { label: "Zoom Out", accelerator: "CmdOrCtrl+-", role: "zoomOut" },
   ];
-  const histogramSubmenu: MenuItemConstructorOptions[] =
-    histogramColumns.length === 0
-      ? [{ label: "No columns", enabled: false }]
-      : histogramColumns.map((col) => ({
-          label: col.label,
-          click: (item: MenuItem, focusedWindow: BrowserWindow | undefined) => {
-            focusedWindow?.webContents.send("open-column-histogram", {
-              colId: col.id,
-            });
-          },
-        }));
   const analyticsSubmenu: MenuItemConstructorOptions[] = [
-    {
-      label: "Histogram",
-      submenu: histogramSubmenu,
+  {
+    label: "Histogram",
+    click: (item: MenuItem, focusedWindow: BrowserWindow | undefined) => {
+      focusedWindow?.webContents.send("open-column-histogram", {});
     },
-  ];
+  },
+];
   const debugSubmenu: MenuItemConstructorOptions[] = [
     {
       role: "toggleDevTools",
@@ -247,11 +229,4 @@ export const createMenu = () => {
   let oldMenu = appMenu;
   appMenu = Menu.buildFromTemplate(template as any);
   Menu.setApplicationMenu(appMenu);
-};
-
-// Update the column list shown in the Analytics > Histogram submenu and
-// rebuild the application menu so the change takes effect.
-export const updateHistogramMenuColumns = (columns: HistogramColumn[]) => {
-  histogramColumns = columns;
-  createMenu();
 };

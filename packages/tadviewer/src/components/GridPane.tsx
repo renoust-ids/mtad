@@ -632,7 +632,9 @@ const gridPanePropsEqual = (oldProps: any, nextProps: any): boolean => {
   const ret =
     util.shallowEqual(vs, nvs) &&
     oldProps.appState.showColumnHistograms ===
-      nextProps.appState.showColumnHistograms;
+      nextProps.appState.showColumnHistograms &&
+    oldProps.appState.histogramDialogColId ===
+      nextProps.appState.histogramDialogColId;
   return ret;
 };
 

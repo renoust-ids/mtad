@@ -4,13 +4,7 @@
 import "source-map-support/register";
 import * as React from "react";
 import * as ReactDOM from "react-dom/client";
-import OneRef, {
-  mkRef,
-  refContainer,
-  mutableGet,
-  StateRef,
-  addStateChangeListener,
-} from "oneref";
+import OneRef, { mkRef, refContainer, mutableGet, StateRef } from "oneref";
 import {
   AppPane,
   AppPaneBaseProps,
@@ -264,33 +258,16 @@ const init = async () => {
     });
 
     ipcRenderer.on("open-column-histogram", (event, req) => {
-      actions.openColumnHistogram(req.colId, stateRef);
-    });
-
-    // Keep the Analytics > Histogram submenu populated with the columns of
-    // the current view (usually the displayed/aggregated schema).
-    let lastMenuColumns: Array<{ id: string; label: string }> = [];
-    const pushHistogramMenuColumns = () => {
       const curState = mutableGet(stateRef);
       const schema =
         curState.viewState?.dataView?.schema ?? curState.viewState?.baseSchema;
-      if (schema == null) {
-        if (lastMenuColumns.length > 0) {
-          lastMenuColumns = [];
-          ipcRenderer.send("update-histogram-menu-columns", []);
-        }
-        return;
+      const colId =
+        (req?.colId as string | undefined) ??
+        schema?.columns.find((cid) => !cid.startsWith("_") && cid !== "Rec");
+      if (colId != null) {
+        actions.openColumnHistogram(colId, stateRef);
       }
-      const cols = schema.columns
-        .filter((cid) => !cid.startsWith("_") && cid !== "Rec")
-        .map((cid) => ({ id: cid, label: schema.displayName(cid) }));
-      if (JSON.stringify(cols) !== JSON.stringify(lastMenuColumns)) {
-        lastMenuColumns = cols;
-        ipcRenderer.send("update-histogram-menu-columns", cols);
-      }
-    };
-    pushHistogramMenuColumns();
-    addStateChangeListener(stateRef, pushHistogramMenuColumns);
+    });
 
     document.addEventListener("copy", function (e) {});
 
