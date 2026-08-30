@@ -1,7 +1,8 @@
-// An interactive per-column histogram dialog, opened from the column header
-// context menu or the Analytics menu. Numeric columns get a binned histogram
-// (with bin count, log scale, null bar, brush-to-filter); other columns get a
-// categorical bar chart whose bars can be selected to filter the grid.
+// An interactive per-column distribution dialog, opened from the column header
+// context menu or the Analytics menu. Numeric and temporal columns get a binned
+// histogram (with bin count, log scale, null bar, brush-to-filter); other
+// columns get a categorical bar chart whose bars can be selected to filter the
+// grid.
 import * as React from "react";
 import { useEffect, useRef, useState } from "react";
 import * as reltab from "reltab";
@@ -41,6 +42,12 @@ export interface HistogramDialogProps {
 
 const MAX_CATEGORIES = 20;
 
+const fmtOpts = {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+  useGrouping: true,
+};
+
 const round2 = (n: number): number =>
   Number(Math.round(Number(n + "e2")) + "e-2");
 
@@ -62,6 +69,78 @@ interface CatBar {
   count: number;
   isNull: boolean;
 }
+
+// Displays a number that can be edited by double-clicking it, committing on
+// Enter / blur. Used to fine-tune slider values (bins, min frequency).
+interface EditableNumberProps {
+  value: number;
+  min: number;
+  max: number;
+  onCommit: (v: number) => void;
+}
+
+const EditableNumber: React.FunctionComponent<EditableNumberProps> = ({
+  value,
+  min,
+  max,
+  onCommit,
+}) => {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState(String(value));
+
+  const commit = () => {
+    const parsed = Number.parseInt(text, 10);
+    if (!Number.isNaN(parsed)) {
+      onCommit(Math.max(min, Math.min(max, Math.round(parsed))));
+    }
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <input
+        className="bp4-input"
+        style={{
+          width: 96,
+          padding: "1px 6px",
+          fontSize: 12,
+          textAlign: "right",
+        }}
+        type="number"
+        autoFocus
+        value={text}
+        min={min}
+        max={max}
+        onFocus={(e) => e.target.select()}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            commit();
+          } else if (e.key === "Escape") {
+            setEditing(false);
+          }
+        }}
+      />
+    );
+  }
+  return (
+    <span
+      style={{
+        cursor: "pointer",
+        textDecoration: "underline dotted",
+        userSelect: "none",
+      }}
+      title="Double-click to edit"
+      onDoubleClick={() => {
+        setText(String(value));
+        setEditing(true);
+      }}
+    >
+      {value.toLocaleString()}
+    </span>
+  );
+};
 
 const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
   appState,
@@ -90,13 +169,39 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
   const isOpen = colId != null;
   const numeric = data != null && "binWidth" in data;
 
+  // Is the current column temporal (date / time / timestamp)? Temporal columns
+  // are histogrammed over epoch-second values and shown with date formatting.
+  const qsv = getViewQueryAndSchema();
+  const viewKind: ColumnKind =
+    colId != null && qsv != null
+      ? qsv.schema.columnType(colId).kind
+      : ("string" as ColumnKind);
+  const temporal = colId != null && reltab.isTemporalKind(viewKind);
+
+  const fmtX = (x: number): string => {
+    if (!temporal) {
+      return x.toLocaleString(undefined, fmtOpts);
+    }
+    const d = new Date(x * 1000);
+    if (viewKind === "date") {
+      return d.toISOString().slice(0, 10);
+    }
+    if (viewKind === "time") {
+      return d.toISOString().slice(11, 16);
+    }
+    return d.toISOString().slice(0, 16);
+  };
+
+  const fmtStat = (n: number | null | undefined): string =>
+    n == null ? "-" : temporal ? fmtX(n) : numericStatsFormatter(n);
+
   // The query and schema whose data the histogram should describe. When a
   // pivot is active this is the aggregated (tree) query and its schema, so
   // the histogram reflects the aggregated cells; otherwise the base query.
-  const getViewQueryAndSchema = (): {
+  function getViewQueryAndSchema(): {
     query: reltab.QueryExp;
     schema: reltab.Schema;
-  } | null => {
+  } | null {
     const app = mutableGet(stateRef);
     const vs = app.viewState;
     if (!vs?.dbc || !vs.baseQuery || !vs.baseSchema) {
@@ -111,7 +216,7 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
           ? vs.dataView.schema
           : vs.baseSchema,
     };
-  };
+  }
 
   useEffect(() => {
     if (colId == null) {
@@ -124,7 +229,10 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
     }
     const { query, schema } = qs;
     const colKind: ColumnKind = schema.columnType(colId).kind;
-    const isNumericCol = colKind === "integer" || colKind === "real";
+    const isNumericCol =
+      colKind === "integer" ||
+      colKind === "real" ||
+      reltab.isTemporalKind(colKind);
 
     setLoading(true);
     setError(null);
@@ -152,8 +260,15 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
         if (cancelled) return;
         setData(res);
         if (res != null && isNumericCol) {
-          const statsMap = await vs!.dbc!.getColumnStatsMap(query);
-          const s = statsMap[colId];
+          // Temporal columns are histogrammed over epoch-second values, so
+          // numeric stats must be computed on the converted column.
+          const s = reltab.isTemporalKind(colKind)
+            ? await reltab.getTemporalColumnNumericStats(
+                vs!.dbc!,
+                query,
+                colId
+              )
+            : (await vs!.dbc!.getColumnStatsMap(query))[colId];
           if (s != null && s.statsType === "numeric") {
             if (cancelled) return;
             setStats(s);
@@ -162,7 +277,7 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
         setLoading(false);
       } catch (err) {
         if (!cancelled) {
-          setError(`Error loading histogram: ${String(err)}`);
+          setError(`Error loading distribution: ${String(err)}`);
           setLoading(false);
         }
       }
@@ -200,7 +315,7 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
           setData(res);
         }
       } catch (err) {
-        if (!cancelled) setError(`Error re-binning histogram: ${String(err)}`);
+        if (!cancelled) setError(`Error re-binning distribution: ${String(err)}`);
       }
     };
     void run();
@@ -219,7 +334,7 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
     }
     const ck = vs.baseSchema.columnType(colId).kind;
     let [minVal, maxVal] = brushInfo.x;
-    if (ck === "integer") {
+    if (ck === "integer" || reltab.isTemporalKind(ck)) {
       minVal = Math.round(minVal);
       maxVal = Math.round(maxVal);
     } else {
@@ -229,11 +344,23 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
     onBrushFilter(colId, [minVal, maxVal]);
   };
 
-  const categoricalBars = (
+  // Minimum occurrence threshold for categorical bars. Defaults to a rounded
+  // 2% of the column's total count; the user can override it with the slider
+  // or by double-clicking the value. Guarded against NaN / negative inputs.
+  const minOccFor = (catData: reltab.CategoricalDistributionData): number => {
+    const dflt = Math.round(catData.totalCount * 0.02);
+    const raw = minOccSliderVal ?? minOccVal ?? dflt;
+    return Number.isFinite(raw) && raw >= 0 ? Math.round(raw) : dflt;
+  };
+
+  const minOccMaxFor = (
     catData: reltab.CategoricalDistributionData
+  ): number => Math.max(10, Math.round(catData.totalCount * 0.5));
+
+  const categoricalBars = (
+    catData: reltab.CategoricalDistributionData,
+    minOcc: number
   ): CatBar[] => {
-    const minOcc =
-      minOccSliderVal ?? minOccVal ?? Math.round(catData.totalCount * 0.02);
     const values = catData.binData
       .filter((b) => b.count >= minOcc)
       .slice(0, MAX_CATEGORIES);
@@ -273,16 +400,12 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
       setHoverInfo({
         left: oLeft,
         top: oTop,
-        lines: [
-          `${round2(binMin).toLocaleString()} \u2013 ${round2(
-            binMax
-          ).toLocaleString()}`,
-        ],
+        lines: [`${fmtX(binMin)} \u2013 ${fmtX(binMax)}`],
         count: numData.binData[i] ?? 0,
       });
     } else {
       const catData = data as reltab.CategoricalDistributionData;
-      const bars = categoricalBars(catData);
+      const bars = categoricalBars(catData, minOccFor(catData));
       if (bars.length === 0) {
         return;
       }
@@ -373,12 +496,6 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
         ? [{ binMid: numData.niceMaxVal + numData.binWidth * 1.5, count: nullCount }]
         : [];
 
-    const fmtOpts = {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-      useGrouping: true,
-    };
-
     // Highlight the bars that fall inside the current brush selection
     const brushActive =
       numData.brushMaxVal - numData.brushMinVal <
@@ -415,7 +532,7 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
       >
         <VictoryAxis
           tickValues={[numData.niceMinVal, numData.niceMaxVal]}
-          tickFormat={(tick: number) => tick.toLocaleString(undefined, fmtOpts)}
+          tickFormat={(tick: number) => fmtX(tick)}
           style={{
             axis: { stroke: "#CBD2D9" },
             tickLabels: { fontSize: 11, padding: 6 },
@@ -450,18 +567,77 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
 
   const renderCategoricalChart = () => {
     const catData = data as reltab.CategoricalDistributionData;
-    const bars = categoricalBars(catData);
+    const minOcc = minOccFor(catData);
+    const minOccMax = minOccMaxFor(catData);
+    const bars = categoricalBars(catData, minOcc);
+
+    const minOccControl = (
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          marginBottom: 6,
+        }}
+      >
+        <span
+          style={{
+            fontSize: 12,
+            fontWeight: 600,
+            whiteSpace: "nowrap",
+            marginRight: 10,
+          }}
+        >
+          Min freq:
+        </span>
+        <div style={{ flexGrow: 1 }}>
+          <Slider
+            min={0}
+            max={minOccMax}
+            stepSize={1}
+            value={minOcc}
+            labelRenderer={false}
+            onChange={(v) => setMinOccSliderVal(v)}
+            onRelease={(v) => setMinOccVal(v)}
+          />
+        </div>
+        <span
+          style={{
+            fontSize: 12,
+            marginLeft: 10,
+            whiteSpace: "nowrap",
+          }}
+        >
+          <EditableNumber
+            value={minOcc}
+            min={0}
+            max={minOccMax}
+            onCommit={(v) => {
+              setMinOccSliderVal(v);
+              setMinOccVal(v);
+            }}
+          />
+        </span>
+      </div>
+    );
 
     if (catData.totalCount === 0) {
-      return <p className="bp4-text-muted">No data for this column.</p>;
+      return (
+        <div>
+          {minOccControl}
+          <p className="bp4-text-muted">No data for this column.</p>
+        </div>
+      );
     }
     if (bars.length === 0) {
-      return <p className="bp4-text-muted">No non-null values to display.</p>;
+      return (
+        <div>
+          {minOccControl}
+          <p className="bp4-text-muted">
+            No values above the selected minimum frequency (try lowering it).
+          </p>
+        </div>
+      );
     }
-
-    const minOccDefault = Math.round(catData.totalCount * 0.02);
-    const minOccCurrent = minOccSliderVal ?? minOccVal ?? minOccDefault;
-    const minOccMax = Math.max(10, Math.round(catData.totalCount * 0.5));
 
     const chart = (
       <VictoryChart
@@ -515,44 +691,7 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
     );
     return (
       <div>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            marginBottom: 6,
-          }}
-        >
-          <span
-            style={{
-              fontSize: 12,
-              fontWeight: 600,
-              whiteSpace: "nowrap",
-              marginRight: 10,
-            }}
-          >
-            Min freq:
-          </span>
-          <div style={{ flexGrow: 1 }}>
-            <Slider
-              min={0}
-              max={minOccMax}
-              stepSize={1}
-              value={minOccCurrent}
-              labelRenderer={false}
-              onChange={(v) => setMinOccSliderVal(v)}
-              onRelease={(v) => setMinOccVal(v)}
-            />
-          </div>
-          <span
-            style={{
-              fontSize: 12,
-              marginLeft: 10,
-              whiteSpace: "nowrap",
-            }}
-          >
-            {countLabel(Math.round(minOccCurrent))}
-          </span>
-        </div>
+        {minOccControl}
         {renderChartWrap(chart)}
         <div className="bp4-text-muted" style={{ fontSize: 12, marginTop: 4 }}>
           Click a bar to filter the grid to that value; click it again to
@@ -578,9 +717,9 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
           <Tag minimal>Rows: {countLabel(rows)}</Tag>
           <Tag minimal>Nulls: {countLabel(nulls)}</Tag>
           <Tag minimal>Unique: {(stats?.approxUnique ?? "-").toString()}</Tag>
-          <Tag minimal>Min: {numericStatsFormatter(stats?.min)}</Tag>
-          <Tag minimal>Max: {numericStatsFormatter(stats?.max)}</Tag>
-          <Tag minimal>Mean: {numericStatsFormatter(stats?.mean)}</Tag>
+          <Tag minimal>Min: {fmtStat(stats?.min)}</Tag>
+          <Tag minimal>Max: {fmtStat(stats?.max)}</Tag>
+          <Tag minimal>Mean: {fmtStat(stats?.mean)}</Tag>
           <Tag minimal>Std: {numericStatsFormatter(stats?.std)}</Tag>
         </>
       );
@@ -606,8 +745,8 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
   } else if (data == null) {
     body = (
       <p className="bp4-text-muted">
-        No histogram available for this column (it may have no data or a single
-        repeated value).
+        No distribution available for this column (it may have no data or a
+        single repeated value).
       </p>
     );
   } else {
@@ -626,9 +765,19 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
                 Bins
               </div>
               <div style={{ fontSize: 12, fontWeight: 600 }}>
-                {sliderVal ??
-                  binCount ??
-                  (data as reltab.NumericColumnHistogramData).binCount}
+                <EditableNumber
+                  value={
+                    sliderVal ??
+                    binCount ??
+                    (data as reltab.NumericColumnHistogramData).binCount
+                  }
+                  min={2}
+                  max={50}
+                  onCommit={(v) => {
+                    setSliderVal(v);
+                    setBinCount(v);
+                  }}
+                />
               </div>
             </div>
             <Slider
@@ -686,7 +835,7 @@ const HistogramDialog: React.FunctionComponent<HistogramDialogProps> = ({
   return (
     <Dialog
       isOpen={isOpen}
-      title={`${displayName} - Histogram`}
+      title={`${displayName} - Distribution`}
       onClose={onClose}
       canOutsideClickClose={false}
       style={{

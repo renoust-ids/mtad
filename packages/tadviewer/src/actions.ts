@@ -582,9 +582,14 @@ export const setHistogramBrushFilter = (
     } else {
       baseFE = and();
     }
+    // Temporal columns are histogrammed over epoch-second values, so the
+    // brush range must filter on the same converted expression.
+    const kind = appState.viewState.baseSchema.columnType(colId).kind;
+    const lhs =
+      reltab.isTemporalKind(kind) ? reltab.epoch(col(colId)) : col(colId);
     const nextFE = baseFE
-      .ge(col(colId), constVal(range[0]))
-      .le(col(colId), constVal(range[1]));
+      .ge(lhs, constVal(range[0]))
+      .le(lhs, constVal(range[1]));
     update(
       stateRef,
       vpUpdate(
@@ -731,7 +736,11 @@ export async function loadColumnHistogramData(
   binCount?: number
 ): Promise<ColumnHistogramData | null> {
   const kind = schema.columnType(colId).kind;
-  if (kind === "integer" || kind === "real") {
+  if (
+    kind === "integer" ||
+    kind === "real" ||
+    reltab.isTemporalKind(kind)
+  ) {
     return reltab.getColumnHistogramDataForBins(
       dbc,
       query,

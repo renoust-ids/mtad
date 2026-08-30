@@ -134,7 +134,7 @@ export const createMenu = () => {
   ];
   const analyticsSubmenu: MenuItemConstructorOptions[] = [
   {
-    label: "Histogram",
+    label: "Distribution",
     click: (item: MenuItem, focusedWindow: BrowserWindow | undefined) => {
       focusedWindow?.webContents.send("open-column-histogram", {});
     },

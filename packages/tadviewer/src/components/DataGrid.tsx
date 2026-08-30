@@ -902,7 +902,7 @@ const createGrid = (
 
     const histogramItem = document.createElement("div");
     histogramItem.className = "bp4-menu-item";
-    histogramItem.textContent = "Histogram";
+    histogramItem.textContent = "Distribution";
     histogramItem.addEventListener("click", () => {
       menu.remove();
       onColumnHistogram?.(column.id);
