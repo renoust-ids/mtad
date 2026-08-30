@@ -130,8 +130,8 @@
         <div class="col-sm-6 col-sm-offset-3">
           <div class="specs-holder">
             <img src="images/pivot-icon@2x.png" alt="pivot">
-            <p><strong>Column Histograms</strong></p>
-            <p>Right-click a column header and choose <strong>Histogram</strong> to explore a single column with an interactive chart: binned histograms with a bin-count slider, log scale, null bar, and a statistics panel for numeric columns, categorical bar charts otherwise. Drag (brush) across the bars to instantly filter the grid to a numeric range.</p>
+            <p><strong>Distribution Dialog</strong></p>
+            <p>Right-click any column header and choose <strong>Distribution</strong> to explore a single column: binned histograms with an editable bin count, log scale, null bar and statistics panel for numeric columns, click-to-filter bar charts for categorical columns, and type-aware charts for date/time/timestamp columns. Drag (brush) across the bars to instantly filter the grid to a range.</p>
           </div>
         </div>
       </div>
@@ -162,7 +162,13 @@
   <div id="news" class="section news-section">
     <div class="container">
     <h3>News</h3>
-    <p class="lead">MTad 0.0.4 - September 2026</p>
+    <p class="lead">MTad 0.0.5 - September 2026</p>
+    <p>
+    The <strong>Distribution</strong> dialog now charts temporal (date/time/timestamp) columns with type-aware labels, adds
+    double-click-editable bin counts and a categorical min-frequency threshold, and splits the footer into
+    <strong>Table Filters</strong> and <strong>Analytics Filters</strong> with live SQL summaries, apply toggles, and one-click clear buttons.
+    </p>
+    <p class="lead" style="margin-top: 15px;">MTad 0.0.4 - September 2026</p>
     <p>
     MTad adds interactive <strong>column histograms</strong>: right-click any column header to open a histogram
     of that column with a bin-count slider, log scale, null bar, statistics panel, and brush-to-filter into the grid.
