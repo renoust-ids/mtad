@@ -121,3 +121,12 @@
 - **Fix** : `setHistogramBrushFilter` filtre désormais sur `col(colId)` avec le range epoch reconverti en littéral typé (date→`YYYY-MM-DD`, time→`HH:MM:SS`, timestamp→`YYYY-MM-DD HH:MM:SS`) ; DuckDB caste implicitement le littéral (vérifié : `birth_date BETWEEN '2024-01-15' AND '2024-02-19'` → 2 lignes, `start_time 08:30-09:00` → 2 lignes). `FilterEditorRow` : garde défensive (lhs non-colref → sélecteur colonne vide au lieu de crash).
 - **Validation** : tadviewer `npx tsc` ok ; webpack prod 17 warnings ; tad-app webpack OK ; probe reltab-duckdb OK.
 - **Commit** : `d984ded` `fix(tadviewer): keep brush filters on raw column so filter editor survives`
+
+### Step 6d — Table Filters / Analytics Filters séparés + toggles
+- **ViewParams** : nouveaux champs `analyticsFilterExp` (défaut vide) et `applyAnalyticsFilters` (défaut `true`) + `combinedFilterExp()` qui AND la filter table (toujours appliquée) avec la filter analytics (seulement si coché). `deserialize` gère les 2 champs (sessions anciennes → défauts).
+- **Footer** : remplacé l'unique lien "Filter" par deux onglets adjacents **Table Filters** et **Analytics Filters** (même `FilterEditor`). Onglet analytics : checkbox **Apply Analytics Filters** (défaut coché) qui pilote `applyAnalyticsFilters` ; le résumé SQL affiché correspond à l'onglet actif. Cancel/Apply/Done par onglet (snapshots `prevTable`/`prevAnalytics`).
+- **Distribution interactions** : `setHistogramBrushFilter` et `setCategoryHistogramFilter` écrivent désormais dans `analyticsFilterExp` (plus dans `filterExp`). Nouvelles actions `setAnalyticsFilter` / `setApplyAnalyticsFilters`.
+- **PivotRequester** : le query de vue utilise `viewParams.combinedFilterExp()` (la vue applique donc table + (facult.) analytics filters). Vérifié en DuckDB : `(age>=25) AND (name IN (...))`.
+- **Distribution dialog** : nouveau switch **Apply Table Filters** (défaut coché). Vue plate : le histogramme est calculé sur `baseQuery.filter(tableFilter)` ; les analytics filters sont volontairement exclues (auto-référentiel). Vue pivotée : inchangée (le query de vue embarque déjà les filters). `tableFilterKey` (hash SQL du table filter) ajouté aux deps des effets → rechargement live quand le table filter change. Vue à 0 résultat : géré (stats null → message, catégoriel → état vide avec contrôles).
+- **Validation** : tadviewer `npx tsc` ok ; webpack prod 17 warnings ; tad-app webpack OK ; probe duckdb combiné OK (ids 1,2,4,5).
+- **Commit** :- `ce0116f` `feat(tadviewer): split Table and Analytics Filters with apply toggles`
