@@ -87,7 +87,7 @@ export const multiply = (lhs: ValExp, rhs: ValExp): BinValExp =>
 export const divide = (lhs: ValExp, rhs: ValExp): BinValExp =>
   new BinValExp("/", lhs, rhs);
 
-export type UnaryValOp = "round" | "floor" | "ceil";
+export type UnaryValOp = "round" | "floor" | "ceil" | "epoch";
 
 export class UnaryValExp {
   expType: "UnaryValExp";
@@ -106,17 +106,37 @@ export class UnaryValExp {
       case "floor":
       case "ceil":
         return `${this.op}(${valExpToSqlStr(dialect, this.arg)})`;
+      case "epoch":
+        return epochToSqlStr(dialect, this.arg);
       default:
         const invalid: never = this.op;
         throw new Error(`Unknown unary operator: ${invalid}`);
     }
   }
 }
+
+// SQL rendering for the "epoch" unary operator: convert a temporal value
+// (date / time / datetime / timestamp) to epoch seconds.
+const epochToSqlStr = (dialect: SQLDialect, arg: ValExp): string => {
+  const argStr = valExpToSqlStr(dialect, arg);
+  switch (dialect.dialectName) {
+    case "duckdb":
+      return `date_part('epoch', ${argStr})`;
+    case "sqlite":
+      return `strftime('%s', ${argStr})`;
+    default:
+      throw new Error(
+        `epoch value expression not supported for dialect '${dialect.dialectName}'`
+      );
+  }
+};
 export const round = (arg: ValExp): UnaryValExp =>
   new UnaryValExp("round", arg);
 export const floor = (arg: ValExp): UnaryValExp =>
   new UnaryValExp("floor", arg);
 export const ceil = (arg: ValExp): UnaryValExp => new UnaryValExp("ceil", arg);
+export const epoch = (arg: ValExp): UnaryValExp =>
+  new UnaryValExp("epoch", arg);
 
 export type ValExp =
   | ConstVal

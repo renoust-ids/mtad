@@ -96,6 +96,22 @@ export interface CoreColumnTypes {
 export const colIsNumeric = (ct: ColumnType) => kindIsNumeric(ct.kind);
 export const colIsString = (ct: ColumnType) => ct.kind === "string";
 
+// Temporal (time / date / timestamp) column kinds. These can be histogrammed
+// as numbers by first converting the values to epoch seconds via an "epoch"
+// value expression (see defs.epoch).
+export const temporalKinds: ReadonlySet<ColumnKind> = new Set([
+  "date",
+  "time",
+  "datetime",
+  "timestamp",
+]);
+
+export const isTemporalKind = (kind: ColumnKind): boolean =>
+  temporalKinds.has(kind);
+
+export const isTemporal = (ct: ColumnType): boolean =>
+  isTemporalKind(ct.kind);
+
 export const aggFns = (ct: ColumnType): AggFn[] => {
   if (colIsNumeric(ct)) {
     return numericAggFns;
