@@ -17,6 +17,15 @@ export interface FooterProps {
 
 type FilterTab = "table" | "analytics";
 
+// The summary is cropped once it exceeds MAX_FILTER_STR_CHARS characters.
+// When a "T:"/"A:" prefix is shown the maximum is reduced by this many
+// characters before cropping, so the prefixed text occupies the same width.
+const MAX_FILTER_STR_CHARS = 60;
+const MAX_FILTER_STR_PREFIX_PAD = 4;
+
+const cropFilterStr = (s: string, max: number): string =>
+  s.length > max ? s.slice(0, max - 1).trimEnd() + "…" : s;
+
 export const Footer: React.FunctionComponent<FooterProps> = (
   props: FooterProps
 ) => {
@@ -95,13 +104,25 @@ export const Footer: React.FunctionComponent<FooterProps> = (
   };
 
   const activeFE = tab === "table" ? tableFE : analyticsFE;
-  // Hovering a tab shows that tab's filter string, prefixed with "T:" (table)
-  // or "A:" (analytics). Without a hover the active tab's string is shown.
-  const summaryFE = hoverTab != null ? (hoverTab === "table" ? tableFE : analyticsFE) : activeFE;
-  const summaryPrefix = hoverTab === "table" ? "T: " : "A: ";
+  // Show the active tab's filter string while modifying a filter (editor
+  // open), prefixing it with "T:" (table) or "A:" (analytics). Hovering a tab
+  // overrides with that tab's prefixed string. When a prefix is shown the
+  // string is cropped at MAX_FILTER_STR_CHARS minus MAX_FILTER_STR_PREFIX_PAD.
+  const hoveredFE =
+    hoverTab != null
+      ? hoverTab === "table"
+        ? tableFE
+        : analyticsFE
+      : null;
+  const summaryFE = hoveredFE != null ? hoveredFE : activeFE;
+  const showPrefix = hoverTab != null || expanded;
+  const prefixForTable = (hoverTab != null ? hoverTab : tab) === "table";
+  const prefix = showPrefix ? (prefixForTable ? "T: " : "A: ") : "";
+  const maxLen = showPrefix
+    ? MAX_FILTER_STR_CHARS - MAX_FILTER_STR_PREFIX_PAD
+    : MAX_FILTER_STR_CHARS;
   const filterStr =
-    (hoverTab != null ? summaryPrefix : "") +
-    summaryFE.toSqlWhere(getDefaultDialect());
+    prefix + cropFilterStr(summaryFE.toSqlWhere(getDefaultDialect()), maxLen);
 
   const expandClass = expanded ? "footer-expanded" : "footer-collapsed";
 
