@@ -130,3 +130,7 @@
 - **Distribution dialog** : nouveau switch **Apply Table Filters** (défaut coché). Vue plate : le histogramme est calculé sur `baseQuery.filter(tableFilter)` ; les analytics filters sont volontairement exclues (auto-référentiel). Vue pivotée : inchangée (le query de vue embarque déjà les filters). `tableFilterKey` (hash SQL du table filter) ajouté aux deps des effets → rechargement live quand le table filter change. Vue à 0 résultat : géré (stats null → message, catégoriel → état vide avec contrôles).
 - **Validation** : tadviewer `npx tsc` ok ; webpack prod 17 warnings ; tad-app webpack OK ; probe duckdb combiné OK (ids 1,2,4,5).
 - **Commit** :- `ce0116f` `feat(tadviewer): split Table and Analytics Filters with apply toggles`
+### Step 6e — Résumé filter lié au survol des onglets
+- Survol "Table Filters" → chaîne table préfixée `T: ` ; survol "Analytics Filters" → chaîne analytics préfixée `A: `. Sans survol, chaîne de l'onglet actif (inchangée). États `hoverTab` + handlers `onMouseEnter`/`onMouseLeave`.
+- **Validation** : `npx tsc` ok ; webpack prod 17 warnings ; tad-app webpack OK.
+- **Commit** :
