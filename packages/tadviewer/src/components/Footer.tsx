@@ -6,6 +6,7 @@ import { AppState } from "../AppState";
 import { ViewState } from "../ViewState";
 import { StateRef } from "oneref";
 import { useState } from "react";
+import { Button } from "@blueprintjs/core";
 import { getDefaultDialect } from "reltab";
 
 export interface FooterProps {
@@ -99,6 +100,20 @@ export const Footer: React.FunctionComponent<FooterProps> = (
     setPrevAnalytics(null);
   };
 
+  const handleClear = (target: FilterTab) => {
+    const fe = new reltab.FilterExp();
+    if (target === "table") {
+      actions.setFilter(fe, stateRef);
+      onFilter?.(fe);
+    } else {
+      actions.setAnalyticsFilter(fe, stateRef);
+    }
+    setExpanded(false);
+    setDirty(false);
+    setPrevTable(null);
+    setPrevAnalytics(null);
+  };
+
   const handleApplyAnalyticsChange = (event: any) => {
     actions.setApplyAnalyticsFilters(event.target.checked, stateRef);
   };
@@ -125,6 +140,21 @@ export const Footer: React.FunctionComponent<FooterProps> = (
     prefix + cropFilterStr(summaryFE.toSqlWhere(getDefaultDialect()), maxLen);
 
   const expandClass = expanded ? "footer-expanded" : "footer-collapsed";
+
+  const clearButton = (target: FilterTab, title: string) => (
+    <Button
+      minimal
+      small
+      icon="cross"
+      title={title}
+      onClick={(event: React.MouseEvent) => {
+        event.preventDefault();
+        event.stopPropagation();
+        handleClear(target);
+      }}
+      style={{ marginLeft: -6, marginRight: 10, verticalAlign: "middle" }}
+    />
+  );
 
   const editorComponent = expanded ? (
     <>
@@ -201,13 +231,13 @@ export const Footer: React.FunctionComponent<FooterProps> = (
             onMouseLeave={() => setHoverTab(null)}
             tabIndex={0}
             style={{
-              marginRight: 10,
-              fontWeight:
-                tab === "table" && expanded ? 600 : "normal",
+              marginRight: 2,
+              fontWeight: tab === "table" && expanded ? 600 : "normal",
             }}
           >
             Table Filters
           </a>
+          {clearButton("table", "Clear table filters")}
           <a
             onClick={(event) => {
               event.preventDefault();
@@ -217,13 +247,14 @@ export const Footer: React.FunctionComponent<FooterProps> = (
             onMouseLeave={() => setHoverTab(null)}
             tabIndex={0}
             style={{
-              marginRight: 10,
+              marginRight: 2,
               fontWeight:
                 tab === "analytics" && expanded ? 600 : "normal",
             }}
           >
             Analytics Filters
           </a>
+          {clearButton("analytics", "Clear analytics filters")}
           <span className="filter-summary"> {filterStr}</span>
         </div>
         <div className="footer-right-block">
