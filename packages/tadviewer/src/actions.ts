@@ -862,6 +862,20 @@ export async function loadSplomData(
   return { points, correlations, colorFreqs };
 }
 
+// Linear regression for the active master-detail pair (slope/intercept/R²),
+// fetched on demand when a cell is clicked so the trend line and stats tags can
+// be drawn. Uses the raw matrix column ids (correlation SQL derives epochs for
+// temporal columns internally).
+export async function loadPairRegression(
+  dbc: DataSourceConnection,
+  query: reltab.QueryExp,
+  schema: reltab.Schema,
+  xColId: string,
+  yColId: string
+): Promise<reltab.PairRegression> {
+  return reltab.getPairRegression(dbc, query, schema, xColId, yColId);
+}
+
 // Set a 2D (rectangular) analytics filter from a SPLOM brush. Cleans up any
 // existing clauses referencing either column, then constrains both axes.
 // Temporal columns store epoch-second ranges but the filter references the raw
