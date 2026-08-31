@@ -99,3 +99,17 @@ Journal de traçabilité : chaque action est consignée avec heure, fichiers, co
 - Oubli de rebuild du dist reltab entre reltab et reltab-duckdb (import via node_modules) → rebuild reltab avant de relancer duckdb.
 
 **Résultat** : Step 2 terminé. Prochain : **Step 3** (actions tadviewer : état + loadSplomData + setSplomBrushFilter).
+
+### Step 3 — Actions tadviewer : état + données + filtre 2D
+
+**Heure** : ~03:00
+
+**Fichiers modifiés** :
+- `packages/tadviewer/src/AppState.ts` : `splomDialogOpen: boolean` (défaut false) dans `AppStateProps`, `defaultAppStateProps` et la classe.
+- `packages/tadviewer/src/actions.ts` : `SplomViewData` (points + correlations + colorFreqs), `openSplom`/`closeSplom`, `loadSplomData` (getScatterPlotData + getCorrelationMatrix + getColumnFrequencyData), `setSplomBrushFilter(xColId, xRange, yColId, yRange, stateRef)` — nettoyage `filterExpWithoutCol` (x puis y), bornes temporelles via `epochToTemporalString`, écrit dans `analyticsFilterExp` (pattern `setHistogramBrushFilter`), range null = pas de contrainte sur l'axe.
+
+**Commandes exécutées** : `npx tsc` (tadviewer) → succès.
+
+**Problèmes rencontrés / solutions** : aucun — patterns existants réutilisés à l'identique.
+
+**Résultat** : Step 3 terminé. Prochain : **Step 4** (SplomDialog.tsx — matrice + options UI, Step 5 ensuite).

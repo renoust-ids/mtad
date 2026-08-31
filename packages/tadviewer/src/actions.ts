@@ -811,6 +811,109 @@ export async function loadColumnHistogramData(
   return reltab.getColumnFrequencyData(dbc, query, colId);
 }
 
+// --- Scatter Plot Matrix (SPLOM) Dialog Actions ---
+
+// Data backing the SPLOM dialog: scatter points + correlation matrix + the
+// color column's category frequencies (when color by is enabled).
+export interface SplomViewData {
+  points: reltab.ScatterPlotData;
+  correlations: reltab.PairCorrelation[];
+  colorFreqs?: reltab.CategoricalDistributionData | null;
+}
+
+// Open / close the SPLOM dialog (state lives in AppState so it can be opened
+// from the app menu).
+export const openSplom = (stateRef: StateRef<AppState>) => {
+  const app = mutableGet(stateRef);
+  if (app.viewState == null) {
+    return;
+  }
+  update(stateRef, (s) => s.set("splomDialogOpen", true) as AppState);
+};
+
+export const closeSplom = (stateRef: StateRef<AppState>) => {
+  update(stateRef, (s) => s.set("splomDialogOpen", false) as AppState);
+};
+
+// Fetch the data backing the SPLOM dialog for the given query and schema:
+// scatter points (with sampling), the correlation matrix (computed over the
+// full data), and the color column's category frequencies when one is set.
+export async function loadSplomData(
+  dbc: DataSourceConnection,
+  query: reltab.QueryExp,
+  schema: reltab.Schema,
+  opts: reltab.ScatterPlotOptions
+): Promise<SplomViewData> {
+  const points = await reltab.getScatterPlotData(dbc, query, schema, opts);
+  const correlations = await reltab.getCorrelationMatrix(
+    dbc,
+    query,
+    schema,
+    opts.matrixColIds
+  );
+  let colorFreqs: reltab.CategoricalDistributionData | null = null;
+  if (opts.colorColId != null && opts.colorColId.length > 0) {
+    colorFreqs = await reltab.getColumnFrequencyData(
+      dbc,
+      query,
+      opts.colorColId
+    );
+  }
+  return { points, correlations, colorFreqs };
+}
+
+// Set a 2D (rectangular) analytics filter from a SPLOM brush. Cleans up any
+// existing clauses referencing either column, then constrains both axes.
+// Temporal columns store epoch-second ranges but the filter references the raw
+// column with a typed literal (pattern of setHistogramBrushFilter). A null
+// range for an axis is treated as "no constraint" (i.e. clears that axis).
+export const setSplomBrushFilter = (
+  xColId: string,
+  xRange: [number, number] | null,
+  yColId: string,
+  yRange: [number, number] | null,
+  stateRef: StateRef<AppState>
+) => {
+  const appState = mutableGet(stateRef);
+  const prevFE = appState.viewState.viewParams.analyticsFilterExp;
+  if (prevFE != null && prevFE.op !== "AND") {
+    log.info(
+      "setSplomBrushFilter: unexpected structure for current filter expression, ignoring brush filter"
+    );
+    return;
+  }
+  let baseFE = prevFE == null
+    ? and()
+    : filterExpWithoutCol(filterExpWithoutCol(prevFE, xColId), yColId);
+  const addRange = (
+    fe: FilterExp,
+    colId: string,
+    range: [number, number] | null
+  ): FilterExp => {
+    if (range == null) {
+      return fe;
+    }
+    const kind = appState.viewState.baseSchema.columnType(colId).kind;
+    const lhs = col(colId);
+    if (reltab.isTemporalKind(kind)) {
+      return fe
+        .ge(lhs, constVal(epochToTemporalString(kind, range[0])))
+        .le(lhs, constVal(epochToTemporalString(kind, range[1])));
+    }
+    return fe
+      .ge(lhs, constVal(range[0]))
+      .le(lhs, constVal(range[1]));
+  };
+  const nextFE = addRange(addRange(baseFE, xColId, xRange), yColId, yRange);
+  update(
+    stateRef,
+    vpUpdate(
+      (viewParams) =>
+        viewParams.set("analyticsFilterExp", nextFE) as ViewParams
+    )
+  );
+};
+
 // --- Join CSV Dialog Actions ---
 
 export const openJoinCsvDialog = (

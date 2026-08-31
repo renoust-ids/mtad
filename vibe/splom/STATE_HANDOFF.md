@@ -44,7 +44,7 @@ Item **SPLOM** ("Scatter Plot Matrix") dans le menu **Analytics** → dialog int
 1. ✅ **Spec** (`vibe/splom/*.md`) — fait (validé par l'utilisateur).
 2. ✅ **Step 1** — Backend reltab `splom.ts` : données scatter + sampling (TDD).
 3. ✅ **Step 2** — Backend reltab : matrice de corrélation SQL + régression (TDD).
-4. ⏳ **Step 3** — Actions tadviewer : état + `loadSplomData` + `setSplomBrushFilter`.
+4. ✅ **Step 3** — Actions tadviewer : état + `loadSplomData` + `setSplomBrushFilter`.
 5. ⏳ **Step 4** — UI `SplomDialog` : matrice + options.
 6. ⏳ **Step 5** — UI : master-detail, brush 2D, diagonale → Distribution, tooltips, log.
 7. ⏳ **Step 6** — Wiring menu Analytics + IPC, docs, CI, E2E.
@@ -56,4 +56,4 @@ Item **SPLOM** ("Scatter Plot Matrix") dans le menu **Analytics** → dialog int
 - Snapshot BigInt SUM pré-existants (`basic.auto.test.ts`) hors scope.
 
 ## Next Step
-Démarrer **Step 3** : actions tadviewer — `AppState.splomDialogOpen`, `openSplom`/`closeSplom`, `loadSplomData` (points + corr + colorFreqs), `setSplomBrushFilter` (pattern `setHistogramBrushFilter`/`filterExpWithoutCol`/`epochToTemporalString`). Hash au commit : `3016d4c` (step 1), branche `feat/splom`.
+Démarrer **Step 4** : UI `SplomDialog.tsx` — sélecteur colonnes (checkboxes groupées, cap 10), Color by, Min freq, Sample + "Use all", Apply Table Filters, matrice N×N (diagonale mini-histo, scatters, annotations r + fond, tooltips), reload debounce sur `tableFilterKey`, ouverture vide "Select at least 2 numeric or temporal columns". Hash au commit : `06e63bb` (step 2), branche `feat/splom`.
