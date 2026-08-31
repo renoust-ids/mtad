@@ -139,6 +139,12 @@ export const createMenu = () => {
       focusedWindow?.webContents.send("open-column-histogram", {});
     },
   },
+  {
+    label: "Scatter Plot Matrix",
+    click: (item: MenuItem, focusedWindow: BrowserWindow | undefined) => {
+      focusedWindow?.webContents.send("open-splom", {});
+    },
+  },
 ];
   const debugSubmenu: MenuItemConstructorOptions[] = [
     {

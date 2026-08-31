@@ -269,6 +269,10 @@ const init = async () => {
       }
     });
 
+    ipcRenderer.on("open-splom", () => {
+      actions.openSplom(stateRef);
+    });
+
     document.addEventListener("copy", function (e) {});
 
     ipcRenderer.send("render-init-complete");
