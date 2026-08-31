@@ -12,6 +12,7 @@ import * as util from "../util";
 import { CellEditStartData, DataGrid, DataGridProps } from "./DataGrid";
 import { CellEditModal } from "./CellEditModal";
 import HistogramDialog from "./HistogramDialog";
+import SplomDialog from "./SplomDialog";
 import { SimpleClipboard } from "./SimpleClipboard";
 
 import { CellClickData } from "./CellClickData";
@@ -343,6 +344,11 @@ const GridPaneInternal: React.FunctionComponent<GridPaneProps> = ({
     [stateRef]
   );
 
+  const handleCloseSplom = React.useCallback(
+    () => actions.closeSplom(stateRef),
+    [stateRef]
+  );
+
   const handleSelectHistogramColumn = React.useCallback(
     (columnId: string) => actions.openColumnHistogram(columnId, stateRef),
     [stateRef]
@@ -351,6 +357,19 @@ const GridPaneInternal: React.FunctionComponent<GridPaneProps> = ({
   const handleCategoryFilter = React.useCallback(
     (colId: string, values: string[], includeNull: boolean) =>
       actions.setCategoryHistogramFilter(colId, values, includeNull, stateRef),
+    [stateRef]
+  );
+
+  // Scatter plot matrix dialog (opened from the Analytics menu): a 2D brush
+  // becomes an analytics filter on both axes.
+  const handleSplomBrushFilter = React.useCallback(
+    (
+      xColId: string,
+      xRange: [number, number] | null,
+      yColId: string,
+      yRange: [number, number] | null
+    ) =>
+      actions.setSplomBrushFilter(xColId, xRange, yColId, yRange, stateRef),
     [stateRef]
   );
 
@@ -614,6 +633,13 @@ const GridPaneInternal: React.FunctionComponent<GridPaneProps> = ({
         onBrushFilter={onHistogramBrushFilter}
         onCategoryFilter={handleCategoryFilter}
       />
+      <SplomDialog
+        appState={appState}
+        stateRef={stateRef}
+        onClose={handleCloseSplom}
+        onBrushFilter={handleSplomBrushFilter}
+        onOpenDistribution={handleSelectHistogramColumn}
+      />
     </>
   );
 };
@@ -634,7 +660,9 @@ const gridPanePropsEqual = (oldProps: any, nextProps: any): boolean => {
     oldProps.appState.showColumnHistograms ===
       nextProps.appState.showColumnHistograms &&
     oldProps.appState.histogramDialogColId ===
-      nextProps.appState.histogramDialogColId;
+      nextProps.appState.histogramDialogColId &&
+    oldProps.appState.splomDialogOpen ===
+      nextProps.appState.splomDialogOpen;
   return ret;
 };
 
