@@ -43,7 +43,7 @@ Item **SPLOM** ("Scatter Plot Matrix") dans le menu **Analytics** → dialog int
 ## Implementation Order
 1. ✅ **Spec** (`vibe/splom/*.md`) — fait (validé par l'utilisateur).
 2. ✅ **Step 1** — Backend reltab `splom.ts` : données scatter + sampling (TDD).
-3. ⏳ **Step 2** — Backend reltab : matrice de corrélation SQL + régression (TDD).
+3. ✅ **Step 2** — Backend reltab : matrice de corrélation SQL + régression (TDD).
 4. ⏳ **Step 3** — Actions tadviewer : état + `loadSplomData` + `setSplomBrushFilter`.
 5. ⏳ **Step 4** — UI `SplomDialog` : matrice + options.
 6. ⏳ **Step 5** — UI : master-detail, brush 2D, diagonale → Distribution, tooltips, log.
@@ -56,4 +56,4 @@ Item **SPLOM** ("Scatter Plot Matrix") dans le menu **Analytics** → dialog int
 - Snapshot BigInt SUM pré-existants (`basic.auto.test.ts`) hors scope.
 
 ## Next Step
-Démarrer **Step 2** : backend reltab — `pairwiseCorrelationSql`, `getCorrelationMatrix`, `getPairRegression` (TDD), avec CTE `__splom_src`, `UNION ALL`, perf sensitive (`pragma bottomup` si besoin), valeur de tolérance durée par famille (seuil : 8 s). Hash au commit : `1895440` (specs), branche `feat/splom`.
+Démarrer **Step 3** : actions tadviewer — `AppState.splomDialogOpen`, `openSplom`/`closeSplom`, `loadSplomData` (points + corr + colorFreqs), `setSplomBrushFilter` (pattern `setHistogramBrushFilter`/`filterExpWithoutCol`/`epochToTemporalString`). Hash au commit : `3016d4c` (step 1), branche `feat/splom`.

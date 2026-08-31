@@ -80,3 +80,22 @@ Journal de traçabilité : chaque action est consignée avec heure, fichiers, co
 - DuckDB retourne les entiers en `bigint` sur le query brut → la conversion est la responsabilité de `getScatterPlotData` (test d'intégration assoupli sur le query brut).
 
 **Résultat** : Step 1 terminé. Prochain : **Step 2** (corrélation SQL + régression).
+
+### Step 2 — Backend reltab : corrélation + régression SQL (TDD)
+
+**Heure** : ~02:20
+
+**Fichiers modifiés** :
+- `packages/reltab/src/splom.ts` : `PairCorrelation`, `PairRegression`, `pairwiseCorrelationSql` (CTE `WITH __splom_src AS MATERIALIZED` + `UNION ALL`, `corr(...)/regr_count(...)` par paire, quoting identifiants + échappement chaînes), `getCorrelationMatrix` (triangle supérieur, seulement numeric/temporal ; temporelles corrélées en epoch), `getPairRegression` (`regr_slope(y,x)`/`regr_intercept(y,x)`/`regr_r2(y,x)`/`regr_count(y,x)` + `WHERE ... IS NOT NULL`). `numOrNull` : NaN → null (DuckDB renvoie NaN pour corr sur constante).
+- `packages/reltab/test/splom.test.ts` : +8 tests (structure SQL, échappement, mapping, exclusion catégorielles, temporelles→epoch, r null, régression).
+- `packages/reltab-duckdb/test/splom.auto.test.ts` : +3 tests d'intégration (correlation sur barttest, `regr_slope(y,x)` validé avec le linéaire y=2x → slope=2, constante → corr null/slope 0/intercept mean).
+- Nouveaux `test/support/splom_lin.csv` et `test/support/splom_const.csv`.
+
+**Commandes exécutées** : reltab `npx tsc -p tsconfig-build.json` + tests (39/39) ; reltab-duckdb tsc + `splom.auto.test.ts` (6/6).
+
+**Problèmes rencontrés / solutions** :
+- `sqlEscapeString` double les `"` et renvoie la chaîne déjà entre quotes → littéraux `'a""b'` pour identifiants exotiques (test ajusté au comportement réel).
+- **DuckDB sur colonne constante** : `corr` → `NaN` (mappé → null), `regr_slope` → 0, `regr_intercept` → moyenne, `regr_r2` → 1. Comportement verrouillé par test d'intégration.
+- Oubli de rebuild du dist reltab entre reltab et reltab-duckdb (import via node_modules) → rebuild reltab avant de relancer duckdb.
+
+**Résultat** : Step 2 terminé. Prochain : **Step 3** (actions tadviewer : état + loadSplomData + setSplomBrushFilter).

@@ -2,6 +2,8 @@ import * as reltab from "reltab";
 import {
   DataSourceConnection,
   DbDataSource,
+  getCorrelationMatrix,
+  getPairRegression,
   getScatterPlotData,
   splomScatterQuery,
 } from "reltab";
@@ -24,6 +26,14 @@ beforeAll(async (): Promise<DataSourceConnection> => {
   await reltabDuckDB.nativeCSVImport(
     duckDbDriver.db,
     "test/support/barttest.csv"
+  );
+  await reltabDuckDB.nativeCSVImport(
+    duckDbDriver.db,
+    "test/support/splom_lin.csv"
+  );
+  await reltabDuckDB.nativeCSVImport(
+    duckDbDriver.db,
+    "test/support/splom_const.csv"
   );
 
   return testCtx;
@@ -69,4 +79,46 @@ test("getScatterPlotData without sample returns all rows", async () => {
   });
   expect(data.sampled).toBe(false);
   expect(data.points.length).toBe(data.totalRows);
+});
+
+test("getCorrelationMatrix runs the WITH materialized query on DuckDB", async () => {
+  const schema = await testCtx.getSchema(q1);
+  const corr = await getCorrelationMatrix(testCtx, q1, schema, [
+    "Base",
+    "TCOE",
+  ]);
+  expect(corr).toHaveLength(1);
+  const c = corr[0];
+  expect(c.xColId).toBe("Base");
+  expect(c.yColId).toBe("TCOE");
+  expect(c.n).toBeGreaterThan(0);
+  expect(c.r).not.toBeNull();
+  expect(Math.abs(c.r as number)).toBeLessThanOrEqual(1);
+});
+
+test("regr_slope(y, x) regresses y over x on DuckDB", async () => {
+  const lin = reltab.tableQuery("splom_lin");
+  const schema = await testCtx.getSchema(lin);
+  const reg = await getPairRegression(testCtx, lin, schema, "x", "y");
+  expect(reg.n).toBe(4);
+  expect(reg.slope).toBeCloseTo(2, 5);
+  expect(reg.intercept).toBeCloseTo(0, 4);
+  expect(reg.r).toBeCloseTo(1, 5);
+  expect(reg.r2).toBeCloseTo(1, 5);
+});
+
+test("constant column yields null correlation but non-zero n", async () => {
+  const cq = reltab.tableQuery("splom_const");
+  const schema = await testCtx.getSchema(cq);
+  const corr = await getCorrelationMatrix(testCtx, cq, schema, ["x", "y"]);
+  expect(corr).toHaveLength(1);
+  expect(corr[0].r).toBeNull();
+  expect(corr[0].n).toBe(3);
+  const reg = await getPairRegression(testCtx, cq, schema, "x", "y");
+  // DuckDB maps constant data to NaN for corr() (→ null) and falls back to
+  // slope 0 / mean intercept for regr_*.
+  expect(reg.r).toBeNull();
+  expect(reg.slope).toBe(0);
+  expect(reg.intercept).toBe(5);
+  expect(reg.n).toBe(3);
 });

@@ -9,7 +9,10 @@ import { DataSourceConnection } from "./DataSource";
 import { QueryExp, sqlQuery } from "./QueryExp";
 import { Schema } from "./Schema";
 import { TableRep, Row } from "./TableRep";
-import { epoch, col } from "./defs";
+import { epoch, col, sqlEscapeString } from "./defs";
+
+const quoteColName = (cid: string): string =>
+  '"' + cid.replace(/"/g, '""') + '"';
 
 // Classification of a matrix column: numeric (continuous axis), temporal
 // (converted to epoch seconds), or categorical (discrete axis / color).
@@ -42,6 +45,26 @@ export interface ScatterPlotOptions {
   colorColId?: string | null;
   sampleLimit?: number; // 0/undefined => no sampling
   randomSample?: boolean; // default true: ORDER BY random() LIMIT n
+}
+
+// Correlation of a numeric pair (upper triangle of the matrix). r is null when
+// corr() is NULL (constant column / fewer than 2 non-null pairs).
+export interface PairCorrelation {
+  xColId: string;
+  yColId: string;
+  r: number | null;
+  n: number; // regr_count: pairs where x AND y are non-null
+}
+
+// Linear regression of a pair, used for the master-detail trend line.
+export interface PairRegression {
+  xColId: string;
+  yColId: string;
+  r: number | null;
+  slope: number | null;
+  intercept: number | null;
+  r2: number | null;
+  n: number;
 }
 
 // Name of the derived column carrying the epoch-second value of a temporal
@@ -153,5 +176,147 @@ export async function getScatterPlotData(
     sampled,
     totalRows,
     colorColId: colorColId ?? null,
+  };
+}
+
+/**
+ * Build a single-scan SQL query computing Pearson correlation (r) and the
+ * non-null pair count (n) for every (x, y) pair. A MATERIALIZED CTE over the
+ * base SQL avoids re-scanning the source once per pair.
+ */
+export function pairwiseCorrelationSql(
+  baseSql: string,
+  pairs: Array<[xColId: string, yColId: string]>
+): string {
+  const srcHead = `WITH __splom_src AS MATERIALIZED (\n  ${baseSql}\n)\n`;
+  if (pairs.length === 0) {
+    return `${srcHead}SELECT NULL AS __x, NULL AS __y, NULL AS __r, 0 AS __n\nFROM __splom_src\nWHERE 1 = 0`;
+  }
+  const selectSeqs = pairs.map(([x, y]) => {
+    const qx = quoteColName(x);
+    const qy = quoteColName(y);
+    return [
+      `SELECT ${sqlEscapeString(x)} AS __x, ${sqlEscapeString(y)} AS __y,`,
+      `       corr(${qx}, ${qy}) AS __r,`,
+      `       regr_count(${qx}, ${qy}) AS __n`,
+      "FROM __splom_src",
+    ].join("\n");
+  });
+  return srcHead + selectSeqs.join("\nUNION ALL\n");
+}
+
+const numOrNull = (v: unknown): number | null => {
+  if (typeof v === "bigint") {
+    return Number(v);
+  }
+  if (v == null) {
+    return null;
+  }
+  const n = v as number;
+  // DuckDB returns NaN for corr on constant data / insufficient variance
+  return Number.isNaN(n) ? null : n;
+};
+
+/**
+ * Compute the correlation for every eligible pair of the upper triangle.
+ * Pairs are counted when both columns are numeric or temporal (temporal ones
+ * are correlated in epoch space); any categorical column involved is skipped
+ * (the UI shows "n/a" for those cells).
+ */
+export async function getCorrelationMatrix(
+  dsConn: DataSourceConnection,
+  baseQuery: QueryExp,
+  schema: Schema,
+  matrixColIds: string[]
+): Promise<PairCorrelation[]> {
+  if (matrixColIds.length < 2) {
+    return [];
+  }
+  const nameToCid: Record<string, string> = {};
+  const names: string[] = [];
+  const { query, derivedNames } = splomScatterQuery(baseQuery, schema, matrixColIds);
+  for (const cid of matrixColIds) {
+    if (!columnKindIsNumeric(schema.columnType(cid))) {
+      continue;
+    }
+    const name = derivedNames[cid] ?? cid;
+    nameToCid[name] = cid;
+    names.push(name);
+  }
+  if (names.length < 2) {
+    return [];
+  }
+  const pairs: Array<[string, string]> = [];
+  for (let i = 0; i < names.length - 1; i++) {
+    for (let j = i + 1; j < names.length; j++) {
+      pairs.push([names[i], names[j]]);
+    }
+  }
+  const baseSql = await dsConn.getSqlForQuery(query);
+  const corrSql = pairwiseCorrelationSql(
+    baseSql,
+    pairs
+  );
+  const res = await dsConn.evalQuery(sqlQuery(corrSql));
+  const correlations: PairCorrelation[] = [];
+  for (const row of res.rowData) {
+    const xName = row.__x;
+    const yName = row.__y;
+    if (typeof xName !== "string" || typeof yName !== "string") {
+      continue;
+    }
+    correlations.push({
+      xColId: nameToCid[xName] ?? xName,
+      yColId: nameToCid[yName] ?? yName,
+      r: numOrNull(row.__r),
+      n: numOrNull(row.__n) ?? 0,
+    });
+  }
+  return correlations;
+}
+
+/**
+ * Linear regression (and correlation) of y over x, for the master-detail trend
+ * line. x and y are the original matrix column ids; temporal columns are
+ * regressed in epoch space.
+ */
+export async function getPairRegression(
+  dsConn: DataSourceConnection,
+  baseQuery: QueryExp,
+  schema: Schema,
+  xColId: string,
+  yColId: string
+): Promise<PairRegression> {
+  const { query, derivedNames } = splomScatterQuery(baseQuery, schema, [
+    xColId,
+    yColId,
+  ]);
+  const baseSql = await dsConn.getSqlForQuery(query);
+  const xName = derivedNames[xColId] ?? xColId;
+  const yName = derivedNames[yColId] ?? yColId;
+  const qx = quoteColName(xName);
+  const qy = quoteColName(yName);
+  const regrSql = [
+    `SELECT corr(${qx}, ${qy}) AS __r,`,
+    `       regr_slope(${qy}, ${qx}) AS __slope,`,
+    `       regr_intercept(${qy}, ${qx}) AS __intercept,`,
+    `       regr_r2(${qy}, ${qx}) AS __r2,`,
+    `       regr_count(${qy}, ${qx}) AS __n`,
+    "FROM ( " + baseSql + " ) __s",
+    `WHERE ${qx} IS NOT NULL AND ${qy} IS NOT NULL`,
+  ].join("\n");
+  const res = await dsConn.evalQuery(sqlQuery(regrSql));
+  const row = res.rowData[0];
+  if (!row) {
+    return { xColId, yColId, r: null, slope: null, intercept: null, r2: null, n: 0 };
+  }
+  return {
+    xColId,
+    yColId,
+    r: numOrNull(row.__r),
+    slope: numOrNull(row.__slope),
+    intercept: numOrNull(row.__intercept),
+    r2: numOrNull(row.__r2),
+    n: numOrNull(row.__n) ?? 0,
   };
 }

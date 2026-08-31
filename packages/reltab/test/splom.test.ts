@@ -3,7 +3,10 @@ import { Schema } from "../src/Schema";
 import { tableQuery } from "../src/QueryExp";
 import { DuckDBDialect } from "../src/dialects/DuckDBDialect";
 import {
+  getCorrelationMatrix,
+  getPairRegression,
   getScatterPlotData,
+  pairwiseCorrelationSql,
   splomColKind,
   splomScatterQuery,
 } from "../src/splom";
@@ -195,5 +198,142 @@ describe("getScatterPlotData", () => {
     const scatterSql = runSqlQuery.mock.calls[1][0] as string;
     expect(scatterSql).toContain("LIMIT");
     expect(scatterSql).not.toContain("ORDER BY random()");
+  });
+});
+
+describe("pairwiseCorrelationSql", () => {
+  test("builds a single-scan WITH + UNION ALL correlation query", () => {
+    const sql = pairwiseCorrelationSql("SELECT \"a\", \"b\"\nFROM t", [
+      ["a", "b"],
+      ["a", "c"],
+    ]);
+    expect(sql).toContain("WITH __splom_src AS MATERIALIZED");
+    expect(sql).toContain("SELECT \"a\", \"b\"\nFROM t");
+    expect(sql).toContain("corr(\"a\", \"b\") AS __r");
+    expect(sql).toContain("regr_count(\"a\", \"b\") AS __n");
+    expect(sql).toContain("'a' AS __x, 'b' AS __y");
+    expect(sql).toContain("UNION ALL");
+    expect(sql).toContain("corr(\"a\", \"c\")");
+  });
+
+  test("escapes quotes in identifiers and literals", () => {
+    const sql = pairwiseCorrelationSql("SELECT 1", [["a\"b", "c'd"]]);
+    expect(sql).toContain('corr("a""b", "c\'d")');
+    expect(sql).toContain("'a\"\"b' AS __x");
+    expect(sql).toContain("'c''d' AS __y");
+  });
+
+  test("returns an empty result query when there are no pairs", () => {
+    const sql = pairwiseCorrelationSql("SELECT 1", []);
+    expect(sql).toContain("WITH __splom_src AS MATERIALIZED");
+    expect(sql).toContain("WHERE 1 = 0");
+  });
+});
+
+describe("getCorrelationMatrix", () => {
+  test("computes correlations for numeric pairs only", async () => {
+    const runSqlQuery = jest.fn().mockResolvedValue([
+      { __x: "a", __y: "b", __r: 0.5, __n: BigInt(10) },
+    ]);
+    const ds = new DbDataSource(makeDriver(runSqlQuery));
+
+    const corr = await getCorrelationMatrix(
+      ds,
+      tableQuery("t"),
+      tableSchema,
+      ["a", "b", "c"]
+    );
+
+    expect(corr).toEqual([{ xColId: "a", yColId: "b", r: 0.5, n: 10 }]);
+    const corrSql = runSqlQuery.mock.calls[0][0] as string;
+    expect(corrSql).toContain("WITH __splom_src AS MATERIALIZED");
+    expect(corrSql).toContain("corr(\"a\", \"b\")");
+    expect(corrSql).not.toContain("corr(\"c\"");
+  });
+
+  test("correlates temporal columns in epoch space and maps back names", async () => {
+    const runSqlQuery = jest.fn().mockResolvedValue([
+      { __x: "a", __y: "__splom_d", __r: 0.7, __n: BigInt(8) },
+    ]);
+    const ds = new DbDataSource(makeDriver(runSqlQuery));
+
+    const corr = await getCorrelationMatrix(
+      ds,
+      tableQuery("t"),
+      tableSchema,
+      ["a", "d"]
+    );
+
+    expect(corr).toEqual([{ xColId: "a", yColId: "d", r: 0.7, n: 8 }]);
+    const corrSql = runSqlQuery.mock.calls[0][0] as string;
+    expect(corrSql).toContain('corr("a", "__splom_d")');
+  });
+
+  test("returns [] when fewer than 2 numeric/temporal columns", async () => {
+    const runSqlQuery = jest.fn();
+    const ds = new DbDataSource(makeDriver(runSqlQuery));
+
+    const corr = await getCorrelationMatrix(
+      ds,
+      tableQuery("t"),
+      tableSchema,
+      ["a", "c"]
+    );
+    expect(corr).toEqual([]);
+    expect(runSqlQuery).not.toHaveBeenCalled();
+  });
+
+  test("keeps r null when corr() returns null", async () => {
+    const runSqlQuery = jest.fn().mockResolvedValue([
+      { __x: "a", __y: "b", __r: null, __n: BigInt(1) },
+    ]);
+    const ds = new DbDataSource(makeDriver(runSqlQuery));
+
+    const corr = await getCorrelationMatrix(
+      ds,
+      tableQuery("t"),
+      tableSchema,
+      ["a", "b"]
+    );
+    expect(corr).toEqual([{ xColId: "a", yColId: "b", r: null, n: 1 }]);
+  });
+});
+
+describe("getPairRegression", () => {
+  test("regresses y over x and maps the result", async () => {
+    const runSqlQuery = jest.fn().mockResolvedValue([
+      {
+        __r: 0.6,
+        __slope: 1.5,
+        __intercept: -2,
+        __r2: 0.36,
+        __n: BigInt(20),
+      },
+    ]);
+    const ds = new DbDataSource(makeDriver(runSqlQuery));
+
+    const reg = await getPairRegression(
+      ds,
+      tableQuery("t"),
+      tableSchema,
+      "a",
+      "b"
+    );
+
+    expect(reg).toEqual({
+      xColId: "a",
+      yColId: "b",
+      r: 0.6,
+      slope: 1.5,
+      intercept: -2,
+      r2: 0.36,
+      n: 20,
+    });
+    const regrSql = runSqlQuery.mock.calls[0][0] as string;
+    expect(regrSql).toContain('regr_slope("b", "a") AS __slope');
+    expect(regrSql).toContain('regr_intercept("b", "a") AS __intercept');
+    expect(regrSql).toContain('regr_r2("b", "a") AS __r2');
+    expect(regrSql).toContain('"a" IS NOT NULL AND "b" IS NOT NULL');
+    expect(regrSql).toContain("FROM ( ");
   });
 });
