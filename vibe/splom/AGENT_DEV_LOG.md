@@ -46,3 +46,37 @@ Journal de traçabilité : chaque action est consignée avec heure, fichiers, co
 - QueryParams vérifiés : aucun support 2D existant à réutiliser pour la matrice ; corrélation calculée sur **toutes** les lignes (pas sur l'échantillon).
 
 **Résultat** : spec complète écrite. En attente de validation utilisateur avant implémentation (branche `feat/splom`, step 1 TDD).
+
+### Étape SPEC — Validation & ajustements
+
+**Heure** : ~01:40
+
+**Actions** :
+1. Validation spec par l'utilisateur : ✅ "Valide, lance l'implémentation".
+2. Décisions complémentaires :
+   - Libellé menu : **"Scatter Plot Matrix"**.
+   - **Ouverture vide** (pas de présélection) : message "Select at least 2 numeric or temporal columns".
+3. MàJ specs (`mission.md`, `spec.md`, `STATE_HANDOFF.md`) pour acter l'ouverture vide + libellé.
+4. Création branche `feat/splom` + commit `1895440` `docs: add SPLOM mission spec, plan, state handoff and dev log`.
+
+### Step 1 — Backend reltab : données scatter + sampling (TDD)
+
+**Heure** : ~01:50
+
+**Fichiers créés/modifiés** :
+- `packages/reltab/src/splom.ts` (nouveau) : `SplomColKind`, `columnKindIsNumeric`, `splomColKind`, `ScatterPoint`, `ScatterPlotData`, `ScatterPlotOptions`, `splomScatterQuery` (temporelles → `__splom_<cid>` epoch), `getScatterPlotData` (rowCount + sampling random `ORDER BY random() LIMIT n` via leaf `sqlQuery(...)` + fallback `evalQuery(query,0,limit)`, BigInt→Number).
+- `packages/reltab/src/reltab.ts` : barrel `export * from "./splom"`.
+- `packages/reltab/test/splom.test.ts` (nouveau) : 9 tests unitaires (classification, query SQL, mapping, sampling).
+- `packages/reltab-duckdb/test/splom.auto.test.ts` (nouveau) : 3 tests d'intégration DuckDB (query scatter, sampling random, sans sample).
+
+**Commandes exécutées** :
+- `npx tsc -p tsconfig-build.json` (reltab) → succès.
+- `npx jest test/splom.test.ts` → 9/9 verts.
+- `npm test` (reltab) → 31/31 verts.
+- reltab-duckdb : `npx tsc -p tsconfig-build.json` + `npx jest splom.auto.test.ts` → 3/3 verts.
+
+**Problèmes rencontrés / solutions** :
+- `randomSample` non fourni était `undefined` → le fallback prenait le chemin `LIMIT` simple. Fix : défaut `useRandomSample = randomSample ?? true`.
+- DuckDB retourne les entiers en `bigint` sur le query brut → la conversion est la responsabilité de `getScatterPlotData` (test d'intégration assoupli sur le query brut).
+
+**Résultat** : Step 1 terminé. Prochain : **Step 2** (corrélation SQL + régression).

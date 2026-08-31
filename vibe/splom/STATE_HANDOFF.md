@@ -41,8 +41,8 @@ Item **SPLOM** ("Scatter Plot Matrix") dans le menu **Analytics** → dialog int
 - **tad-app** : `appMenu.ts` `analyticsSubmenu` (~l.135, item Distribution → `webContents.send("open-column-histogram")`) ; `electronRenderMain.tsx` (~l.260, handler IPC).
 
 ## Implementation Order
-1. ✅ **Spec** (`vibe/splom/*.md`) — fait (à valider par l'utilisateur avant implémentation).
-2. ⏳ **Step 1** — Backend reltab `splom.ts` : données scatter + sampling (TDD).
+1. ✅ **Spec** (`vibe/splom/*.md`) — fait (validé par l'utilisateur).
+2. ✅ **Step 1** — Backend reltab `splom.ts` : données scatter + sampling (TDD).
 3. ⏳ **Step 2** — Backend reltab : matrice de corrélation SQL + régression (TDD).
 4. ⏳ **Step 3** — Actions tadviewer : état + `loadSplomData` + `setSplomBrushFilter`.
 5. ⏳ **Step 4** — UI `SplomDialog` : matrice + options.
@@ -56,4 +56,4 @@ Item **SPLOM** ("Scatter Plot Matrix") dans le menu **Analytics** → dialog int
 - Snapshot BigInt SUM pré-existants (`basic.auto.test.ts`) hors scope.
 
 ## Next Step
-Faire valider la **spec** (`vibe/splom/spec.md`) par l'utilisateur, puis créer la branche `feat/splom` et démarrer **Step 1** (backend reltab, TDD).
+Démarrer **Step 2** : backend reltab — `pairwiseCorrelationSql`, `getCorrelationMatrix`, `getPairRegression` (TDD), avec CTE `__splom_src`, `UNION ALL`, perf sensitive (`pragma bottomup` si besoin), valeur de tolérance durée par famille (seuil : 8 s). Hash au commit : `1895440` (specs), branche `feat/splom`.
