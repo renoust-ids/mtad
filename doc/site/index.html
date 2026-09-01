@@ -135,6 +135,16 @@
           </div>
         </div>
       </div>
+
+      <div class="row" style="margin-top: 20px;">
+        <div class="col-sm-6 col-sm-offset-3">
+          <div class="specs-holder">
+            <img src="images/pivot-icon@2x.png" alt="pivot">
+            <p><strong>Scatter Plot Matrix &amp; Scatter Plot</strong></p>
+            <p>Open <strong>Analytics ▸ Scatter Plot Matrix</strong> to explore pairwise relationships across numeric, temporal or categorical columns in an N×N matrix, color-coded by a categorical column, with Pearson correlation annotations. Click any off-diagonal cell — or use <strong>Analytics ▸ Scatter Plot</strong> — to open that pair as a full 2D scatter with a <strong>2D brush</strong> (filter the grid on both axes), <strong>log X / log Y</strong> toggles, and a <strong>linear regression</strong> trend line and stats row.</p>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -162,7 +172,14 @@
   <div id="news" class="section news-section">
     <div class="container">
     <h3>News</h3>
-    <p class="lead">MTad 0.0.5 - September 2026</p>
+    <p class="lead">MTad 0.0.6 - September 2026</p>
+    <p>
+    MTad adds a <strong>Scatter Plot Matrix (SPLOM)</strong> and a standalone <strong>Scatter Plot</strong> view under the
+    Analytics menu — pairwise scatters with Pearson correlation, optional categorical coloring, sampling, 2D brush-to-filter,
+    log scales and linear regression — and strictly separates <strong>Table Filters</strong> and <strong>Analytics Filters</strong>
+    into their own editors (table filters are set only manually; analytics filters also come from View interactions).
+    </p>
+    <p class="lead" style="margin-top: 15px;">MTad 0.0.5 - September 2026</p>
     <p>
     The <strong>Distribution</strong> dialog now charts temporal (date/time/timestamp) columns with type-aware labels, adds
     double-click-editable bin counts and a categorical min-frequency threshold, and splits the footer into
@@ -198,6 +215,17 @@
   <div id="relnotes" class="section relnotes-section">
     <div class="container">
     <h3>Release Notes</h3>
+
+    <div class="release-section">
+      <h4>MTad 0.0.6 - September 2026</h4>
+      <h5>New Features</h5>
+      <ul>
+        <li><strong>Scatter Plot Matrix</strong> - Analytics ▸ Scatter Plot Matrix shows pairwise scatters across up to 10 numeric, temporal or categorical columns, with Pearson correlation annotations, categorical coloring, sampling, and a searchable multi-select</li>
+        <li><strong>Scatter Plot</strong> - Analytics ▸ Scatter Plot (or clicking an off-diagonal SPLOM cell) opens any single X/Y pair as a 2D scatter with 2D brush-to-filter, log X/Y toggles, linear regression trend line and stats row</li>
+        <li><strong>Strict Table / Analytics filter separation</strong> - the footer uses two independent editors (table-filter-editor and analytics-filter-editor); table filters are set only manually, while analytics filters also come from View interactions (brushing, bar clicks)</li>
+        <li><strong>Categorical-only SPLOM</strong> - the matrix can now be built from categorical-only column selections</li>
+      </ul>
+    </div>
 
     <div class="release-section">
       <h4>MTad 0.0.3 - August 2026</h4>

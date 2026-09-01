@@ -182,11 +182,19 @@ $ tad somefile.csv
         </P>
         <h5>Table &amp; Analytics Filters</h5>
         <P>
-        The footer groups filters into two tabs:
+        The footer groups filters into two strictly-separated tabs, each with its own editor:
         <ul>
-        <li><b>Table Filters</b> - the filter saved with the view (right-click the tabs to open the editor).</li>
-        <li><b>Analytics Filters</b> - filters created by brushing or selecting bars in the Distribution dialog; applied on top of the table filter while <b>Apply Analytics Filters</b> is checked.</li>
+        <li><b>Table Filters</b> - the filter saved with the view, filled <b>only</b> by manual input in the footer's table editor (never by View selections).</li>
+        <li><b>Analytics Filters</b> - filters created by brushing or selecting bars in the Distribution dialog, brushing a Scatter Plot, or clicking bars in the matrices; they can also be edited manually in the footer. They act on top of the table filter while <b>Apply Analytics Filters</b> is checked.</li>
         <li>Hovering a tab or editing a filter prefixes its SQL summary with <code>T: </code> or <code>A: </code>; the <b>✕</b> icon to the right of each tab clears that filter.</li>
+        </ul>
+        </P>
+        <h5>Scatter Plot Matrix &amp; Scatter Plot</h5>
+        <P>
+        The <b>Analytics</b> application menu also offers:
+        <ul>
+        <li><b>Scatter Plot Matrix</b> - explore pairwise relationships across up to 10 numeric, temporal or categorical columns in an N×N matrix, with Pearson correlation annotations and optional categorical coloring. Click a diagonal cell to open that column's Distribution, or click any off-diagonal scatterplot to open that pair in the Scatter Plot dialog.</li>
+        <li><b>Scatter Plot</b> - plot any single X/Y column pair as a 2D scatter with a 2D brush (filter the grid on both axes), log X/Y toggles, and a linear regression trend line with stats.</li>
         </ul>
         </P>
         <h5>Grid Interaction Notes</h5>

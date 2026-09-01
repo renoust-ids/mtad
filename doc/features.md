@@ -57,30 +57,36 @@ Shared behaviors:
 
 ## Scatter Plot Matrix
 
-The **Scatter Plot Matrix (SPLOM)** dialog (**Analytics ▸ Scatter Plot Matrix**) shows pairwise relationships across a user-selected set of columns in an N×N matrix. Pick which columns to include with the checkboxes (up to 10) and optionally **color by** a categorical column.
+The **Scatter Plot Matrix (SPLOM)** dialog (**Analytics ▸ Scatter Plot Matrix**) shows pairwise relationships across a user-selected set of columns in an N×N matrix. Pick which columns to include with a searchable multi-select dropdown (up to 10; numeric and temporal columns by default, categorical columns allowed) and optionally **color by** a categorical column.
 
-- **Matrix cells** show one scatter per column pair, with the Pearson correlation annotated in the corner (`r = …`). The cell background is tinted by the correlation (blue positive, red negative, gray near zero) in the upper triangle.
+- **Matrix cells** show one scatter per column pair. For numeric/temporal pairs the Pearson correlation is annotated in the corner (`r = …`) and the cell background is tinted by it (blue positive, red negative, gray near zero) in the upper triangle; categorical pairs plot the categories without a correlation. The matrix can be built from numeric, temporal, **and categorical** columns — including categorical-only selections.
 - **Diagonal cells** show a mini distribution of the column; clicking one opens the **Distribution** dialog for it.
-- **Master-detail** — click any off-diagonal cell to open a full-size view of that pair with:
-  - **2D brush** — drag a rectangle over the plot and the grid is filtered on both axes (an analytics filter). A click without dragging clears it; **Back to matrix** also clears it.
-  - **log X / log Y** toggles for strongly skewed axes.
-  - The **linear regression** trend line (slope/intercept via `regr_slope`/`regr_intercept`) and a stats row (`n`, `r`, `r²`, the fitted line, and per-axis value ranges).
-- Hovering a cell or the master plot shows an overlay tooltip with the exact values under the cursor.
+- **Off-diagonal cells** — clicking any off-diagonal scatterplot opens that X/Y pair in the standalone **Scatter Plot** dialog (mirroring how a diagonal cell opens a Distribution), with its full feature set: **2D brush** (filter the grid on both axes), **log X / log Y** toggles, the **linear regression** trend line and a stats row. Categorical axes are slot-encoded (each category an integer band with the category name as the tick label), so any column can be plotted against any other. The SPLOM stays open underneath, so closing the Scatter Plot returns directly to the matrix to continue exploring.
+- Hovering a cell shows an overlay tooltip with the exact values under the cursor.
 - **Sampling** (default 5 000 points, adjustable up to 20 000) bounds the number of points rendered, while the correlation matrix is always computed over the full data. **Use all rows** disables sampling.
 - The **Apply Table Filters** switch (default on) computes the matrix over the table-filtered subset; a **min-frequency** slider trims rare categories in the **color by** legend.
 - On **pivoted views** the matrix is computed over the aggregated query used by the view.
+
+## Scatter Plot
+
+The standalone **Scatter Plot** dialog (**Analytics ▸ Scatter Plot**) plots any single X/Y column pair as a 2D scatter, independent of the matrix. Choose the **X**, **Y**, and optional **Color by** columns with the dropdowns; numeric, temporal, and categorical columns can be placed on the axes (temporal columns are plotted in epoch seconds and labeled as dates).
+
+- It is the same interactive chart that a SPLOM off-diagonal cell opens: a **2D brush** (filter the grid on both axes), **log X / log Y** toggles, the **linear regression** trend line and a stats row (`n`, `r`, `r²`, fitted line, per-axis ranges).
+- **Categorical axes** are slot-encoded (each category is an integer band labeled with the category name), so any column — categorical included — can be plotted on either axis. Brushing a categorical axis filters to the brushed categories (an `IN` row in the Analytics Filters editor).
+- **Color by** assigns each distinct value a palette color and renders a legend next to the plot.
+- **Sampling** (default 5 000, adjustable up to 20 000) bounds the number of points; **Use all rows** disables sampling. The **Apply Table Filters** switch (default on) computes the plot over the table-filtered subset.
 
 ## Table & Analytics Filters
 
 The footer splits filtering into two independent concepts:
 
-- **Table Filters** — the filter that is saved with the view and drives the visible grid.
-- **Analytics Filters** — ad-hoc filters created by exploration: brushing the Distribution dialog, brushing a Scatter Plot Matrix pair, or clicking categorical bars. They are applied on top of the table filter (`filter AND analytics_filter`) and can be turned on/off with the **Apply Analytics Filters** checkbox in the footer.
+- **Table Filters** — the filter that is saved with the view and drives the visible grid. It is filled **only through manual input** in the footer editor (never by View selections).
+- **Analytics Filters** — ad-hoc filters created by exploration: brushing the Distribution dialog, brushing a Scatter Plot Matrix pair or a Scatter Plot, or clicking categorical bars. They are applied on top of the table filter (`filter AND analytics_filter`) and can be turned on/off with the **Apply Analytics Filters** checkbox in the footer. Every View selection funnels through a single shared entry point (`setAnalyticsClauses`) that **appends** the new criteria to the current analytics filter (an `AND` of all clauses), replacing only the clauses for the columns being re-selected while preserving criteria from other Views.
 
 Footer behavior:
 
-- Two tabs, **Table Filters** and **Analytics Filters**, open the same filter editor for each.
-- A live **SQL summary** under the tabs shows the current filter. While hovering a tab or editing its filter, the summary is prefixed `T: ` (table) or `A: ` (analytics). Long summaries are cropped (60 chars, reduced by 4 when prefixed) so the prefix never changes the visible width.
+- Two tabs, **Table Filters** and **Analytics Filters**. Each tab opens its own dedicated editor form: the **Table Filter Editor** (`table-filter-editor` form class) and the **Analytics Filter Editor** (`analytics-filter-editor` form class), so the two editors remain strictly separated and independently styled/behaved. The table editor is the **only** way to populate the table filter; the analytics editor shares responsibility for its filter with View interactions (brushing, bar clicks).
+- A live **SQL summary** under the tabs shows the current filter. Because Views fill the analytics filter, the summary defaults to it (prefixed `A: `) whenever it is non-empty, so each View selection is reflected immediately; otherwise it shows the active tab's filter. While hovering a tab or editing its filter, the summary is prefixed `T: ` (table) or `A: ` (analytics). Long summaries are cropped (56 chars, reduced by 4 when prefixed) so the prefix never changes the visible width.
 - An **✕ icon** to the right of each tab clears that filter (table clear also propagates to the app-level `onFilter` callback).
 
 ## CSV Materialization
