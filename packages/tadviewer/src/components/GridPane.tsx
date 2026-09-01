@@ -13,6 +13,8 @@ import { CellEditStartData, DataGrid, DataGridProps } from "./DataGrid";
 import { CellEditModal } from "./CellEditModal";
 import HistogramDialog from "./HistogramDialog";
 import SplomDialog from "./SplomDialog";
+import ScatterPlotDialog from "./ScatterPlotDialog";
+import { ScatterAxisFilterArg } from "./categoricalAxis";
 import { SimpleClipboard } from "./SimpleClipboard";
 
 import { CellClickData } from "./CellClickData";
@@ -349,6 +351,19 @@ const GridPaneInternal: React.FunctionComponent<GridPaneProps> = ({
     [stateRef]
   );
 
+  const handleCloseScatterPlot = React.useCallback(
+    () => actions.closeScatterPlot(stateRef),
+    [stateRef]
+  );
+
+  // A non-diagonal SPLOM cell was clicked: open that XY pair as a standalone
+  // Scatter Plot dialog (closing the SPLOM).
+  const handleOpenScatterPlotForPair = React.useCallback(
+    (xColId: string, yColId: string) =>
+      actions.openScatterPlotForPair(xColId, yColId, stateRef),
+    [stateRef]
+  );
+
   const handleSelectHistogramColumn = React.useCallback(
     (columnId: string) => actions.openColumnHistogram(columnId, stateRef),
     [stateRef]
@@ -370,6 +385,16 @@ const GridPaneInternal: React.FunctionComponent<GridPaneProps> = ({
       yRange: [number, number] | null
     ) =>
       actions.setSplomBrushFilter(xColId, xRange, yColId, yRange, stateRef),
+    [stateRef]
+  );
+
+  // Standalone Scatter Plot brush: per-axis clauses (numeric range or
+  // categorical IN) forwarded straight to the coupled action.
+  const handleScatterPlotBrushFilter = React.useCallback(
+    (
+      xArg: ScatterAxisFilterArg,
+      yArg: ScatterAxisFilterArg
+    ) => actions.setScatterPlotBrushFilter(xArg, yArg, stateRef),
     [stateRef]
   );
 
@@ -637,8 +662,14 @@ const GridPaneInternal: React.FunctionComponent<GridPaneProps> = ({
         appState={appState}
         stateRef={stateRef}
         onClose={handleCloseSplom}
-        onBrushFilter={handleSplomBrushFilter}
         onOpenDistribution={handleSelectHistogramColumn}
+        onOpenScatterPlot={handleOpenScatterPlotForPair}
+      />
+      <ScatterPlotDialog
+        appState={appState}
+        stateRef={stateRef}
+        onClose={handleCloseScatterPlot}
+        onBrushFilter={handleScatterPlotBrushFilter}
       />
     </>
   );
@@ -662,7 +693,9 @@ const gridPanePropsEqual = (oldProps: any, nextProps: any): boolean => {
     oldProps.appState.histogramDialogColId ===
       nextProps.appState.histogramDialogColId &&
     oldProps.appState.splomDialogOpen ===
-      nextProps.appState.splomDialogOpen;
+      nextProps.appState.splomDialogOpen &&
+    oldProps.appState.scatterPlotDialogOpen ===
+      nextProps.appState.scatterPlotDialogOpen;
   return ret;
 };
 

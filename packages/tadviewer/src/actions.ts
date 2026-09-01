@@ -8,6 +8,7 @@ import {
 } from "./AppState";
 import * as reltab from "reltab";
 import { Activity, ColumnListTypes } from "./components/defs";
+import { ScatterAxisFilterArg } from "./components/categoricalAxis";
 import { Path, PathTree } from "aggtree";
 import * as aggtree from "aggtree";
 import { StateRef, update, mutableGet, awaitableUpdate_ } from "oneref";
@@ -565,68 +566,146 @@ const epochToTemporalString = (kind: reltab.ColumnKind, epochSec: number): strin
   return d.toISOString().slice(0, 19);
 };
 
+// --- Common analytics-filter entry point for Views (Distribution, Scatter) ---
+//
+// Every 2D visualization that lets the user "select" elements (brushing a
+// scatter, brushing a histogram, clicking categorical bars) funnels its result
+// through setAnalyticsClauses below. Requirements that motivate this single
+// code path:
+//   1. Selections APPEND to the current analytics filter (an AND of all
+//      clauses), replacing only the clauses for the columns being (re)selected
+//      while preserving criteria from other Views.
+//   2. Views only ever write the ANALYTICS filter (analyticsFilterExp); the
+//      TABLE filter (filterExp) is written solely by manual editing in the
+//      footer editor.
+//
+// A single per-column constraint to append. `add` appends that column's new
+// clauses onto the given AND filter.
+export interface AnalyticsConstraint {
+  colId: string;
+  add: (fe: reltab.FilterExp) => reltab.FilterExp;
+}
+
+// Numeric/temporal range constraint (>= lo AND <= hi). Temporal columns store
+// epoch-second values but the filter references the raw column with a typed
+// literal (DATE/TIMESTAMP), which DuckDB casts in comparisons. Returns null for
+// a null range (i.e. "no constraint" for this axis).
+const mkRangeConstraint = (
+  kind: reltab.ColumnKind,
+  colId: string,
+  range: [number, number] | null
+): AnalyticsConstraint | null => {
+  if (range == null) {
+    return null;
+  }
+  return {
+    colId,
+    add: (fe) => {
+      const lhs = col(colId);
+      if (reltab.isTemporalKind(kind)) {
+        return fe
+          .ge(lhs, constVal(epochToTemporalString(kind, range[0])))
+          .le(lhs, constVal(epochToTemporalString(kind, range[1])));
+      }
+      return fe.ge(lhs, constVal(range[0])).le(lhs, constVal(range[1]));
+    },
+  };
+};
+
+// Categorical constraint (IN values, optionally plus IS NULL). Returns null
+// when neither values nor includeNull are set (i.e. the column's filter is only
+// being cleared).
+const mkValuesConstraint = (
+  colId: string,
+  values: string[] | null,
+  includeNull?: boolean
+): AnalyticsConstraint | null => {
+  const hasValues = values != null && values.length > 0;
+  const hasNull = includeNull === true;
+  if (!hasValues && !hasNull) {
+    return null;
+  }
+  return {
+    colId,
+    add: (fe) => {
+      let nfe: reltab.FilterExp = fe;
+      if (hasValues) {
+        nfe = nfe.chainBinRelExp(
+          "IN",
+          col(colId),
+          constVal(values as unknown as reltab.Scalar)
+        );
+      }
+      if (hasNull) {
+        nfe = nfe.isNull(col(colId));
+      }
+      return nfe;
+    },
+  };
+};
+
+// Build the constraint for a scatter-axis argument (range for numeric/temporal,
+// values for categorical).
+const mkAxisArgConstraint = (
+  appState: AppState,
+  arg: ScatterAxisFilterArg
+): AnalyticsConstraint | null => {
+  const kind = appState.viewState.baseSchema.columnType(arg.colId).kind;
+  if (arg.values != null) {
+    return mkValuesConstraint(arg.colId, arg.values);
+  }
+  return mkRangeConstraint(kind, arg.colId, arg.range ?? null);
+};
+
+// Common entry point for all View-derived analytics filters. Cleans up any
+// prior clauses on the given columns, then appends the new constraints to the
+// existing analytics filter (AND), preserving clauses for other columns.
+export const setAnalyticsClauses = (
+  cleanColIds: string[],
+  constraints: AnalyticsConstraint[],
+  stateRef: StateRef<AppState>
+) => {
+  const appState = mutableGet(stateRef);
+  const prevFE = appState.viewState.viewParams.analyticsFilterExp;
+  if (prevFE != null && prevFE.op !== "AND") {
+    log.info(
+      "setAnalyticsClauses: unexpected structure for current filter expression, ignoring"
+    );
+    return;
+  }
+  let baseFE = prevFE == null ? and() : prevFE;
+  for (const cid of cleanColIds) {
+    baseFE = filterExpWithoutCol(baseFE, cid);
+  }
+  let nextFE = baseFE;
+  for (const c of constraints) {
+    nextFE = c.add(nextFE);
+  }
+  update(
+    stateRef,
+    vpUpdate(
+      (viewParams) =>
+        viewParams.set("analyticsFilterExp", nextFE) as ViewParams
+    )
+  );
+};
+
 export const setHistogramBrushFilter = (
   colId: string,
   range: [number, number] | null,
   stateRef: StateRef<AppState>
 ) => {
-  let baseFE: FilterExp;
-  if (range !== null) {
-    const appState = mutableGet(stateRef);
-    const prevFE = appState.viewState.viewParams.analyticsFilterExp;
-    // ensure that prevFE is either null or a top-level "AND" operator:
-    if (prevFE != null) {
-      if (prevFE.op !== "AND") {
-        log.info(
-          "setHistogramBrushFilter: unexpected structure for current filter expression, ignoring brush filter"
-        );
-        return;
-      }
-      // drop any previous mentions of colId from the filter expression:
-      const cleanOpArgs = prevFE.opArgs.filter((subExp: SubExp) => {
-        if (subExp.expType === "BinRelExp") {
-          const lhs = subExp.lhs;
-          if (lhs.expType === "ColRef" && lhs.colName === colId) {
-            return false;
-          }
-        }
-        return true;
-      });
-      baseFE = new FilterExp("AND", cleanOpArgs);
-    } else {
-      baseFE = and();
-    }
-    // Temporal columns are histogrammed over epoch-second values, but the
-    // stored filter must reference the raw column (the filter editor and
-    // other code assume a colref left-hand side). Convert the epoch range
-    // back to a column-typed literal (e.g. DATE '2024-01-15'), which DuckDB
-    // implicitly casts in comparisons.
-    const kind = appState.viewState.baseSchema.columnType(colId).kind;
-    const lhs = col(colId);
-    if (reltab.isTemporalKind(kind)) {
-      const nextFE = baseFE
-        .ge(lhs, constVal(epochToTemporalString(kind, range[0])))
-        .le(lhs, constVal(epochToTemporalString(kind, range[1])));
-      update(
-        stateRef,
-        vpUpdate(
-          (viewParams) =>
-            viewParams.set("analyticsFilterExp", nextFE) as ViewParams
-        )
-      );
-      return;
-    }
-    const nextFE = baseFE
-      .ge(lhs, constVal(range[0]))
-      .le(lhs, constVal(range[1]));
-    update(
-      stateRef,
-      vpUpdate(
-        (viewParams) =>
-          viewParams.set("analyticsFilterExp", nextFE) as ViewParams
-      )
-    );
+  if (range === null) {
+    return;
   }
+  const appState = mutableGet(stateRef);
+  const kind = appState.viewState.baseSchema.columnType(colId).kind;
+  const constraint = mkRangeConstraint(kind, colId, range);
+  setAnalyticsClauses(
+    [colId],
+    constraint != null ? [constraint] : [],
+    stateRef
+  );
 };
 
 export const setHistogramBrushRange = (
@@ -725,32 +804,11 @@ export const setCategoryHistogramFilter = (
   includeNull: boolean,
   stateRef: StateRef<AppState>
 ) => {
-  const appState = mutableGet(stateRef);
-  const prevFE = appState.viewState.viewParams.analyticsFilterExp;
-  if (prevFE != null && prevFE.op !== "AND") {
-    log.info(
-      "setCategoryHistogramFilter: unexpected structure for current filter expression, ignoring"
-    );
-    return;
-  }
-  const baseFE = prevFE == null ? and() : filterExpWithoutCol(prevFE, colId);
-  let nextFE = baseFE;
-  if (values.length > 0) {
-    nextFE = nextFE.chainBinRelExp(
-      "IN",
-      col(colId),
-      constVal(values as unknown as reltab.Scalar)
-    );
-  }
-  if (includeNull) {
-    nextFE = nextFE.isNull(col(colId));
-  }
-  update(
-    stateRef,
-    vpUpdate(
-      (viewParams) =>
-        viewParams.set("analyticsFilterExp", nextFE) as ViewParams
-    )
+  const constraint = mkValuesConstraint(colId, values, includeNull);
+  setAnalyticsClauses(
+    [colId],
+    constraint != null ? [constraint] : [],
+    stateRef
   );
 };
 
@@ -835,6 +893,57 @@ export const closeSplom = (stateRef: StateRef<AppState>) => {
   update(stateRef, (s) => s.set("splomDialogOpen", false) as AppState);
 };
 
+// Open / close the standalone "Analytics > Scatter Plot" dialog (a single-pair
+// 2D scatter built on the same shared ScatterPlot component as the SPLOM
+// master view). An optional {xColId,yColId} pair pre-seeds the dialog's axes
+// (used when a non-diagonal SPLOM cell is clicked to open that pair).
+export const openScatterPlot = (
+  stateRef: StateRef<AppState>,
+  pair?: { xColId: string; yColId: string }
+) => {
+  const app = mutableGet(stateRef);
+  if (app.viewState == null) {
+    return;
+  }
+  update(
+    stateRef,
+    (s) =>
+      s
+        .set("scatterPlotDialogOpen", true)
+        .set("scatterXColId", pair != null ? pair.xColId : null)
+        .set("scatterYColId", pair != null ? pair.yColId : null) as AppState
+  );
+};
+
+export const closeScatterPlot = (stateRef: StateRef<AppState>) => {
+  update(
+    stateRef,
+    (s) =>
+      s
+        .set("scatterPlotDialogOpen", false)
+        .set("scatterXColId", null)
+        .set("scatterYColId", null) as AppState
+  );
+};
+
+// Open the Scatter Plot dialog pre-seeded with a given XY pair (from a
+// non-diagonal SPLOM cell). The SPLOM dialog stays open underneath so the user
+// can continue exploring the matrix afterwards.
+export const openScatterPlotForPair = (
+  xColId: string,
+  yColId: string,
+  stateRef: StateRef<AppState>
+) => {
+  update(
+    stateRef,
+    (s) =>
+      s
+        .set("scatterPlotDialogOpen", true)
+        .set("scatterXColId", xColId)
+        .set("scatterYColId", yColId) as AppState
+  );
+};
+
 // Fetch the data backing the SPLOM dialog for the given query and schema:
 // scatter points (with sampling), the correlation matrix (computed over the
 // full data), and the color column's category frequencies when one is set.
@@ -876,11 +985,47 @@ export async function loadPairRegression(
   return reltab.getPairRegression(dbc, query, schema, xColId, yColId);
 }
 
+// Data backing the standalone scatter plot: points for the chosen (x, y, color)
+// columns plus the fitted linear regression for the pair.
+export interface ScatterPlotViewData {
+  points: reltab.ScatterPlotData;
+  regression: reltab.PairRegression | null;
+}
+
+export async function loadScatterPlot(
+  dbc: DataSourceConnection,
+  query: reltab.QueryExp,
+  schema: reltab.Schema,
+  xColId: string,
+  yColId: string,
+  colorColId: string | null,
+  sampleLimit: number
+): Promise<ScatterPlotViewData> {
+  const points = await reltab.getScatterPlotData(dbc, query, schema, {
+    matrixColIds: [xColId, yColId],
+    colorColId,
+    sampleLimit,
+  });
+  let regression: reltab.PairRegression | null = null;
+  try {
+    regression = await reltab.getPairRegression(
+      dbc,
+      query,
+      schema,
+      xColId,
+      yColId
+    );
+  } catch (err) {
+    // A non-regressable pair (e.g. NaN-producing data) should not break the
+    // whole dialog; the trend line is simply omitted.
+    regression = null;
+  }
+  return { points, regression };
+}
+
 // Set a 2D (rectangular) analytics filter from a SPLOM brush. Cleans up any
-// existing clauses referencing either column, then constrains both axes.
-// Temporal columns store epoch-second ranges but the filter references the raw
-// column with a typed literal (pattern of setHistogramBrushFilter). A null
-// range for an axis is treated as "no constraint" (i.e. clears that axis).
+// existing clauses referencing either column, then constrains both axes with
+// numeric/temporal ranges. A null range for an axis clears that axis.
 export const setSplomBrushFilter = (
   xColId: string,
   xRange: [number, number] | null,
@@ -889,43 +1034,31 @@ export const setSplomBrushFilter = (
   stateRef: StateRef<AppState>
 ) => {
   const appState = mutableGet(stateRef);
-  const prevFE = appState.viewState.viewParams.analyticsFilterExp;
-  if (prevFE != null && prevFE.op !== "AND") {
-    log.info(
-      "setSplomBrushFilter: unexpected structure for current filter expression, ignoring brush filter"
-    );
-    return;
-  }
-  let baseFE = prevFE == null
-    ? and()
-    : filterExpWithoutCol(filterExpWithoutCol(prevFE, xColId), yColId);
-  const addRange = (
-    fe: FilterExp,
-    colId: string,
-    range: [number, number] | null
-  ): FilterExp => {
-    if (range == null) {
-      return fe;
-    }
-    const kind = appState.viewState.baseSchema.columnType(colId).kind;
-    const lhs = col(colId);
-    if (reltab.isTemporalKind(kind)) {
-      return fe
-        .ge(lhs, constVal(epochToTemporalString(kind, range[0])))
-        .le(lhs, constVal(epochToTemporalString(kind, range[1])));
-    }
-    return fe
-      .ge(lhs, constVal(range[0]))
-      .le(lhs, constVal(range[1]));
-  };
-  const nextFE = addRange(addRange(baseFE, xColId, xRange), yColId, yRange);
-  update(
-    stateRef,
-    vpUpdate(
-      (viewParams) =>
-        viewParams.set("analyticsFilterExp", nextFE) as ViewParams
-    )
-  );
+  const kx = appState.viewState.baseSchema.columnType(xColId).kind;
+  const ky = appState.viewState.baseSchema.columnType(yColId).kind;
+  const constraints = [
+    mkRangeConstraint(kx, xColId, xRange),
+    mkRangeConstraint(ky, yColId, yRange),
+  ].filter((c) => c != null) as AnalyticsConstraint[];
+  setAnalyticsClauses([xColId, yColId], constraints, stateRef);
+};
+
+// Set the 2D scatter brush filter, one analytics-filter clause per axis:
+//   - numeric/temporal axis -> and(ge(col, lo), le(col, hi))
+//   - categorical axis       -> in(col, [v1, v2, ...])
+// Cleans up any existing clauses referencing either column (mirrors
+// setSplomBrushFilter / setCategoryHistogramFilter), then constrains both axes.
+export const setScatterPlotBrushFilter = (
+  xArg: ScatterAxisFilterArg,
+  yArg: ScatterAxisFilterArg,
+  stateRef: StateRef<AppState>
+) => {
+  const appState = mutableGet(stateRef);
+  const constraints = [
+    mkAxisArgConstraint(appState, xArg),
+    mkAxisArgConstraint(appState, yArg),
+  ].filter((c) => c != null) as AnalyticsConstraint[];
+  setAnalyticsClauses([xArg.colId, yArg.colId], constraints, stateRef);
 };
 
 // --- Join CSV Dialog Actions ---

@@ -10,6 +10,19 @@ import { FilterExp, SubExp } from "reltab";
 
 type RefUpdater = (f: (s: AppState) => AppState) => void;
 
+/**
+ * Table filters are populated ONLY by manual input in this form (never by
+ * View / analytics interactions).
+ */
+export const TABLE_FILTER_EDITOR_CLASS = "table-filter-editor";
+
+/**
+ * Analytics filters are populated either by manual input in this form or by
+ * interaction within analytics views (brushing, bar clicks). The form uses a
+ * distinct class so the two editors can be styled and targeted independently.
+ */
+export const ANALYTICS_FILTER_EDITOR_CLASS = "analytics-filter-editor";
+
 export interface FilterEditorProps {
   appState: AppState;
   stateRef: StateRef<AppState>;
@@ -18,6 +31,7 @@ export interface FilterEditorProps {
   onCancel: () => void;
   onApply: (fe: reltab.FilterExp) => void;
   onDone: () => void;
+  className: string;
 }
 
 const getOpArgs = (filterExp: FilterExp | null): (SubExp | null)[] => {
@@ -37,6 +51,7 @@ export const FilterEditor: React.FunctionComponent<FilterEditorProps> = ({
   onCancel,
   onApply,
   onDone,
+  className,
 }) => {
   const [op, setOp] = useState(filterExp != null ? filterExp.op : "AND");
   const [opArgs, setOpArgs] = useState(getOpArgs(filterExp));
@@ -98,7 +113,7 @@ export const FilterEditor: React.FunctionComponent<FilterEditorProps> = ({
   });
 
   return (
-    <form className="filter-editor" onSubmit={handleFormSubmit}>
+    <form className={className} onSubmit={handleFormSubmit}>
       <div className="filter-editor-filter-pane">
         <div className="filter-editor-select-row">
           <div className="bp4-select bp4-minimal">
@@ -134,3 +149,24 @@ export const FilterEditor: React.FunctionComponent<FilterEditorProps> = ({
     </form>
   );
 };
+
+/**
+ * Table filter editor form. Table filters can only be populated manually
+ * from this form (see actions.setFilter: never written by View interactions).
+ */
+export const TableFilterEditor: React.FunctionComponent<
+  Omit<FilterEditorProps, "className">
+> = (props) => (
+  <FilterEditor {...props} className={TABLE_FILTER_EDITOR_CLASS} />
+);
+
+/**
+ * Analytics filter editor form. Analytics filters are either filled manually
+ * from this form or by interaction within analytics views (see
+ * actions.setAnalyticsClauses).
+ */
+export const AnalyticsFilterEditor: React.FunctionComponent<
+  Omit<FilterEditorProps, "className">
+> = (props) => (
+  <FilterEditor {...props} className={ANALYTICS_FILTER_EDITOR_CLASS} />
+);

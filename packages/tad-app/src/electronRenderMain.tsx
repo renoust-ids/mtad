@@ -273,6 +273,10 @@ const init = async () => {
       actions.openSplom(stateRef);
     });
 
+    ipcRenderer.on("open-scatter-plot", () => {
+      actions.openScatterPlot(stateRef);
+    });
+
     document.addEventListener("copy", function (e) {});
 
     ipcRenderer.send("render-init-complete");

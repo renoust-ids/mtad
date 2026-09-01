@@ -72,6 +72,13 @@ export interface AppStateProps {
 
   splomDialogOpen: boolean;
 
+  scatterPlotDialogOpen: boolean;
+
+  // XY pair the Scatter Plot dialog should be pre-seeded with (set when a
+  // non-diagonal SPLOM cell is clicked to open that pair as a Scatter Plot).
+  scatterXColId: string | null;
+  scatterYColId: string | null;
+
   appLoadingTimer: Timer;
   activity: Activity;
   showRecordCount: boolean;
@@ -95,6 +102,9 @@ const defaultAppStateProps: AppStateProps = {
   joinCsvDialog: defaultJoinCsvDialogState,
   histogramDialogColId: null,
   splomDialogOpen: false,
+  scatterPlotDialogOpen: false,
+  scatterXColId: null,
+  scatterYColId: null,
   appLoadingTimer: new Timer(),
   activity: "None",
   showRecordCount: true,
@@ -121,6 +131,9 @@ export class AppState extends Immutable.Record(defaultAppStateProps) {
   public readonly joinCsvDialog!: JoinCsvDialogState;
   public readonly histogramDialogColId!: string | null;
   public readonly splomDialogOpen!: boolean;
+  public readonly scatterPlotDialogOpen!: boolean;
+  public readonly scatterXColId!: string | null;
+  public readonly scatterYColId!: string | null;
   public readonly appLoadingTimer!: Timer;
   public readonly activity!: Activity;
   public readonly showRecordCount!: boolean;

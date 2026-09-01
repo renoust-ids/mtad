@@ -145,6 +145,12 @@ export const createMenu = () => {
       focusedWindow?.webContents.send("open-splom", {});
     },
   },
+  {
+    label: "Scatter Plot",
+    click: (item: MenuItem, focusedWindow: BrowserWindow | undefined) => {
+      focusedWindow?.webContents.send("open-scatter-plot", {});
+    },
+  },
 ];
   const debugSubmenu: MenuItemConstructorOptions[] = [
     {

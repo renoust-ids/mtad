@@ -1,16 +1,21 @@
 // Scatter Plot Matrix (SPLOM) dialog, opened from the Analytics menu. Renders
 // an interactive N x N matrix over a manual column selection: pairwise scatters
 // with Pearson correlation annotations, a client-side mini histogram on the
-// diagonal (click opens the Distribution dialog), optional categorical
-// coloring, sampling, and a fatal "Apply Table Filters" toggle that follows
-// the Distribution dialog's behavior (analytics filters are intentionally
-// excluded, since they are the output of SPLOM brush interactions).
+// diagonal (click opens the Distribution dialog), and optional categorical
+// coloring, sampling, and an "Apply Table Filters" toggle. Clicking an
+// off-diagonal cell opens that X/Y pair in the standalone Scatter Plot dialog
+// (where 2D brushing produces the analytics filter).
 import * as React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import Select, {
+  components,
+  GroupBase,
+  OptionProps,
+  StylesConfig,
+} from "react-select";
 import * as reltab from "reltab";
 import {
   Button,
-  Checkbox,
   Dialog,
   HTMLSelect,
   Slider,
@@ -27,24 +32,15 @@ import {
 } from "victory";
 import { mutableGet, StateRef } from "oneref";
 import { AppState } from "../AppState";
-import {
-  SplomViewData,
-  loadSplomData,
-  loadPairRegression,
-} from "../actions";
-import RectBrushOverlay from "./RectBrushOverlay";
+import { SplomViewData, loadSplomData } from "../actions";
 
 export interface SplomDialogProps {
   appState: AppState;
   stateRef: StateRef<AppState>;
   onClose: () => void;
-  onBrushFilter: (
-    xColId: string,
-    xRange: [number, number] | null,
-    yColId: string,
-    yRange: [number, number] | null
-  ) => void;
   onOpenDistribution: (colId: string) => void;
+  // Open the standalone Scatter Plot dialog for a non-diagonal pair.
+  onOpenScatterPlot: (xColId: string, yColId: string) => void;
 }
 
 const MAX_MATRIX_COLS = 10;
@@ -79,14 +75,6 @@ const round2 = (n: number): number =>
 
 const countLabel = (n: number): string => n.toLocaleString();
 
-// Log10 helpers for the master-detail log-scale toggles. logScale clamps
-// non-positive values (Victory's log scale can't represent them) to a small
-// positive floor so the transform stays total.
-const logFloor = 1e-9;
-const toLog = (v: number): number =>
-  v <= logFloor ? Math.log10(logFloor) : Math.log10(v);
-const toLogInv = (v: number): number => Math.pow(10, v);
-
 // Correlated-cell background: blue for positive r, red for negative r, gray
 // for near-zero, with increasing saturation away from zero.
 const rColor = (r: number): string => {
@@ -109,12 +97,53 @@ interface CellPt {
   color: string;
 }
 
+// Option shape for the filterable column MultiSelect.
+interface ColOption {
+  value: string;
+  label: string;
+  kind: "numeric" | "categorical";
+}
+
+const colSelectStyles: StylesConfig<ColOption, true, GroupBase<ColOption>> = {
+  control: (provided) => ({ ...provided, minWidth: 320, fontSize: 13 }),
+  menu: (provided) => ({ ...provided, fontSize: 13 }),
+  option: (provided, { isSelected }) => ({
+    ...provided,
+    display: "flex",
+    alignItems: "center",
+  }),
+  multiValue: (provided) => ({ ...provided, fontSize: 12 }),
+  multiValueLabel: (provided) => ({ ...provided, paddingRight: 4 }),
+};
+
+// Option renderer that shows a checkbox and a "✓" mark for selected rows,
+// mirroring the PrimeReact MultiSelect UX.
+const CheckboxOption: React.FC<
+  OptionProps<ColOption, true, GroupBase<ColOption>>
+> = ({ innerProps, innerRef, label, isSelected, isDisabled }) => (
+  <div
+    ref={innerRef}
+    {...innerProps}
+    style={{
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      padding: "4px 8px",
+      opacity: isDisabled ? 0.4 : 1,
+    }}
+  >
+    <input type="checkbox" readOnly checked={isSelected} />
+    <span style={{ flex: 1 }}>{label}</span>
+    {isSelected && <span className="bp4-text-muted">✓</span>}
+  </div>
+);
+
 const SplomDialog: React.FunctionComponent<SplomDialogProps> = ({
   appState,
   stateRef,
   onClose,
-  onBrushFilter,
   onOpenDistribution,
+  onOpenScatterPlot,
 }) => {
   const [selectedCols, setSelectedCols] = useState<string[]>([]);
   const [colorColId, setColorColId] = useState<string | null>(null);
@@ -127,21 +156,8 @@ const SplomDialog: React.FunctionComponent<SplomDialogProps> = ({
   const [data, setData] = useState<SplomViewData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activePair, setActivePair] = useState<{
-    xColId: string;
-    yColId: string;
-  } | null>(null);
-  const [pairRegression, setPairRegression] = useState<reltab.PairRegression | null>(null);
-  const [brushSel, setBrushSel] = useState<{
-    x: [number, number];
-    y: [number, number];
-  } | null>(null);
-  const [logX, setLogX] = useState(false);
-  const [logY, setLogY] = useState(false);
   const [hoverInfo, setHoverInfo] = useState<HoverInfo | null>(null);
   const matrixWrapRef = useRef<HTMLDivElement>(null);
-  const masterWrapRef = useRef<HTMLDivElement>(null);
-  const [masterWidth, setMasterWidth] = useState<number>(720);
 
   const vs = appState.viewState;
   const pivotActive = vs != null && vs.viewParams.vpivots.length > 0;
@@ -200,14 +216,44 @@ const SplomDialog: React.FunctionComponent<SplomDialogProps> = ({
     );
   }, [viewSchema]);
 
-  const eligibleCount = useMemo(() => {
+  // Filterable MultiSelect options: grouped into numeric/temporal vs
+  // categorical, each labeled with the display name and type tag.
+  const colGroupedOptions = useMemo(() => {
     if (viewSchema == null) {
-      return 0;
+      return [];
     }
-    return selectedCols.filter(
-      (cid) => reltab.splomColKind(viewSchema.columnType(cid)) !== "categorical"
-    ).length;
-  }, [selectedCols, viewSchema]);
+    const byKind = (kind: "numeric" | "categorical") =>
+      availableCols
+        .filter(
+          (cid) =>
+            (kind === "numeric"
+              ? reltab.splomColKind(viewSchema.columnType(cid)) !== "categorical"
+              : reltab.splomColKind(viewSchema.columnType(cid)) === "categorical")
+        )
+        .map((cid) => ({
+          value: cid,
+          label: viewSchema.displayName(cid),
+          kind,
+        }));
+    const numeric = byKind("numeric");
+    const categorical = byKind("categorical");
+    const groups: GroupBase<ColOption>[] = [];
+    if (numeric.length > 0) {
+      groups.push({ label: "Numeric & temporal", options: numeric });
+    }
+    if (categorical.length > 0) {
+      groups.push({ label: "Categorical", options: categorical });
+    }
+    return groups;
+  }, [availableCols, viewSchema]);
+
+  const colSelectedOptions: ColOption[] = useMemo(() => {
+    const flat = colGroupedOptions.flatMap((g) => g.options);
+    const byValue = new Map(flat.map((o) => [o.value, o]));
+    return selectedCols
+      .map((cid) => byValue.get(cid))
+      .filter((o): o is ColOption => o != null);
+  }, [colGroupedOptions, selectedCols]);
 
   useEffect(() => {
     if (selectedCols.length === 0) {
@@ -225,7 +271,6 @@ const SplomDialog: React.FunctionComponent<SplomDialogProps> = ({
     setLoading(true);
     setError(null);
     setData(null);
-    setActivePair(null);
     runSplom();
     return () => {
       cancelled = true;
@@ -252,61 +297,6 @@ const SplomDialog: React.FunctionComponent<SplomDialogProps> = ({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matrixKey, colorColId, curSample, useAllRows, applyTableFilters, tableFilterKey, stateRef]);
-
-  // Measure the master-detail chart's available width so the plot (and its
-  // brush overlay) stays responsive inside the resizable dialog.
-  useEffect(() => {
-    const el = masterWrapRef.current;
-    if (el == null) {
-      return;
-    }
-    const update = () => {
-      const w = el.clientWidth;
-      if (w > 0) {
-        setMasterWidth(Math.max(320, w));
-      }
-    };
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [activePair]);
-
-  // Fetch the linear regression for the active master truss pair (on-demand),
-  // and reset brush selection / log scales whenever the active pair changes.
-  useEffect(() => {
-    setPairRegression(null);
-    setBrushSel(null);
-    if (activePair == null) {
-      return;
-    }
-    let cancelled = false;
-    const qs = getViewQueryAndSchema();
-    if (qs == null) {
-      return;
-    }
-    const app = mutableGet(stateRef);
-    const v = app.viewState;
-    if (!v?.dbc) {
-      return;
-    }
-    loadPairRegression(
-      v.dbc,
-      qs.query,
-      qs.schema,
-      activePair.xColId,
-      activePair.yColId
-    )
-      .then((reg) => {
-        if (!cancelled) setPairRegression(reg);
-      })
-      .catch(() => {
-        if (!cancelled) setPairRegression(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activePair, applyTableFilters, tableFilterKey, stateRef]);
 
   // Legend for the color column (top categories above the min frequency, the
   // rest grouped as "Other"). Computed before cellPts so cell colors can use it.
@@ -492,23 +482,6 @@ const SplomDialog: React.FunctionComponent<SplomDialogProps> = ({
       return v.toLocaleString(undefined, fmtOpts);
     }
     return String(v);
-  };
-
-  const toggleCol = (cid: string, checked: boolean) => {
-    setHoverInfo(null);
-    if (checked) {
-      if (selectedCols.length >= MAX_MATRIX_COLS) {
-        return;
-      }
-      if (!selectedCols.includes(cid)) {
-        setSelectedCols([...selectedCols, cid]);
-      }
-    } else {
-      setSelectedCols(selectedCols.filter((c) => c !== cid));
-      if (colorColId === cid) {
-        setColorColId(null);
-      }
-    }
   };
 
   // Hover tooltip for an off-diagonal cell, computed from pixel position
@@ -739,10 +712,8 @@ const SplomDialog: React.FunctionComponent<SplomDialogProps> = ({
         onMouseMove={(e) => handleCellMouseMove(e, i, j)}
         onMouseLeave={() => setHoverInfo(null)}
         onClick={() => {
-          // Clear any lingering brush filter when opening a different pair.
-          onBrushFilter(colI, null, colJ, null);
-          setBrushSel(null);
-          setActivePair({ xColId: colI, yColId: colJ });
+          // Open this XY pair as a standalone Scatter Plot (closes the SPLOM).
+          onOpenScatterPlot(colI, colJ);
         }}
       >
         {scatter}
@@ -769,299 +740,7 @@ const SplomDialog: React.FunctionComponent<SplomDialogProps> = ({
     setColorColId(cid === "" ? null : cid);
   };
 
-  // --- master-detail: a full-size pair view with 2D brush, log scales, the
-  // regression trend line, and a stats row. ---
-  const renderMaster = () => {
-    if (activePair == null) {
-      return null;
-    }
-    const { xColId, yColId } = activePair;
-    const i = selectedCols.indexOf(xColId);
-    const j = selectedCols.indexOf(yColId);
-    const pts: CellPt[] =
-      i >= 0 && j >= 0 ? (cellPts[`${i},${j}`] ?? []) : [];
-    const xNumeric = !colIsCategorical(xColId);
-    const yNumeric = !colIsCategorical(yColId);
-
-    const rawDomX = domains[xColId] ?? [0, 1];
-    const rawDomY = domains[yColId] ?? [0, 1];
-    // Effective axes are log-transformed when the corresponding toggle is on
-    // (the underlying points are transformed to match).
-    const useLogX = logX && xNumeric;
-    const useLogY = logY && yNumeric;
-    const domX: [number, number] = useLogX
-      ? [toLog(rawDomX[0]), toLog(rawDomX[1])]
-      : rawDomX;
-    const domY: [number, number] = useLogY
-      ? [toLog(rawDomY[0]), toLog(rawDomY[1])]
-      : rawDomY;
-    const tx = useLogX ? toLog : (v: number) => v;
-    const ty = useLogY ? toLog : (v: number) => v;
-
-    const dataPts = pts
-      .map((p) =>
-        typeof p.x === "number" && typeof p.y === "number"
-          ? { x: tx(p.x), y: ty(p.y), color: p.color, origX: p.x, origY: p.y }
-          : null
-      )
-      .filter((p): p is NonNullable<typeof p> => p != null);
-
-    const padLeft = 64;
-    const padTop = 24;
-    const padRight = 24;
-    const padBottom = 48;
-    const plotW = Math.max(120, masterWidth - padLeft - padRight);
-    const plotH = 320;
-
-    // Shared linear pixel <-> data mapping for the plot area (matching Victory),
-    // used both by the brush overlay and the trend line.
-    const toData = (px: number, py: number) => ({
-      x: domX[0] + (px / plotW) * (domX[1] - domX[0]),
-      y: domY[1] - (py / plotH) * (domY[1] - domY[0]),
-    });
-    const toPixel = (x: number, y: number) => ({
-      x: ((x - domX[0]) / (domX[1] - domX[0])) * plotW,
-      y: ((domY[1] - y) / (domY[1] - domY[0])) * plotH,
-    });
-
-    const reg = pairRegression;
-    let trendPts: { x: number; y: number }[] = [];
-    if (
-      reg != null &&
-      reg.slope != null &&
-      reg.intercept != null &&
-      xNumeric &&
-      yNumeric
-    ) {
-      const x0 = domX[0];
-      const x1 = domX[1];
-      const xs = useLogX ? [toLogInv(x0), toLogInv(x1)] : [x0, x1];
-      const ys = xs.map(
-        (xv) => reg.slope! * xv + reg.intercept!
-      );
-      trendPts = ys.map((yv, k) => ({ x: xs[k], y: yv }));
-      // If either axis is log, map the fitted values into display space.
-      if (useLogX || useLogY) {
-        trendPts = trendPts.map((t) => ({
-          x: useLogX ? toLog(t.x) : t.x,
-          y: useLogY ? toLog(t.y) : t.y,
-        }));
-      }
-    }
-
-    const minMax =
-      dataPts.length > 0
-        ? {
-            xMin: Math.min(...dataPts.map((p) => p.origX)),
-            xMax: Math.max(...dataPts.map((p) => p.origX)),
-            yMin: Math.min(...dataPts.map((p) => p.origY)),
-            yMax: Math.max(...dataPts.map((p) => p.origY)),
-          }
-        : null;
-
-    // 2D brush: convert a data-space selection into a pair of column filters
-    // (inverse-log back to raw values first if a log axis is active).
-    const handleBrushSelect = (
-      region: { x: [number, number]; y: [number, number] } | null
-    ) => {
-      setBrushSel(region);
-      setHoverInfo(null);
-      if (region == null) {
-        onBrushFilter(xColId, null, yColId, null);
-        return;
-      }
-      const xlo = useLogX ? toLogInv(region.x[0]) : region.x[0];
-      const xhi = useLogX ? toLogInv(region.x[1]) : region.x[1];
-      const ylo = useLogY ? toLogInv(region.y[0]) : region.y[0];
-      const yhi = useLogY ? toLogInv(region.y[1]) : region.y[1];
-      onBrushFilter(xColId, [xlo, xhi], yColId, [ylo, yhi]);
-    };
-
-    // Hover tooltip for the master view, computed from pixel position.
-    const onMasterMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-      const rect = e.currentTarget.getBoundingClientRect();
-      const mx = e.clientX - rect.left - padLeft;
-      const my = e.clientY - rect.top - padTop;
-      if (mx < 0 || my < 0 || mx > plotW || my > plotH) {
-        setHoverInfo(null);
-        return;
-      }
-      const di = toData(mx, my);
-      const xv = useLogX ? toLogInv(di.x) : di.x;
-      const yv = useLogY ? toLogInv(di.y) : di.y;
-      setHoverInfo({
-        left: e.clientX - rect.left + 12,
-        top: e.clientY - rect.top + 12,
-        lines: [
-          `${xColId}: ${fmtAxis(xColId, xv)}`,
-          `${yColId}: ${fmtAxis(yColId, yv)}`,
-          `plotted: ${countLabel(pts.length)}${
-            pts.length >= 5000 ? " (sampled)" : ""
-          }`,
-        ],
-      });
-    };
-
-    const chart = (
-      <div
-        ref={masterWrapRef}
-        style={{ position: "relative", width: plotW + padLeft + padRight }}
-        onMouseMove={onMasterMouseMove}
-        onMouseLeave={() => setHoverInfo(null)}
-      >
-        <VictoryChart
-          height={plotH + padTop + padBottom}
-          width={plotW + padLeft + padRight}
-          padding={{ top: padTop, bottom: padBottom, left: padLeft, right: padRight }}
-          domain={{ x: domX, y: domY }}
-        >
-          <VictoryAxis
-            style={{
-              axis: { stroke: "#CBD2D9" },
-              tickLabels: { fontSize: 11, padding: 6 },
-            }}
-            tickFormat={(t: unknown) => {
-              const v = t as number;
-              return fmtAxis(xColId, useLogX ? toLogInv(v) : v);
-            }}
-          />
-          <VictoryAxis
-            dependentAxis
-            tickCount={5}
-            style={{
-              axis: { stroke: "#CBD2D9" },
-              tickLabels: { fontSize: 11, padding: 4 },
-            }}
-            tickFormat={(t: unknown) => {
-              const v = t as number;
-              return fmtAxis(yColId, useLogY ? toLogInv(v) : v);
-            }}
-          />
-          {trendPts.length === 2 && (
-            <VictoryLine
-              style={{ data: { stroke: "#E07F1D", strokeWidth: 2 } }}
-              data={trendPts}
-            />
-          )}
-          {dataPts.length > 0 && (
-            <VictoryScatter
-              style={{
-                data: {
-                  fill: (d: { datum?: { color: string } }) =>
-                    d.datum != null ? d.datum.color : DOTS_COLOR,
-                  opacity: ({ active }: { active?: boolean }) =>
-                    active === true ? 1 : 0.75,
-                },
-              }}
-              data={dataPts}
-              x="x"
-              y="y"
-              size={3}
-            />
-          )}
-        </VictoryChart>
-        <RectBrushOverlay
-          left={padLeft}
-          top={padTop}
-          width={plotW}
-          height={plotH}
-          toData={toData}
-          toPixel={toPixel}
-          selection={brushSel}
-          onBrushSelect={handleBrushSelect}
-        />
-        {renderHover()}
-      </div>
-    );
-
-    const stats: string[] = [];
-    stats.push(`n: ${countLabel(pts.length)}`);
-    if (reg != null && reg.r != null && reg.n >= 2) {
-      stats.push(`r: ${round2(reg.r)}`);
-    }
-    if (reg != null && reg.slope != null && reg.intercept != null) {
-      stats.push(`y = ${round2(reg.slope)}·x + ${round2(reg.intercept)}`);
-    }
-    if (reg != null && reg.r2 != null && reg.n >= 2) {
-      stats.push(`r²: ${round2(reg.r2)}`);
-    }
-    if (minMax != null) {
-      stats.push(
-        `${xColId}: [${fmtAxis(xColId, minMax.xMin)}, ${fmtAxis(xColId, minMax.xMax)}]`
-      );
-      stats.push(
-        `${yColId}: [${fmtAxis(yColId, minMax.yMin)}, ${fmtAxis(yColId, minMax.yMax)}]`
-      );
-    }
-
-    return (
-      <div>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: 8,
-          }}
-        >
-          <Button
-            small
-            icon="arrow-left"
-            onClick={() => {
-              onBrushFilter(xColId, null, yColId, null);
-              setBrushSel(null);
-              setActivePair(null);
-            }}
-          >
-            Back to matrix
-          </Button>
-          <div style={{ fontWeight: 600, fontSize: 13 }}>
-            {viewSchema?.displayName(xColId) ?? xColId} ×{" "}
-            {viewSchema?.displayName(yColId) ?? yColId}
-          </div>
-          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-            <Switch
-              label="log X"
-              checked={logX}
-              disabled={!xNumeric}
-              onChange={() => {
-                setLogX(!logX);
-                setBrushSel(null);
-              }}
-            />
-            <Switch
-              label="log Y"
-              checked={logY}
-              disabled={!yNumeric}
-              onChange={() => {
-                setLogY(!logY);
-                setBrushSel(null);
-              }}
-            />
-          </div>
-        </div>
-        {pts.length === 0 ? (
-          <p className="bp4-text-muted">No data for this column pair.</p>
-        ) : (
-          chart
-        )}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
-          {stats.map((s, k) => (
-            <Tag key={k} minimal>
-              {s}
-            </Tag>
-          ))}
-        </div>
-        <div className="bp4-text-muted" style={{ fontSize: 11, marginTop: 6 }}>
-          Drag to brush a 2D region and filter the table on both axes; click
-          without dragging to clear.
-        </div>
-      </div>
-    );
-  };
-
-  // Absolute-positioned hover tooltip overlay shared by the matrix cells and
-  // the master view (only one is visible at a time via the activePair switch).
+  // Absolute-positioned hover tooltip overlay shared by the matrix cells.
   const renderHover = () =>
     hoverInfo != null ? (
       <div
@@ -1102,53 +781,50 @@ const SplomDialog: React.FunctionComponent<SplomDialogProps> = ({
             Maximum {MAX_MATRIX_COLS} columns.
           </div>
         )}
-        <div
-          style={{
-            display: "flex",
-            gap: 24,
-            flexWrap: "wrap",
-            marginTop: 6,
-            maxHeight: 160,
-            overflow: "auto",
-          }}
-        >
-          {(["numeric", "categorical"] as const).map((group) => {
-            const cols = availableCols.filter((cid) => {
-              if (viewSchema == null) {
-                return false;
+        <div style={{ marginTop: 6 }}>
+          <Select<ColOption, true>
+            isMulti
+            isSearchable
+            closeMenuOnSelect={false}
+            components={{ Option: CheckboxOption }}
+            styles={colSelectStyles}
+            placeholder="Type to filter, then select matrix columns…"
+            options={colGroupedOptions}
+            value={colSelectedOptions}
+            onChange={(selected) => {
+              setHoverInfo(null);
+              const next = (selected ?? [])
+                .map((o) => o.value)
+                .slice(0, MAX_MATRIX_COLS);
+              setSelectedCols(next);
+              if (colorColId != null && !next.includes(colorColId)) {
+                setColorColId(null);
               }
-              const k = reltab.splomColKind(viewSchema.columnType(cid));
-              return group === "numeric"
-                ? k !== "categorical"
-                : k === "categorical";
-            });
-            if (cols.length === 0) {
-              return null;
+            }}
+            isOptionDisabled={(o) =>
+              !colSelectedOptions.some((s) => s.value === o.value) &&
+              colSelectedOptions.length >= MAX_MATRIX_COLS
             }
-            return (
-              <div key={group}>
-                <div className="bp4-text-muted" style={{ fontSize: 11 }}>
-                  {group === "numeric"
-                    ? "Numeric & temporal"
-                    : "Categorical"}
-                </div>
-                {cols.map((cid) => (
-                  <Checkbox
-                    key={cid}
-                    checked={selectedCols.includes(cid)}
-                    disabled={
-                      !selectedCols.includes(cid) &&
-                      selectedCols.length >= MAX_MATRIX_COLS
-                    }
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      toggleCol(cid, e.target.checked)
-                    }
-                    label={viewSchema?.displayName(cid) ?? cid}
-                  />
-                ))}
-              </div>
-            );
-          })}
+            formatOptionLabel={(o, { context }) =>
+              context === "menu" ? (
+                <span
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    width: "100%",
+                  }}
+                >
+                  <span>{o.label}</span>
+                  <span className="bp4-text-muted" style={{ fontSize: 10 }}>
+                    {o.kind === "numeric" ? "numeric/temporal" : "categorical"}
+                  </span>
+                </span>
+              ) : (
+                <span>{o.label}</span>
+              )
+            }
+          />
         </div>
         <div style={{ display: "flex", gap: 24, alignItems: "center", marginTop: 8 }}>
           <div>
@@ -1234,14 +910,14 @@ const SplomDialog: React.FunctionComponent<SplomDialogProps> = ({
         >
           {nSel === 0 && (
             <span className="bp4-text-muted" style={{ fontSize: 12 }}>
-              Select at least 2 numeric or temporal columns to build the
-              matrix.
+              Select at least 2 columns (numeric, temporal, or categorical) to
+              build the matrix.
             </span>
           )}
-          {nSel > 0 && eligibleCount < 2 && (
+          {nSel === 1 && (
             <span className="bp4-text-muted" style={{ fontSize: 12 }}>
-              Select at least 2 numeric or temporal columns (categorical
-              columns alone cannot be correlated — they can color the points).
+              Add one more column to build the matrix (numeric, temporal, or
+              categorical).
             </span>
           )}
           {sp != null && nSel >= 2 && (
@@ -1250,22 +926,20 @@ const SplomDialog: React.FunctionComponent<SplomDialogProps> = ({
               plotted / {countLabel(sp.totalRows)} total
               {sp.sampled ? " (sampled)" : ""} ·{" "}
               {data != null && data.correlations.length} correlation
-              {data != null && data.correlations.length === 1 ? "" : "s"}
+              {data != null && data.correlations.length === 1 ? "" : "s"} overall
+              (correlation is shown only for numeric/temporal column pairs)
             </span>
           )}
         </div>
       </div>
 
-      {nSel === 0 || eligibleCount < 2 ? (
+      {nSel < 2 ? (
         <p className="bp4-text-muted">Select columns above to build the matrix.</p>
       ) : loading ? (
         <Spinner />
       ) : error != null ? (
         <p className="bp4-intent-danger">{error}</p>
       ) : data != null ? (
-        activePair != null ? (
-          renderMaster()
-        ) : (
           <div
             ref={matrixWrapRef}
             onMouseLeave={() => setHoverInfo(null)}
@@ -1314,7 +988,6 @@ const SplomDialog: React.FunctionComponent<SplomDialogProps> = ({
             ))}
             {renderHover()}
           </div>
-        )
       ) : null}
 
       {legend != null && !loading && (

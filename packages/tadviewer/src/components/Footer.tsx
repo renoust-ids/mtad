@@ -1,7 +1,10 @@
 import * as React from "react";
 import * as reltab from "reltab";
 import * as actions from "../actions";
-import { FilterEditor } from "./FilterEditor";
+import {
+  TableFilterEditor,
+  AnalyticsFilterEditor,
+} from "./FilterEditor";
 import { AppState } from "../AppState";
 import { ViewState } from "../ViewState";
 import { StateRef } from "oneref";
@@ -21,7 +24,7 @@ type FilterTab = "table" | "analytics";
 // The summary is cropped once it exceeds MAX_FILTER_STR_CHARS characters.
 // When a "T:"/"A:" prefix is shown the maximum is reduced by this many
 // characters before cropping, so the prefixed text occupies the same width.
-const MAX_FILTER_STR_CHARS = 60;
+const MAX_FILTER_STR_CHARS = 56;
 const MAX_FILTER_STR_PREFIX_PAD = 4;
 
 const cropFilterStr = (s: string, max: number): string =>
@@ -123,15 +126,27 @@ export const Footer: React.FunctionComponent<FooterProps> = (
   // open), prefixing it with "T:" (table) or "A:" (analytics). Hovering a tab
   // overrides with that tab's prefixed string. When a prefix is shown the
   // string is cropped at MAX_FILTER_STR_CHARS minus MAX_FILTER_STR_PREFIX_PAD.
-  const hoveredFE =
-    hoverTab != null
-      ? hoverTab === "table"
-        ? tableFE
-        : analyticsFE
-      : null;
-  const summaryFE = hoveredFE != null ? hoveredFE : activeFE;
-  const showPrefix = hoverTab != null || expanded;
-  const prefixForTable = (hoverTab != null ? hoverTab : tab) === "table";
+  //
+  // Because Views (Distribution / Scatter) fill the ANALYTICS filter, the
+  // summary defaults to that filter (prefixed "A:") whenever it is non-empty,
+  // so each View selection is reflected immediately. The table filter is shown
+  // by default only when no analytics criteria exist.
+  const analyticsActive = analyticsFE != null && analyticsFE.opArgs.length > 0;
+  let summaryFE: reltab.FilterExp;
+  let analyticsPreferred = false;
+  if (hoverTab != null) {
+    summaryFE = hoverTab === "table" ? tableFE : analyticsFE;
+    analyticsPreferred = hoverTab === "analytics";
+  } else if (analyticsActive) {
+    summaryFE = analyticsFE;
+    analyticsPreferred = true;
+  } else {
+    summaryFE = activeFE;
+    analyticsPreferred = tab === "analytics";
+  }
+  const showPrefix = hoverTab != null || expanded || analyticsPreferred;
+  const prefixForTable =
+    (hoverTab != null ? hoverTab : tab) === "table" && !analyticsPreferred;
   const prefix = showPrefix ? (prefixForTable ? "T: " : "A: ") : "";
   const maxLen = showPrefix
     ? MAX_FILTER_STR_CHARS - MAX_FILTER_STR_PREFIX_PAD
@@ -178,15 +193,27 @@ export const Footer: React.FunctionComponent<FooterProps> = (
           </label>
         </div>
       )}
-      <FilterEditor
-        appState={appState}
-        stateRef={stateRef}
-        schema={viewState.baseSchema}
-        filterExp={activeFE}
-        onCancel={handleCancel}
-        onApply={handleApply}
-        onDone={handleDone}
-      />
+      {tab === "table" ? (
+        <TableFilterEditor
+          appState={appState}
+          stateRef={stateRef}
+          schema={viewState.baseSchema}
+          filterExp={tableFE}
+          onCancel={handleCancel}
+          onApply={handleApply}
+          onDone={handleDone}
+        />
+      ) : (
+        <AnalyticsFilterEditor
+          appState={appState}
+          stateRef={stateRef}
+          schema={viewState.baseSchema}
+          filterExp={analyticsFE}
+          onCancel={handleCancel}
+          onApply={handleApply}
+          onDone={handleDone}
+        />
+      )}
     </>
   ) : null;
 
