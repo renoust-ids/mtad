@@ -152,10 +152,10 @@ const appInit = (options: any) => {
   );
   ipcMain.handle("dialog:selectCsvForJoin", async (event) => {
     const result = await dialog.showOpenDialog({
-      title: "Select CSV to Join",
+      title: "Select file to Join",
       properties: ["openFile"],
       filters: [
-        { name: "CSV Files", extensions: ["csv", "tsv"] },
+        { name: "Data Files", extensions: ["csv", "tsv", "xlsx"] },
         { name: "All Files", extensions: ["*"] },
       ],
     });
@@ -164,11 +164,22 @@ const appInit = (options: any) => {
     }
     return result.filePaths[0];
   });
-  ipcMain.handle("dialog:getCsvHeaders", async (event, csvPath: string) => {
+  ipcMain.handle("dialog:getCsvHeaders", async (event, path: string, sheet?: string) => {
     try {
-      const content = fs.readFileSync(csvPath, "utf-8");
+      if (path.toLowerCase().endsWith(".xlsx")) {
+        const driver = await reltabFS.getDuckDBDriver();
+        const sheets = reltabDuckDB.getXlsxSheetNames(path);
+        const target = sheet || sheets[0];
+        const columns = await reltabDuckDB.getXlsxSheetColumns(
+          driver.db,
+          path,
+          target
+        );
+        return { columns, types: {}, sheets };
+      }
+      const content = fs.readFileSync(path, "utf-8");
       const firstLine = content.split("\n")[0];
-      const delimiter = csvPath.endsWith(".tsv") ? "\t" : ",";
+      const delimiter = path.endsWith(".tsv") ? "\t" : ",";
       const headers = firstLine
         .split(delimiter)
         .map((h) => h.trim().replace(/^"|"$/g, ""))
@@ -176,9 +187,22 @@ const appInit = (options: any) => {
       return { columns: headers, types: {} };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      throw new Error(`Failed to read CSV headers: ${msg}`);
+      throw new Error(`Failed to read file headers: ${msg}`);
     }
   });
+  ipcMain.handle("join:importXlsx", async (event, args: { path: string; sheet?: string }) => {
+    const driver = await reltabFS.getDuckDBDriver();
+    return reltabDuckDB.nativeXLSXImport(driver.db, args.path, args.sheet);
+  });
+  ipcMain.handle(
+    "dialog:getXlsxSheets",
+    async (event, dsPath: { sourceId: { resourceId: string }; path: string[] }) => {
+      // Resolve the absolute path from the data-source path, mirroring
+      // FSDriver.getTargetPath (path[0] is usually "." for sidebar nodes).
+      const targetPath = path.join(dsPath.sourceId.resourceId, ...dsPath.path);
+      return reltabDuckDB.getXlsxSheetNames(targetPath);
+    }
+  );
   appMenu.createMenu(); // log.log('appInit: done')
 };
 

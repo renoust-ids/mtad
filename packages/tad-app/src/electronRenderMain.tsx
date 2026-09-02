@@ -160,15 +160,29 @@ const init = async () => {
           const result = await ipcRenderer.invoke("dialog:selectCsvForJoin");
           return result as string | null;
         }}
-        onGetCsvHeaders={async (csvPath: string) => {
+        onGetXlsxSheets={async (dsPath: DataSourcePath) => {
+          const result = await ipcRenderer.invoke("dialog:getXlsxSheets", dsPath);
+          return result as string[];
+        }}
+        onGetCsvHeaders={async (csvPath: string, sheet?: string) => {
           const result = await ipcRenderer.invoke(
             "dialog:getCsvHeaders",
-            csvPath
+            csvPath,
+            sheet
           );
-          return result as { columns: string[]; types: Record<string, string> };
+          return result as {
+            columns: string[];
+            types: Record<string, string>;
+            sheets?: string[];
+          };
+        }}
+        onImportXlsx={async (args: { path: string; sheet?: string }) => {
+          const result = await ipcRenderer.invoke("join:importXlsx", args);
+          return result as string | null;
         }}
         onJoinCsvConfirmed={async (joinArgs: {
           csvPath: string;
+          sheet: string;
           joinType: CsvJoinType;
           leftCol: string;
           rightCol: string;
@@ -177,7 +191,18 @@ const init = async () => {
         }) => {
           const curState = mutableGet(stateRef);
           const rightColumns = curState.joinCsvDialog.rightColumns;
-          await actions.confirmCsvJoin(joinArgs, rightColumns, stateRef);
+          await actions.confirmCsvJoin(
+            joinArgs,
+            rightColumns,
+            stateRef,
+            async (path: string, sheet: string) => {
+              const tableName = await ipcRenderer.invoke("join:importXlsx", {
+                path,
+                sheet,
+              });
+              return (tableName as string | null) ?? undefined;
+            }
+          );
         }}
       />
     );

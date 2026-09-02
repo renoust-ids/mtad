@@ -7,7 +7,10 @@ import * as log from "loglevel";
 import _, { throttle } from "lodash";
 
 import {
+  Button,
   Classes,
+  Dialog,
+  HTMLSelect,
   Icon,
   Intent,
   TreeNodeInfo,
@@ -29,6 +32,7 @@ import { actions } from "../tadviewer";
 export interface DataSourceSidebarProps {
   expanded: boolean;
   stateRef: StateRef<AppState>;
+  onGetXlsxSheets?: (dsPath: DataSourcePath) => Promise<string[]>;
 }
 
 const dataKindIcon = (dsKind: DataSourceKind): IconName => {
@@ -88,11 +92,18 @@ type RootNodeMap = { [resourceId: string]: DSTreeNodeInfo };
 export const DataSourceSidebar: React.FC<DataSourceSidebarProps> = ({
   expanded,
   stateRef,
+  onGetXlsxSheets,
 }) => {
   const [initialized, setInitialized] = useState(false);
   const [treeState, setTreeState] = useState<DSTreeNodeInfo[]>([]);
   const [rootNodeMap, setRootNodeMap] = useState<RootNodeMap>({});
   const [selectedNode, setSelectedNode] = useState<DSTreeNodeInfo | null>(null);
+  // pending sheet selection for a multi-sheet workbook being opened
+  const [sheetPick, setSheetPick] = useState<{
+    dsPath: DataSourcePath;
+    sheets: string[];
+    sheet: string;
+  } | null>(null);
   const [, forceUpdate] = useReducer((x) => x + 1, 0);
   const throttledRefresh = useRef(
     throttle(async function refreshDataSources(): Promise<void> {
@@ -165,6 +176,19 @@ export const DataSourceSidebar: React.FC<DataSourceSidebarProps> = ({
     forceUpdate();
   };
 
+  const selectTreeNode = (treeNode: DSTreeNodeInfo) => {
+    if (selectedNode != null) {
+      selectedNode.isSelected = false;
+    }
+    treeNode.isSelected = true;
+    setSelectedNode(treeNode);
+    forceUpdate();
+  };
+
+  const openNode = (dsPath: DataSourcePath) => {
+    actions.openDataSourcePath(dsPath, stateRef);
+  };
+
   const handleNodeClick = async (
     treeNode: DSTreeNodeInfo,
     _nodePath: any[],
@@ -172,14 +196,40 @@ export const DataSourceSidebar: React.FC<DataSourceSidebarProps> = ({
   ) => {
     const { dsPath, dsNode } = treeNode.nodeData!;
     if (dsNode.kind === "Table" || dsNode.kind === "File") {
-      actions.openDataSourcePath(dsPath, stateRef);
+      if (
+        dsNode.kind === "File" &&
+        dsPath.path[dsPath.path.length - 1].toLowerCase().endsWith(".xlsx") &&
+        onGetXlsxSheets
+      ) {
+        try {
+          const sheets = await onGetXlsxSheets(dsPath);
+          if (sheets.length > 1) {
+            // defer opening until the user picks a sheet
+            setSheetPick({ dsPath, sheets, sheet: sheets[0] });
+            selectTreeNode(treeNode);
+            return;
+          }
+        } catch (err) {
+          log.error("error enumerating xlsx sheets: ", err);
+        }
+      }
+      openNode(dsPath);
     }
-    if (selectedNode != null) {
-      selectedNode.isSelected = false;
+    selectTreeNode(treeNode);
+  };
+
+  const confirmSheetPick = () => {
+    if (!sheetPick) {
+      return;
     }
-    treeNode.isSelected = true;
-    setSelectedNode(treeNode);
-    forceUpdate();
+    const { dsPath, sheet } = sheetPick;
+    setSheetPick(null);
+    const sheetPath: DataSourcePath = { ...dsPath, sheet };
+    openNode(sheetPath);
+  };
+
+  const cancelSheetPick = () => {
+    setSheetPick(null);
   };
 
   return (
@@ -190,6 +240,44 @@ export const DataSourceSidebar: React.FC<DataSourceSidebarProps> = ({
         onNodeExpand={handleNodeExpand}
         onNodeClick={handleNodeClick}
       />
+      <Dialog
+        isOpen={sheetPick != null}
+        title="Select worksheet"
+        onClose={cancelSheetPick}
+        canOutsideClickClose={false}
+      >
+        <div className={Classes.DIALOG_BODY}>
+          {sheetPick && (
+            <label htmlFor="sheet-pick-select" style={{ marginBottom: 6 }}>
+              Sheet:
+              <HTMLSelect
+                id="sheet-pick-select"
+                fill
+                value={sheetPick.sheet}
+                onChange={(e) =>
+                  setSheetPick({ ...sheetPick, sheet: e.target.value })
+                }
+                options={sheetPick.sheets.map((s) => ({
+                  label: s,
+                  value: s,
+                }))}
+              />
+            </label>
+          )}
+        </div>
+        <div className={Classes.DIALOG_FOOTER}>
+          <div className={Classes.DIALOG_FOOTER_ACTIONS}>
+            <Button onClick={cancelSheetPick}>Cancel</Button>
+            <Button
+              intent={Intent.PRIMARY}
+              onClick={confirmSheetPick}
+              disabled={sheetPick == null}
+            >
+              Open
+            </Button>
+          </div>
+        </div>
+      </Dialog>
     </Sidebar>
   );
 };

@@ -27,6 +27,10 @@ export interface JoinCsvDialogState {
   csvPath: string | null;
   leftColumns: string[];
   rightColumns: string[];
+  // Workbooks (.xlsx) can expose multiple sheets; sheets lists them and sheet
+  // holds the currently selected one ("" for non-workbook files).
+  sheets: string[];
+  sheet: string;
   leftCol: string;
   rightCol: string;
   joinType: CsvJoinType;
@@ -39,6 +43,8 @@ const defaultJoinCsvDialogState: JoinCsvDialogState = {
   csvPath: null,
   leftColumns: [],
   rightColumns: [],
+  sheets: [],
+  sheet: "",
   leftCol: "",
   rightCol: "",
   joinType: "inner",

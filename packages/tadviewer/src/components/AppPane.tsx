@@ -70,11 +70,15 @@ export interface AppPaneBaseProps {
   onCellClick?: (cell: CellClickData) => void;
   onSelectionChange?: (data: SelectionChangeData) => void;
   onSelectCsvFile?: () => Promise<string | null>;
+  onGetXlsxSheets?: (dsPath: DataSourcePath) => Promise<string[]>;
   onGetCsvHeaders?: (
-    csvPath: string
-  ) => Promise<{ columns: string[]; types: Record<string, string> }>;
+    csvPath: string,
+    sheet?: string
+  ) => Promise<{ columns: string[]; types: Record<string, string>; sheets?: string[] }>;
+  onImportXlsx?: (args: { path: string; sheet?: string }) => Promise<string | null>;
   onJoinCsvConfirmed?: (joinArgs: {
     csvPath: string;
+    sheet: string;
     joinType: CsvJoinType;
     leftCol: string;
     rightCol: string;
@@ -461,6 +465,7 @@ export const AppPane: React.FunctionComponent<AppPaneProps> = ({
   onCellClick,
   onSelectionChange,
   onSelectCsvFile,
+  onGetXlsxSheets,
   onGetCsvHeaders,
   onJoinCsvConfirmed,
 }: AppPaneProps) => {
@@ -534,7 +539,11 @@ export const AppPane: React.FunctionComponent<AppPaneProps> = ({
     ) : null;
   }
   const dataSourceSidebar = showDataSources ? (
-    <DataSourceSidebar expanded={dataSourceExpanded} stateRef={stateRef} />
+    <DataSourceSidebar
+      expanded={dataSourceExpanded}
+      stateRef={stateRef}
+      onGetXlsxSheets={onGetXlsxSheets}
+    />
   ) : null;
   mainContents = (
     <div className="container-fluid full-height main-container tad-app-pane">

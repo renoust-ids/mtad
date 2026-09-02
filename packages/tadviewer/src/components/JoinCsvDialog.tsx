@@ -27,10 +27,16 @@ export interface JoinCsvDialogProps {
   stateRef: StateRef<AppState>;
   onSelectCsvFile: () => Promise<string | null>;
   onGetCsvHeaders: (
-    csvPath: string
-  ) => Promise<{ columns: string[]; types: Record<string, string> }>;
+    path: string,
+    sheet?: string
+  ) => Promise<{
+    columns: string[];
+    types: Record<string, string>;
+    sheets?: string[];
+  }>;
   onJoinConfirmed: (joinArgs: {
     csvPath: string;
+    sheet: string;
     joinType: CsvJoinType;
     leftCol: string;
     rightCol: string;
@@ -55,6 +61,8 @@ export const JoinCsvDialog: React.FunctionComponent<JoinCsvDialogProps> = ({
     csvPath,
     leftColumns,
     rightColumns,
+    sheets,
+    sheet,
     leftCol,
     rightCol,
     joinType,
@@ -69,16 +77,41 @@ export const JoinCsvDialog: React.FunctionComponent<JoinCsvDialogProps> = ({
       const selectedPath = await onSelectCsvFile();
       if (selectedPath) {
         const headers = await onGetCsvHeaders(selectedPath);
-        actions.setJoinCsvPath(selectedPath, headers.columns, stateRef);
+        actions.setJoinCsvPath(
+          selectedPath,
+          headers.columns,
+          stateRef,
+          headers.sheets
+        );
       } else {
         actions.closeJoinCsvDialog(stateRef);
       }
     } catch (err) {
-      setError(`Failed to read CSV: ${(err as Error).message}`);
+      setError(`Failed to read file: ${(err as Error).message}`);
     } finally {
       setLoading(false);
     }
   }, [onSelectCsvFile, onGetCsvHeaders, stateRef]);
+
+  const doSelectSheet = useCallback(
+    async (newSheet: string) => {
+      if (!csvPath) {
+        return;
+      }
+      setLoading(true);
+      setError(null);
+      try {
+        const headers = await onGetCsvHeaders(csvPath, newSheet);
+        actions.setJoinCsvSheet(newSheet, stateRef);
+        actions.setJoinCsvPath(csvPath, headers.columns, stateRef);
+      } catch (err) {
+        setError(`Failed to read sheet headers: ${(err as Error).message}`);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [csvPath, onGetCsvHeaders, stateRef]
+  );
 
   useEffect(() => {
     if (open && !csvPath) {
@@ -98,6 +131,7 @@ export const JoinCsvDialog: React.FunctionComponent<JoinCsvDialogProps> = ({
     }
     onJoinConfirmed({
       csvPath,
+      sheet,
       joinType,
       leftCol,
       rightCol,
@@ -122,7 +156,7 @@ export const JoinCsvDialog: React.FunctionComponent<JoinCsvDialogProps> = ({
 
   return (
     <Dialog
-      title="Join CSV"
+      title="Join"
       onClose={handleClose}
       isOpen={open}
       canOutsideClickClose={false}
@@ -143,7 +177,7 @@ export const JoinCsvDialog: React.FunctionComponent<JoinCsvDialogProps> = ({
         {!loading && (
           <>
             <FormGroup
-              label="CSV File"
+              label="File"
               labelFor="csv-file-path"
               style={{ marginBottom: 12 }}
             >
@@ -160,6 +194,21 @@ export const JoinCsvDialog: React.FunctionComponent<JoinCsvDialogProps> = ({
                 }
               />
             </FormGroup>
+
+            {csvPath && sheets.length > 1 && (
+              <FormGroup
+                label="Sheet"
+                labelFor="sheet-select"
+                style={{ marginBottom: 12 }}
+              >
+                <HTMLSelect
+                  id="sheet-select"
+                  value={sheet}
+                  onChange={(e) => doSelectSheet(e.target.value)}
+                  options={sheets.map((s) => ({ label: s, value: s }))}
+                />
+              </FormGroup>
+            )}
 
             {csvPath && rightColumns.length > 0 && (
               <>
@@ -205,7 +254,7 @@ export const JoinCsvDialog: React.FunctionComponent<JoinCsvDialogProps> = ({
                   </FormGroup>
 
                   <FormGroup
-                    label="Right Column (CSV)"
+                    label="Right Column"
                     labelFor="right-col-select"
                     style={{ flex: 1 }}
                   >

@@ -1073,6 +1073,8 @@ export const openJoinCsvDialog = (
       csvPath: null,
       leftColumns,
       rightColumns: [],
+      sheets: [],
+      sheet: "",
       leftCol: "",
       rightCol: "",
       joinType: "inner" as CsvJoinType,
@@ -1094,13 +1096,31 @@ export const closeJoinCsvDialog = (stateRef: StateRef<AppState>) => {
 export const setJoinCsvPath = (
   csvPath: string,
   rightColumns: string[],
-  stateRef: StateRef<AppState>
+  stateRef: StateRef<AppState>,
+  sheets?: string[]
 ) => {
   update(stateRef, (s) =>
     s.set("joinCsvDialog", {
       ...s.joinCsvDialog,
       csvPath,
       rightColumns,
+      sheets: sheets ?? s.joinCsvDialog.sheets,
+      sheet:
+        sheets != null && sheets.length > 0
+          ? sheets[0]
+          : s.joinCsvDialog.sheet,
+    } as JoinCsvDialogState)
+  );
+};
+
+export const setJoinCsvSheet = (
+  sheet: string,
+  stateRef: StateRef<AppState>
+) => {
+  update(stateRef, (s) =>
+    s.set("joinCsvDialog", {
+      ...s.joinCsvDialog,
+      sheet,
     } as JoinCsvDialogState)
   );
 };
@@ -1168,6 +1188,7 @@ export const setJoinCsvNullString = (
 export const confirmCsvJoin = async (
   joinArgs: {
     csvPath: string;
+    sheet: string;
     joinType: CsvJoinType;
     leftCol: string;
     rightCol: string;
@@ -1175,7 +1196,8 @@ export const confirmCsvJoin = async (
     nullString: string;
   },
   rightColumns: string[],
-  stateRef: StateRef<AppState>
+  stateRef: StateRef<AppState>,
+  importXlsx?: (path: string, sheet: string) => Promise<string | undefined>
 ): Promise<void> => {
   const appState = mutableGet(stateRef);
   const { viewState } = appState;
@@ -1199,6 +1221,21 @@ export const confirmCsvJoin = async (
     forceStringCast: joinArgs.forceStringCast,
     nullString: joinArgs.nullString || undefined,
   };
+
+  // For workbooks (.xlsx), import the selected sheet into the shared DuckDB and
+  // join against that table (the RHS reference is a table name, not a file).
+  if (joinArgs.csvPath.toLowerCase().endsWith(".xlsx")) {
+    if (!importXlsx) {
+      log.error("confirmCsvJoin: xlsx join requires an import callback");
+      return;
+    }
+    const rhsTableName = await importXlsx(joinArgs.csvPath, joinArgs.sheet);
+    if (!rhsTableName) {
+      log.error("confirmCsvJoin: failed to import xlsx sheet for join");
+      return;
+    }
+    reltabArgs.rhsTableName = rhsTableName;
+  }
 
   const fusionQuery = baseQuery.joinCsv(reltabArgs, rhsSchema, rightColumns);
 
