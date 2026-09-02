@@ -30,6 +30,12 @@ const createTimestampStringRenderer = (opts?: {
     if (isDuckDBStringRenderer(val)) {
       return val.toDuckDBString();
     }
+    // A time-only value (e.g. "19:43:00") is not a parseable JS Date and is
+    // already a valid time string — render it as-is rather than via new Date().
+    const timeOnlyRE = /^\d{1,2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/;
+    if (opts?.timeOnly && typeof val === "string" && timeOnlyRE.test(val)) {
+      return val;
+    }
     let retStr: string;
     try {
       retStr = new Date(val).toISOString();
