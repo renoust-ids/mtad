@@ -38,6 +38,10 @@ export interface DataSourceId {
 export interface DataSourcePath {
   sourceId: DataSourceId;
   path: string[];
+  // Optional worksheet to import for an Excel (.xlsx) data source; omitted
+  // means the first sheet. Rides along in the path so opening a multi-sheet
+  // workbook can select a specific sheet.
+  sheet?: string;
 }
 
 export interface DataSourceNode {

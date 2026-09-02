@@ -163,6 +163,7 @@ const ppSQLSelect = (
       lhs,
       lhsTblAlias,
       rhsCsvPath,
+      rhsTableName,
       rhsTblAlias,
       readCsvOptions,
       leftCol,
@@ -179,9 +180,11 @@ const ppSQLSelect = (
     const rightColRef = forceStringCast
       ? `CAST(${rhsTblAlias}.${dialect.quoteCol(rightCol)} AS VARCHAR)`
       : `${rhsTblAlias}.${dialect.quoteCol(rightCol)}`;
-    dst.push(
-      `${joinKw} read_csv_auto('${rhsCsvPath}', ${readCsvOptions}) ${rhsTblAlias}\n`
-    );
+    const rhsRef =
+      rhsTableName != null && rhsTableName !== ""
+        ? rhsTableName
+        : `read_csv_auto('${rhsCsvPath}', ${readCsvOptions})`;
+    dst.push(`${joinKw} ${rhsRef} ${rhsTblAlias}\n`);
     dst.push(`ON ${leftColRef} = ${rightColRef}\n`);
   } else {
     dst.push("(\n");

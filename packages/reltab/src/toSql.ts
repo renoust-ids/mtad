@@ -543,6 +543,7 @@ const joinCsvQueryToSql = (
     lhs: lhsSql,
     lhsTblAlias,
     rhsCsvPath: args.rightTablePath,
+    rhsTableName: args.rhsTableName,
     rhsTblAlias,
     readCsvOptions,
     leftCol: args.leftCol,

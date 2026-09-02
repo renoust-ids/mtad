@@ -89,6 +89,10 @@ export type CsvJoinType = "inner" | "left" | "right" | "outer";
 
 export interface JoinCsvArgs {
   rightTablePath: string;
+  // Alternative to rightTablePath: an already-imported DuckDB table to join
+  // against (e.g. an imported .xlsx sheet). When set, the RHS is referenced as
+  // a table name instead of read_csv_auto(rightTablePath).
+  rhsTableName?: string;
   joinType: CsvJoinType;
   leftCol: string;
   rightCol: string;

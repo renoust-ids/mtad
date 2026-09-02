@@ -22,7 +22,7 @@ import {
 import * as reltabDuckDB from "reltab-duckdb";
 import { DuckDBDriver } from "reltab-duckdb";
 
-export const dataFileExtensions = ["csv", "tsv", "parquet", "csv.gz", "tsv.gz"];
+export const dataFileExtensions = ["csv", "tsv", "parquet", "csv.gz", "tsv.gz", "xlsx"];
 
 interface ImportedFileInfo {
   baseName: string;
@@ -31,7 +31,7 @@ interface ImportedFileInfo {
 }
 
 let _duckDBDriver: DuckDBDriver | null;
-async function getDuckDBDriver(): Promise<DuckDBDriver> {
+export async function getDuckDBDriver(): Promise<DuckDBDriver> {
   if (!_duckDBDriver) {
     let connKey: DataSourceId;
 
@@ -170,12 +170,16 @@ export class FSDriver implements DbDriver {
   // reflects the original file data (discards any session modifications).
   async getTableName(dsPath: DataSourcePath): Promise<string> {
     const targetPath = this.getTargetPath(dsPath);
-    let importInfo = this.importMap[targetPath];
+    const sheet = dsPath.sheet;
+    // Distinguish sheets of the same workbook in the import map.
+    const importKey = sheet != null ? `${targetPath}#${sheet}` : targetPath;
+    let importInfo = this.importMap[importKey];
     let tableName: string;
     if (!importInfo) {
       log.debug(
         "getTableName: no entry found for ",
         targetPath,
+        sheet != null ? ` (sheet ${sheet})` : "",
         ", importing..."
       );
       const extName = path.extname(targetPath);
@@ -183,6 +187,12 @@ export class FSDriver implements DbDriver {
         tableName = await reltabDuckDB.nativeParquetImport(
           this.dbc.db,
           targetPath
+        );
+      } else if (extName === ".xlsx") {
+        tableName = await reltabDuckDB.nativeXLSXImport(
+          this.dbc.db,
+          targetPath,
+          sheet
         );
       } else {
         tableName = await reltabDuckDB.nativeCSVImport(this.dbc.db, targetPath);
@@ -202,6 +212,13 @@ export class FSDriver implements DbDriver {
           targetPath,
           tableName
         );
+      } else if (extName === ".xlsx") {
+        await reltabDuckDB.nativeXLSXImport(
+          this.dbc.db,
+          targetPath,
+          sheet,
+          tableName
+        );
       } else {
         await reltabDuckDB.nativeCSVImport(
           this.dbc.db,
@@ -214,7 +231,7 @@ export class FSDriver implements DbDriver {
       const fileStats = await fsPromises.stat(targetPath);
       importInfo.importModTime = fileStats.mtime;
     }
-    this.importMap[targetPath] = importInfo;
+    this.importMap[importKey] = importInfo;
     return importInfo.tableName;
   }
 

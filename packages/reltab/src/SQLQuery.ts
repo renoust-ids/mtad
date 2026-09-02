@@ -53,6 +53,10 @@ export type SQLFromCsvJoin = {
   lhs: SQLQueryAST;
   lhsTblAlias: string;
   rhsCsvPath: string;
+  // When joining against an already-imported DuckDB table (e.g. an .xlsx
+  // sheet), set rhsTableName instead of rhsCsvPath; the printer then emits a
+  // plain table reference rather than read_csv_auto(...).
+  rhsTableName?: string;
   rhsTblAlias: string;
   readCsvOptions: string;
   leftCol: string;
