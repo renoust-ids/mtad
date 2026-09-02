@@ -90,7 +90,7 @@ export const createMenu = () => {
       },
     },
     {
-      label: "Join CSV...",
+      label: "Join File...",
       accelerator: "CmdOrCtrl+J",
       click: (item: MenuItem, focusedWindow: BrowserWindow | undefined) => {
         if (focusedWindow) {
