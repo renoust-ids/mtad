@@ -239,14 +239,14 @@ export const nativeXLSXImport = async (
     const query = `CREATE OR REPLACE TABLE ${tableName} AS SELECT * FROM ${xlsxReadSql(filePath, sheet, false)}`;
     await dbConn.all(query);
   } catch (err) {
-    console.log(
-      "caught exception while importing xlsx (retrying as text + inference): ",
+    log.debug(
+      "native read_xlsx failed; retrying as text + inference: ",
       err
     );
     try {
       await importWithInference(dbConn, tableName, filePath, sheet);
     } catch (inferErr) {
-      console.log("caught exception while inferring xlsx types: ", inferErr);
+      log.error("caught exception while inferring xlsx types: ", inferErr);
       throw inferErr;
     }
   }
