@@ -1,5 +1,7 @@
 # MTad Features
 
+> For a list of known non-blocking warnings, errors and their status, see [Known Issues](known-issues.md).
+
 MTad is a fork of [Tad](https://www.tadviewer.com) that adds data editing and manipulation on top of the core pivot-table viewer. Every edit made in the grid is applied to the underlying in-memory [DuckDb](https://duckdb.org/) database through generated SQL, so analysis views and the data stay consistent.
 
 ## Viewing and Analysis (inherited from Tad)
