@@ -241,11 +241,15 @@ export class DbDataSource implements DataSourceConnection {
           schema = await this.db.getTableSchema(leafQuery.tableName);
           if (schema) {
             // add a unique physical row identifier (DuckDB rowid) as a hidden
-            // column so downstream operations can target individual rows
-            schema = schema.extend("_rid", {
-              columnType: "integer",
-              displayName: "_rid",
-            });
+            // column so downstream operations can target individual rows,
+            // unless the table already exposes one (e.g. a join materialized
+            // table whose right-hand side carries a real _rid column).
+            if (!schema.columns.includes("_rid")) {
+              schema = schema.extend("_rid", {
+                columnType: "integer",
+                displayName: "_rid",
+              });
+            }
           }
           break;
         case "sql":

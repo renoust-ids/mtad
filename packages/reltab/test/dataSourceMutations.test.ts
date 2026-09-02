@@ -45,4 +45,23 @@ describe("DbDataSource row/column mutations", () => {
     const leafKey = JSON.stringify({ operator: "table", tableName: "mytable" });
     expect((ds as any).tableMap[leafKey]).toBeUndefined();
   });
+
+  test("does not duplicate _rid when the table schema already provides one", async () => {
+    const existing = new Schema(DuckDBDialect, ["id", "_rid"], {
+      id: { columnType: "integer", displayName: "id" },
+      _rid: { columnType: "integer", displayName: "_rid" },
+    });
+    const driver = makeDriver(jest.fn());
+    driver.getTableSchema = jest.fn().mockResolvedValue(existing);
+    const ds = new DbDataSource(driver);
+
+    // resolve the leaf schema for a table that already carries a _rid column
+    const schema = await (ds as any).getLeafDepSchema(
+      JSON.stringify({ operator: "table", tableName: "mytable" }),
+      { operator: "table", tableName: "mytable" }
+    );
+
+    const ridCount = schema.columns.filter((c: string) => c === "_rid").length;
+    expect(ridCount).toBe(1);
+  });
 });
