@@ -544,13 +544,6 @@ const main = () => {
     app.on(
       "second-instance",
       (event, commandLine, workingDirectory, additionalData) => {
-        console.log(
-          "*** got secondInstance event: ",
-          commandLine,
-          workingDirectory,
-          event,
-          additionalData
-        );
         initApp(false)(commandLine, workingDirectory);
       }
     );

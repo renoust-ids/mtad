@@ -45,7 +45,6 @@ export interface ColumnRowProps {
 
 const colItemSource = {
   beginDrag(props: ColumnRowProps) {
-    console.log("beginDrag: ", props);
     return {
       columnListType: props.columnListType,
       rowData: props.rowData,
@@ -66,7 +65,6 @@ function collect(connect: DragSourceConnector, monitor: DragSourceMonitor) {
 const colItemTarget = {
   drop(props: ColumnRowProps, monitor: DropTargetMonitor) {
     const sourceItem = monitor.getItem();
-    console.log("drop: ", props, sourceItem);
     actions.reorderColumnList(props, sourceItem);
   },
 };

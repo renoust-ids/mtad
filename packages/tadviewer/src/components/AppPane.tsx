@@ -266,7 +266,6 @@ const ExportBeginDialog: React.FunctionComponent<ExportBeginDialogProps> = ({
       setTimeout(() => {
         const focusButtonRef = hasPath ? exportButtonRef : pathButtonRef;
         focusButtonRef.current?.focus();
-        console.log("focus effect: ", hasPath, focusButtonRef.current);
       }, 0);
     }
   }, [exportBeginDialogOpen, hasPath, exportButtonRef, pathButtonRef]);

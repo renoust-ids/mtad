@@ -27,12 +27,6 @@ const aggSelect = (
   };
 
   const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    console.log(
-      "agg.handleChange: column: ",
-      cid,
-      "new agg: ",
-      event.target.value
-    );
     const aggFn: AggFn = event.target.value as AggFn;
     actions.setAggFn(cid, aggFn, updater);
   };

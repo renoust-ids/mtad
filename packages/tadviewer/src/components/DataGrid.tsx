@@ -502,7 +502,6 @@ const createGrid = (
   });
 
   grid.onHeaderRowCellRendered.subscribe((e: any, { node, column }: any) => {
-    console.log("onHeaderRowCellRendered: ", column);
     if (dataView && histoMap && histoMap[column.id]) {
       const histo = histoMap[column.id];
       const colType = dataView.schema.columnType(column.id);
@@ -516,8 +515,6 @@ const createGrid = (
         />
       );
       node.classList.add("slick-editable");
-    } else {
-      console.log("*** no histo for column: ", column.id);
     }
   });
 

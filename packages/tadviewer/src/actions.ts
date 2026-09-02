@@ -38,7 +38,6 @@ export async function initAppState(
     (st: AppState): AppState =>
       st.set("rtc", rtc).set("initialized", true) as AppState
   );
-  console.log("initAppState: st: ", st.toJS());
 }
 
 export async function setActivity(
@@ -127,7 +126,6 @@ export const replaceCurrentView = async (
   stateRef: StateRef<AppState>,
   viewParams?: ViewParams
 ): Promise<void> => {
-  console.log("*** replaceCurrentView: dsPath: ", dsPath);
   const appState = mutableGet(stateRef);
 
   const targetNode = await resolvePath(appState.rtc, dsPath);
@@ -303,10 +301,7 @@ export const toggleShowColumnHistograms = (
 };
 
 export const reorderColumnList = (dstProps: any, srcProps: any) => {
-  console.log("reorderColumnList: ", dstProps, srcProps);
-
   if (dstProps.columnListType !== srcProps.columnListType) {
-    console.log("mismatched column list types, ignoring...");
     return;
   }
 
@@ -484,7 +479,6 @@ export const setExportProgressDialogOpen = (
   exportPathBaseName: string,
   stateRef: StateRef<AppState>
 ) => {
-  console.log("exportProgressDialogOpen: ", exportPathBaseName);
   update(
     stateRef,
     (s) =>

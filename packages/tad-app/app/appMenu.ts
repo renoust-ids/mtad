@@ -164,7 +164,6 @@ export const createMenu = () => {
         focusedWindow: BrowserWindow | undefined,
         event: KeyboardEvent
       ) => {
-        console.log("show hidden...: ", item);
         focusedWindow?.webContents.send("set-show-hidden-cols", item.checked);
       },
     },

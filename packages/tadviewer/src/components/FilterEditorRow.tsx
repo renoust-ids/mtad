@@ -44,7 +44,6 @@ const mkColValsLoader = (
       value: cv as string,
       label: cv as string,
     }));
-    console.log('colValsLoader: input: "', input, '", returning: ', options);
     return options;
   };
 };
@@ -171,11 +170,6 @@ export const FilterEditorRow: React.FunctionComponent<FilterEditorRowProps> = ({
     nextValue: number,
     nextValueAsString: string
   ) => {
-    console.log(
-      "*** handleNumericValueChange: nextValue: ",
-      nextValue,
-      nextValueAsString
-    );
     setValue(nextValue);
     handleUpdate(columnId, op, nextValue);
   };
