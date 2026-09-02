@@ -82,8 +82,8 @@
         <div class="col-sm-4">
           <div class="specs-holder">
             <img src="images/csv-icon@2x.png" alt="csv">
-            <p><strong>CSV Join &amp; Materialization</strong></p>
-            <p>Join multiple CSV files and materialize the result as a DuckDB table. Create virtual tables with automatic type detection.</p>
+            <p><strong>Excel Join &amp; Materialization</strong></p>
+            <p>Join your data against CSV, TSV, or Excel (.xlsx) worksheets and materialize the result as a DuckDB table, with per-sheet worksheet selection and automatic type detection.</p>
           </div>
         </div>
         <div class="col-sm-4">
@@ -97,7 +97,7 @@
           <div class="specs-holder">
             <img src="images/puzzle-icon@2x.png" alt="puzzle">
             <p><strong>Multi-Format Support</strong></p>
-            <p>Open CSV, Parquet, SQLite, and DuckDB files. Export filtered results as CSV or Parquet.</p>
+            <p>Open CSV, TSV, Parquet, Excel (.xlsx), SQLite, and DuckDB files. Export filtered results as CSV or Parquet.</p>
           </div>
         </div>
       </div>
@@ -159,7 +159,7 @@
         <li><strong>Pivot-aware editing</strong> for aggregate and leaf rows</li>
         <li><strong>Row and column insertion</strong> from the grid right-click menus</li>
         <li><strong>Column rename</strong> via header context menu</li>
-        <li><strong>CSV join materialization</strong> into DuckDB tables</li>
+        <li><strong>Excel and worksheet joins</strong> — join CSV/TSV/Excel data with per-sheet selection and materialize into DuckDB tables</li>
         <li><strong>Selection-aware context menus</strong> that keep multi-cell selections on right-click</li>
       </ul>
       <p style="margin-top: 20px;">
@@ -172,7 +172,14 @@
   <div id="news" class="section news-section">
     <div class="container">
     <h3>News</h3>
-    <p class="lead">MTad 0.0.6 - September 2026</p>
+    <p class="lead">MTad 0.0.7 - September 2026</p>
+    <p>
+    MTad adds <strong>Excel (.xlsx) import</strong> with native DuckDB type inference — a <strong>worksheet picker</strong> when
+    opening (or joining against) a multi-sheet workbook, and an automatic per-column inference fallback for mixed-type columns
+    (numeric, TIME, TIMESTAMP, DATE or VARCHAR, exactly like CSV). The <strong>Join</strong> dialog now accepts Excel sheets
+    alongside CSV/TSV files and materializes the result as a new editable DuckDB table.
+    </p>
+    <p class="lead" style="margin-top: 15px;">MTad 0.0.6 - September 2026</p>
     <p>
     MTad adds a <strong>Scatter Plot Matrix (SPLOM)</strong> and a standalone <strong>Scatter Plot</strong> view under the
     Analytics menu — pairwise scatters with Pearson correlation, optional categorical coloring, sampling, 2D brush-to-filter,
@@ -215,6 +222,17 @@
   <div id="relnotes" class="section relnotes-section">
     <div class="container">
     <h3>Release Notes</h3>
+
+    <div class="release-section">
+      <h4>MTad 0.0.7 - September 2026</h4>
+      <h5>New Features</h5>
+      <ul>
+        <li><strong>Excel (.xlsx) import</strong> - open Excel workbooks as data sources, imported through DuckDB with native type inference (numeric, TIMESTAMP, DATE, TIME, string)</li>
+        <li><strong>Worksheet picker</strong> - when a workbook has several sheets, a picker dialog (and a Join sheet dropdown) chooses which worksheet to open/join, routing each sheet to its own table</li>
+        <li><strong>Mixed-type column fallback</strong> - if a column mixes types, per-column inference (INTEGER, DOUBLE, TIME, TIMESTAMP, DATE, else VARCHAR, empty → NULL) imports the sheet end-to-end</li>
+        <li><strong>Excel joins</strong> - the Join dialog now accepts .xlsx sheets alongside CSV/TSV files and materializes the fused result as an editable DuckDB table</li>
+      </ul>
+    </div>
 
     <div class="release-section">
       <h4>MTad 0.0.6 - September 2026</h4>

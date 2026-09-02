@@ -4,7 +4,7 @@ MTad is a fork of [Tad](https://www.tadviewer.com) that adds data editing and ma
 
 ## Viewing and Analysis (inherited from Tad)
 
-- Open tabular data in several formats: `.csv`, `.parquet`, `.duckdb`, `.sqlite`
+- Open tabular data in several formats: `.csv`, `.tsv`, `.parquet`, `.xlsx`, `.duckdb`, `.sqlite`
 - Hierarchical **pivot tables** — group rows by one or more pivot columns and compute aggregates (sum, avg, min, max, uniq, ...) for the other columns
 - **Filters** — compound predicates built from logical operators (AND / OR) and per-column comparisons
 - **Sorting** — single and multi-column sorts, ascending or descending
@@ -89,9 +89,18 @@ Footer behavior:
 - A live **SQL summary** under the tabs shows the current filter. Because Views fill the analytics filter, the summary defaults to it (prefixed `A: `) whenever it is non-empty, so each View selection is reflected immediately; otherwise it shows the active tab's filter. While hovering a tab or editing its filter, the summary is prefixed `T: ` (table) or `A: ` (analytics). Long summaries are cropped (56 chars, reduced by 4 when prefixed) so the prefix never changes the visible width.
 - An **✕ icon** to the right of each tab clears that filter (table clear also propagates to the app-level `onFilter` callback).
 
-## CSV Materialization
+## Excel Import
 
-- Join multiple CSV files and **materialize** the result as a new DuckDB table
+- Open `.xlsx` workbooks as data sources. The **first worksheet** is imported by default with DuckDB's type inference (numeric, `TIMESTAMP`, `DATE`, `TIME`, string).
+- If the workbook has several sheets, a **worksheet picker** lets you choose which sheet to open (the open-flow sidebar prompts at click time; the Join dialog embeds a sheet dropdown).
+- Sheets are imported with native DuckDB typing; when a column mixes types (e.g. mostly numeric with a stray string), MTad falls back to per-column inference so the whole sheet still imports (`INTEGER`, `DOUBLE`, `TIME`, `TIMESTAMP`, `DATE`, else `VARCHAR`).
+- `.xlsx` (Excel 2007+ only) is supported; legacy `.xls` is not.
+
+## Join & CSV Materialization
+
+- Join a table against a CSV/TSV/Excel (`.xlsx`) file and **materialize** the result as a new editable DuckDB table (`_fused_<timestamp>`)
+- The **Join** dialog accepts CSV, TSV, and Excel files; for a multi-sheet workbook a **sheet dropdown** selects the sheet to join against
+- Join types: inner, left, right, outer. Options: `forceStringCast`, `nullString`
 - Create **virtual tables** from CSV files with automatic type detection
 
 ## Under the Hood
