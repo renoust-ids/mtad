@@ -1,6 +1,6 @@
 {
   "name": "mtad",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "homepage": "https://www.tadviewer.com",
   "description": "Tabular data viewer desktop app, built with Electron",
   "main": "dist/main.bundle.js",
