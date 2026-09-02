@@ -75,14 +75,9 @@ const round2 = (n: number): number =>
 
 const countLabel = (n: number): string => n.toLocaleString();
 
-// Correlated-cell background: blue for positive r, red for negative r, gray
-// for near-zero, with increasing saturation away from zero.
-const rColor = (r: number): string => {
-  const a = Math.min(0.85, 0.18 + Math.abs(r) * 0.6);
-  const base =
-    r < 0 ? "242, 139, 130" : r > 0 ? "163, 213, 255" : "200, 205, 210";
-  return `rgba(${base}, ${a})`;
-};
+// Short label for a pairwise-association measure shown in each matrix cell.
+const corrLabel = (m: reltab.PairMeasure): string =>
+  m === "V" ? "V" : m === "eta" ? "eta" : "r";
 
 interface HoverInfo {
   left: number;
@@ -626,9 +621,8 @@ const SplomDialog: React.FunctionComponent<SplomDialogProps> = ({
     const xNumeric = !colIsCategorical(colI);
     const yNumeric = !colIsCategorical(colJ);
     const numericPair = xNumeric && yNumeric;
-    const upper = j > i;
     const corr =
-      numericPair && data != null
+      data != null
         ? data.correlations.find(
             (c) =>
               (c.xColId === colI && c.yColId === colJ) ||
@@ -636,10 +630,9 @@ const SplomDialog: React.FunctionComponent<SplomDialogProps> = ({
           )
         : undefined;
     const corrText =
-      corr != null && corr.r != null && corr.n >= 2
-        ? `r = ${round2(corr.r)}`
+      corr != null && corr.strength != null && corr.n >= 2
+        ? `${corrLabel(corr.measure)} = ${round2(corr.strength)}`
         : "n/a";
-    const fill = upper && corr != null && corr.r != null ? rColor(corr.r) : null;
 
     const domain =
       xNumeric && yNumeric
@@ -694,7 +687,7 @@ const SplomDialog: React.FunctionComponent<SplomDialogProps> = ({
           position: "relative",
           border: "1px solid rgba(17, 20, 24, 0.08)",
           borderRadius: 4,
-          background: fill ?? "#FFFFFF",
+          background: "#FFFFFF",
           overflow: "hidden",
           padding: 6,
         }}
@@ -916,7 +909,7 @@ const SplomDialog: React.FunctionComponent<SplomDialogProps> = ({
               {sp.sampled ? " (sampled)" : ""} ·{" "}
               {data != null && data.correlations.length} correlation
               {data != null && data.correlations.length === 1 ? "" : "s"} overall
-              (correlation is shown only for numeric/temporal column pairs)
+              (r for numeric pairs, eta for categorical×numeric, V for categorical×categorical)
             </span>
           )}
         </div>

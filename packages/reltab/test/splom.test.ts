@@ -29,12 +29,15 @@ const tableSchema = new Schema(
 
 type RunSqlQuery = jest.Mock;
 
-const makeDriver = (runSqlQuery: RunSqlQuery): DbDriver => ({
+const makeDriver = (
+  runSqlQuery: RunSqlQuery,
+  schema: Schema = tableSchema
+): DbDriver => ({
   sourceId,
   dialect: DuckDBDialect,
   runSqlQuery,
-  getTableSchema: jest.fn().mockResolvedValue(tableSchema),
-  getSqlQuerySchema: jest.fn().mockResolvedValue(tableSchema),
+  getTableSchema: jest.fn().mockResolvedValue(schema),
+  getSqlQuerySchema: jest.fn().mockResolvedValue(schema),
   getSqlQueryColumnStatsMap: jest.fn().mockResolvedValue({}),
   getRootNode: jest.fn(),
   getChildren: jest.fn(),
@@ -231,11 +234,27 @@ describe("pairwiseCorrelationSql", () => {
 });
 
 describe("getCorrelationMatrix", () => {
-  test("computes correlations for numeric pairs only", async () => {
-    const runSqlQuery = jest.fn().mockResolvedValue([
+  // runSqlQuery mock that returns rows keyed by the SQL body: one set for the
+  // Pearson (corr) query, one for the eta query, one for the Cramér's V query.
+  const mkIface = (
+    pearson: unknown[],
+    eta: unknown[] | null = null,
+    cramer: unknown[] | null = null
+  ) => {
+    const runSqlQuery = jest.fn().mockImplementation((query: string) => {
+      if (eta != null && /sbtw/.test(query)) return Promise.resolve(eta);
+      if (cramer != null && /least\(nr - 1, nc - 1\)/.test(query))
+        return Promise.resolve(cramer);
+      return Promise.resolve(pearson);
+    });
+    const ds = new DbDataSource(makeDriver(runSqlQuery));
+    return { ds, runSqlQuery };
+  };
+
+  test("computes Pearson correlations for numeric pairs and skips categorical in that query", async () => {
+    const { ds, runSqlQuery } = mkIface([
       { __x: "a", __y: "b", __r: 0.5, __n: BigInt(10) },
     ]);
-    const ds = new DbDataSource(makeDriver(runSqlQuery));
 
     const corr = await getCorrelationMatrix(
       ds,
@@ -244,18 +263,27 @@ describe("getCorrelationMatrix", () => {
       ["a", "b", "c"]
     );
 
-    expect(corr).toEqual([{ xColId: "a", yColId: "b", r: 0.5, n: 10 }]);
-    const corrSql = runSqlQuery.mock.calls[0][0] as string;
-    expect(corrSql).toContain("WITH __splom_src AS MATERIALIZED");
-    expect(corrSql).toContain("corr(\"a\", \"b\")");
-    expect(corrSql).not.toContain("corr(\"c\"");
+    expect(corr).toContainEqual({
+      xColId: "a",
+      yColId: "b",
+      measure: "r",
+      r: 0.5,
+      strength: 0.5,
+      n: 10,
+    });
+    const pearsonSql = runSqlQuery.mock.calls
+      .map((c) => c[0] as string)
+      .find((s) => s.includes("corr("));
+    expect(pearsonSql).toContain("WITH __splom_src AS MATERIALIZED");
+    expect(pearsonSql).toContain('corr("a", "b")');
+    expect(pearsonSql).not.toContain('corr("c"');
+    // the categorical (a, c) pair is handled by the eta query, not corr()
   });
 
   test("correlates temporal columns in epoch space and maps back names", async () => {
-    const runSqlQuery = jest.fn().mockResolvedValue([
+    const { ds, runSqlQuery } = mkIface([
       { __x: "a", __y: "__splom_d", __r: 0.7, __n: BigInt(8) },
     ]);
-    const ds = new DbDataSource(makeDriver(runSqlQuery));
 
     const corr = await getCorrelationMatrix(
       ds,
@@ -264,14 +292,27 @@ describe("getCorrelationMatrix", () => {
       ["a", "d"]
     );
 
-    expect(corr).toEqual([{ xColId: "a", yColId: "d", r: 0.7, n: 8 }]);
-    const corrSql = runSqlQuery.mock.calls[0][0] as string;
-    expect(corrSql).toContain('corr("a", "__splom_d")');
+    expect(corr).toEqual([
+      {
+        xColId: "a",
+        yColId: "d",
+        measure: "r",
+        r: 0.7,
+        strength: 0.7,
+        n: 8,
+      },
+    ]);
+    const pearsonSql = runSqlQuery.mock.calls
+      .map((c) => c[0] as string)
+      .find((s) => s.includes("corr("));
+    expect(pearsonSql).toContain('corr("a", "__splom_d")');
   });
 
-  test("returns [] when fewer than 2 numeric/temporal columns", async () => {
-    const runSqlQuery = jest.fn();
-    const ds = new DbDataSource(makeDriver(runSqlQuery));
+  test("reports eta for a categorical × numeric pair", async () => {
+    const { ds, runSqlQuery } = mkIface(
+      [],
+      [{ __x: "c", __y: "a", __r: 0.63, __n: BigInt(12) }]
+    );
 
     const corr = await getCorrelationMatrix(
       ds,
@@ -279,15 +320,69 @@ describe("getCorrelationMatrix", () => {
       tableSchema,
       ["a", "c"]
     );
-    expect(corr).toEqual([]);
-    expect(runSqlQuery).not.toHaveBeenCalled();
+
+    expect(corr).toEqual([
+      {
+        xColId: "c",
+        yColId: "a",
+        measure: "eta",
+        r: 0.63,
+        strength: 0.63,
+        n: 12,
+      },
+    ]);
+    const etaSql = runSqlQuery.mock.calls
+      .map((c) => c[0] as string)
+      .find((s) => /sbtw/.test(s));
+    expect(etaSql).toMatch(/sum\(nk \* pow\(nm - grand, 2\)\)/);
+    expect(etaSql).toContain("sqrt(sbtw / NULLIF(stot, 0))");
+  });
+
+  test("reports Cramér's V for a categorical × categorical pair", async () => {
+    const catSchema = new Schema(
+      DuckDBDialect,
+      ["hue", "size_"],
+      {
+        hue: { columnType: "VARCHAR", displayName: "hue" },
+        size_: { columnType: "VARCHAR", displayName: "size_" },
+      }
+    );
+    const runSql = jest.fn().mockResolvedValue([
+      { __x: "hue", __y: "size_", __r: 0.4, __n: BigInt(20) },
+    ]);
+    const ds = new DbDataSource(
+      makeDriver(
+        runSql,
+        catSchema
+      )
+    );
+
+    const corr = await getCorrelationMatrix(
+      ds,
+      tableQuery("t"),
+      catSchema,
+      ["hue", "size_"]
+    );
+
+    expect(corr).toEqual([
+      {
+        xColId: "hue",
+        yColId: "size_",
+        measure: "V",
+        r: 0.4,
+        strength: 0.4,
+        n: 20,
+      },
+    ]);
+    const vSql = runSql.mock.calls
+      .map((c) => c[0] as string)
+      .find((s) => /least\(nr - 1, nc - 1\)/.test(s));
+    expect(vSql).toMatch(/least\(nr - 1, nc - 1\)/);
+    expect(vSql).toContain("__cells");
   });
 
   test("keeps r null when corr() returns null", async () => {
-    const runSqlQuery = jest.fn().mockResolvedValue([
-      { __x: "a", __y: "b", __r: null, __n: BigInt(1) },
-    ]);
-    const ds = new DbDataSource(makeDriver(runSqlQuery));
+    const { ds } = mkIface([{ __x: "a", __y: "b", __r: null, __n: BigInt(1) }]);
 
     const corr = await getCorrelationMatrix(
       ds,
@@ -295,7 +390,10 @@ describe("getCorrelationMatrix", () => {
       tableSchema,
       ["a", "b"]
     );
-    expect(corr).toEqual([{ xColId: "a", yColId: "b", r: null, n: 1 }]);
+
+    expect(corr).toEqual([
+      { xColId: "a", yColId: "b", measure: "r", r: null, strength: null, n: 1 },
+    ]);
   });
 });
 

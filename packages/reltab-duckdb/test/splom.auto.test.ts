@@ -122,3 +122,37 @@ test("constant column yields null correlation but non-zero n", async () => {
   expect(reg.intercept).toBe(5);
   expect(reg.n).toBe(3);
 });
+
+test("eta is computed for a categorical × numeric pair and lies in [0,1]", async () => {
+  const schema = await testCtx.getSchema(q1);
+  const corr = await getCorrelationMatrix(testCtx, q1, schema, [
+    "Job Family",
+    "Base",
+  ]);
+  expect(corr).toHaveLength(1);
+  const c = corr[0];
+  expect(c.measure).toBe("eta");
+  expect(c.xColId).toBe("Job Family");
+  expect(c.yColId).toBe("Base");
+  expect(c.n).toBeGreaterThan(0);
+  expect(c.strength).not.toBeNull();
+  expect(c.strength as number).toBeGreaterThanOrEqual(0);
+  expect(c.strength as number).toBeLessThanOrEqual(1);
+});
+
+test("Cramér's V is computed for a categorical × categorical pair", async () => {
+  const schema = await testCtx.getSchema(q1);
+  const corr = await getCorrelationMatrix(testCtx, q1, schema, [
+    "Job Family",
+    "Union",
+  ]);
+  expect(corr).toHaveLength(1);
+  const c = corr[0];
+  expect(c.measure).toBe("V");
+  expect(c.xColId).toBe("Job Family");
+  expect(c.yColId).toBe("Union");
+  expect(c.n).toBeGreaterThan(0);
+  expect(c.strength).not.toBeNull();
+  expect(c.strength as number).toBeGreaterThanOrEqual(0);
+  expect(c.strength as number).toBeLessThanOrEqual(1);
+});
