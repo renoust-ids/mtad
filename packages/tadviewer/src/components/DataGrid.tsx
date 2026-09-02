@@ -10,10 +10,8 @@
 import _ from "lodash";
 import * as React from "react";
 
-/* /// <reference path="slickgrid-es6.d.ts"> */
-import { ResizeSensor } from "@blueprintjs/core";
 import * as he from "he";
-import { useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom/client";
 import * as reltab from "reltab";
 import { ColumnKind, ColumnType, NumericColumnHistogramData } from "reltab";
@@ -1131,6 +1129,7 @@ export const DataGrid: React.FunctionComponent<DataGridProps> = (
     embedded,
   } = props;
   const containerIdRef = useRef(genContainerId());
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const [gridState, setGridState] = useState<GridState | null>(null);
 
   const prevShowColumnHistograms = useRef(showColumnHistograms);
@@ -1166,6 +1165,19 @@ export const DataGrid: React.FunctionComponent<DataGridProps> = (
     }
   };
 
+  // Replace the legacy @blueprintjs ResizeSensor (which uses findDOMNode)
+  // with a ref-based ResizeObserver to avoid the findDOMNode deprecation warning.
+  useLayoutEffect(() => {
+    const el = containerRef.current;
+    if (!el) {
+      return;
+    }
+    const observer = new ResizeObserver(() => handleGridResize());
+    observer.observe(el);
+    return () => observer.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gridState]);
+
   const handleWindowResize = (e: any) => {
     // console.log("handleWindowResize: ", e);
     if (gridState) {
@@ -1188,12 +1200,11 @@ export const DataGrid: React.FunctionComponent<DataGridProps> = (
   return (
     <div className="gridPaneOuter">
       <div className="gridPaneInner">
-        <ResizeSensor onResize={handleGridResize}>
-          <div
-            id={containerIdRef.current}
-            className="slickgrid-container full-height"
-          />
-        </ResizeSensor>
+        <div
+          ref={containerRef}
+          id={containerIdRef.current}
+          className="slickgrid-container full-height"
+        />
       </div>
       {lm}
     </div>
