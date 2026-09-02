@@ -190,6 +190,8 @@ export const createMenu = () => {
         electron.shell.openExternal("mailto:tad-feedback@tadviewer.com");
       },
     },
+    separatorMenuItem,
+    checkForUpdateMenuItem(),
   ];
   const template: MenuItemConstructorOptions[] = [
     {
@@ -228,8 +230,6 @@ export const createMenu = () => {
       // ignored on Mac OS; comes from plist
       submenu: [
         aboutTadMenuItem(),
-        separatorMenuItem,
-        checkForUpdateMenuItem(),
         separatorMenuItem,
         {
           role: "quit",
