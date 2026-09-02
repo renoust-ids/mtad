@@ -132,12 +132,6 @@ const create = async (openParams: OpenParams): Promise<BrowserWindow> => {
   });
   win.loadURL(targetUrl);
 
-  // Open the DevTools.
-  win.webContents.openDevTools({
-    mode: "bottom",
-  });
-  win.webContents.closeDevTools();
-
   // Emitted when the window is closed.
   win.on("closed", function () {
     const idx = mainWindows.indexOf(win);
