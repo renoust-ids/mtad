@@ -25,6 +25,7 @@ import { initS3 } from "./s3utils";
 
 export * from "./csvimport";
 
+export * from "./xlsximport";
 const columnTypes = DuckDBDialect.columnTypes;
 
 let viewCounter = 0;

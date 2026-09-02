@@ -22,7 +22,7 @@ const uniquify = (src: string): string => {
 };
 
 /* map to alphanumeric */
-const mapIdent = (src: string): string => {
+export const mapIdent = (src: string): string => {
   const ret = src.replace(/[^a-z0-9_]/gi, "_");
   return ret;
 };
@@ -32,7 +32,7 @@ const isAlpha = (ch: string): boolean => /^[A-Z]$/i.test(ch);
 const MAXLEN = 16;
 
 /* generate a SQL table name from pathname */
-const genTableName = (pathname: string): string => {
+export const genTableName = (pathname: string): string => {
   const extName = path.extname(pathname);
   const baseName = path.basename(pathname, extName);
   let baseIdent = mapIdent(baseName);
