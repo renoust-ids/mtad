@@ -612,17 +612,6 @@ const SplomDialog: React.FunctionComponent<SplomDialogProps> = ({
         style={{ cursor: "pointer", height: 150 }}
       >
         {chart}
-        <div
-          className="bp4-text-muted"
-          style={{
-            fontSize: 11,
-            textAlign: "center",
-            marginTop: 4,
-            whiteSpace: "nowrap",
-          }}
-        >
-          {viewSchema?.displayName(cid) ?? cid} ▸ Distribution
-        </div>
       </div>
     );
   };
