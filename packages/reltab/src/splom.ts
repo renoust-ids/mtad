@@ -428,6 +428,10 @@ const xName2Cid = (
  * Linear regression (and correlation) of y over x, for the master-detail trend
  * line. x and y are the original matrix column ids; temporal columns are
  * regressed in epoch space.
+ *
+ * Returns a null regression when either operand is categorical, since corr()/
+ * regr_* require two numeric operands (a trend line is not meaningful across
+ * discrete categories).
  */
 export async function getPairRegression(
   dsConn: DataSourceConnection,
@@ -436,6 +440,21 @@ export async function getPairRegression(
   xColId: string,
   yColId: string
 ): Promise<PairRegression> {
+  const noFit = (): PairRegression => ({
+    xColId,
+    yColId,
+    r: null,
+    slope: null,
+    intercept: null,
+    r2: null,
+    n: 0,
+  });
+  if (
+    splomColKind(schema.columnType(xColId)) === "categorical" ||
+    splomColKind(schema.columnType(yColId)) === "categorical"
+  ) {
+    return noFit();
+  }
   const { query, derivedNames } = splomScatterQuery(baseQuery, schema, [
     xColId,
     yColId,
@@ -457,7 +476,7 @@ export async function getPairRegression(
   const res = await dsConn.evalQuery(sqlQuery(regrSql));
   const row = res.rowData[0];
   if (!row) {
-    return { xColId, yColId, r: null, slope: null, intercept: null, r2: null, n: 0 };
+    return noFit();
   }
   return {
     xColId,

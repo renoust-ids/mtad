@@ -434,4 +434,28 @@ describe("getPairRegression", () => {
     expect(regrSql).toContain('"a" IS NOT NULL AND "b" IS NOT NULL');
     expect(regrSql).toContain("FROM ( ");
   });
+
+  test("returns a null regression when either operand is categorical", async () => {
+    const runSqlQuery = jest.fn();
+    const ds = new DbDataSource(makeDriver(runSqlQuery));
+
+    const reg = await getPairRegression(
+      ds,
+      tableQuery("t"),
+      tableSchema,
+      "a", // numeric
+      "c" // categorical
+    );
+
+    expect(reg).toEqual({
+      xColId: "a",
+      yColId: "c",
+      r: null,
+      slope: null,
+      intercept: null,
+      r2: null,
+      n: 0,
+    });
+    expect(runSqlQuery).not.toHaveBeenCalled();
+  });
 });
