@@ -52,6 +52,48 @@ const defaultJoinCsvDialogState: JoinCsvDialogState = {
   nullString: "",
 };
 
+// A column mapping entry in the concatenate dialog.
+export interface ConcatCsvMapping {
+  // column in the current (original) table, or "" if new-only
+  originalCol: string;
+  // column in the new file, or "" if original-only
+  newCol: string;
+  // whether the current entry maps two columns together (matched)
+  matched: boolean;
+  originalType: string;
+  newType: string;
+  // the resulting SQL type name after any cast
+  castType: string | null;
+  // per-column null string sentinel (empty = none)
+  nullString: string;
+}
+
+export interface ConcatCsvDialogState {
+  open: boolean;
+  csvPath: string | null;
+  // Columns of the original (current) table: { colId: sqlTypeName }
+  originalColumns: { [colId: string]: string };
+  // Columns of the new file: { colId: sqlTypeName }
+  newColumns: { [colId: string]: string };
+  sheets: string[];
+  sheet: string;
+  // ordered list of column mappings (drives the final output column order)
+  mappings: ConcatCsvMapping[];
+  // keeps track of the original + new columns so we know what's left unmapped
+  loaded: boolean;
+}
+
+const defaultConcatCsvDialogState: ConcatCsvDialogState = {
+  open: false,
+  csvPath: null,
+  originalColumns: {},
+  newColumns: {},
+  sheets: [],
+  sheet: "",
+  mappings: [],
+  loaded: false,
+};
+
 export interface AppStateProps {
   initialized: boolean; // Has main process initialization completed?
 
@@ -73,6 +115,8 @@ export interface AppStateProps {
   viewConfirmSourcePath: DataSourcePath | null;
 
   joinCsvDialog: JoinCsvDialogState;
+
+  concatCsvDialog: ConcatCsvDialogState;
 
   histogramDialogColId: string | null;
 
@@ -108,6 +152,7 @@ const defaultAppStateProps: AppStateProps = {
   viewConfirmDialogOpen: false,
   viewConfirmSourcePath: null,
   joinCsvDialog: defaultJoinCsvDialogState,
+  concatCsvDialog: defaultConcatCsvDialogState,
   histogramDialogColId: null,
   splomDialogOpen: false,
   scatterPlotDialogOpen: false,
@@ -138,6 +183,7 @@ export class AppState extends Immutable.Record(defaultAppStateProps) {
   public readonly viewConfirmDialogOpen!: boolean;
   public readonly viewConfirmSourcePath!: DataSourcePath | null;
   public readonly joinCsvDialog!: JoinCsvDialogState;
+  public readonly concatCsvDialog!: ConcatCsvDialogState;
   public readonly histogramDialogColId!: string | null;
   public readonly splomDialogOpen!: boolean;
   public readonly scatterPlotDialogOpen!: boolean;

@@ -22,6 +22,7 @@ import { GridPane, OpenURLFn } from "./GridPane";
 import { Footer } from "./Footer";
 import { LoadingModal } from "./LoadingModal";
 import { JoinCsvDialog } from "./JoinCsvDialog";
+import { ConcatCsvDialog } from "./ConcatCsvDialog";
 import * as actions from "../actions";
 import {
   AppState,
@@ -29,6 +30,7 @@ import {
   ParquetExportOptions,
   defaultParquetExportOptions,
   CsvJoinType,
+  ConcatCsvMapping,
 } from "../AppState";
 import * as oneref from "oneref";
 import { useState } from "react";
@@ -84,6 +86,12 @@ export interface AppPaneBaseProps {
     rightCol: string;
     forceStringCast: boolean;
     nullString: string;
+  }) => void;
+  onConcatCsvConfirmed?: (concatArgs: {
+    csvPath: string;
+    sheet: string;
+    rightColumns: { [colId: string]: string };
+    mappings: ConcatCsvMapping[];
   }) => void;
 }
 
@@ -467,6 +475,7 @@ export const AppPane: React.FunctionComponent<AppPaneProps> = ({
   onGetXlsxSheets,
   onGetCsvHeaders,
   onJoinCsvConfirmed,
+  onConcatCsvConfirmed,
 }: AppPaneProps) => {
   const { activity, exportBeginDialogOpen } = appState;
   const dataSourceExpanded = activity === "DataSource";
@@ -574,6 +583,13 @@ export const AppPane: React.FunctionComponent<AppPaneProps> = ({
         onSelectCsvFile={onSelectCsvFile ?? (async () => null)}
         onGetCsvHeaders={onGetCsvHeaders ?? (async () => ({ columns: [], types: {} }))}
         onJoinConfirmed={onJoinCsvConfirmed ?? (() => {})}
+      />
+      <ConcatCsvDialog
+        appState={appState.concatCsvDialog}
+        stateRef={stateRef}
+        onSelectCsvFile={onSelectCsvFile ?? (async () => null)}
+        onGetCsvHeaders={onGetCsvHeaders ?? (async () => ({ columns: [], types: {} }))}
+        onConcatConfirmed={onConcatCsvConfirmed ?? (() => {})}
       />
     </div>
   );

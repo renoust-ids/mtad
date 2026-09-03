@@ -11,6 +11,7 @@ import {
   ExportFormat,
   ParquetExportOptions,
   CsvJoinType,
+  ConcatCsvMapping,
 } from "tadviewer";
 import { PivotRequester } from "tadviewer";
 import { AppState } from "tadviewer";
@@ -204,6 +205,24 @@ const init = async () => {
             }
           );
         }}
+        onConcatCsvConfirmed={async (concatArgs: {
+          csvPath: string;
+          sheet: string;
+          rightColumns: { [colId: string]: string };
+          mappings: ConcatCsvMapping[];
+        }) => {
+          await actions.confirmConcatCsv(
+            concatArgs,
+            stateRef,
+            async (path: string, sheet: string) => {
+              const tableName = await ipcRenderer.invoke("join:importXlsx", {
+                path,
+                sheet,
+              });
+              return (tableName as string | null) ?? undefined;
+            }
+          );
+        }}
       />
     );
     const tRender = performance.now();
@@ -280,6 +299,18 @@ const init = async () => {
       const curState = mutableGet(stateRef);
       const leftColumns = curState.viewState?.baseSchema?.columns ?? [];
       actions.openJoinCsvDialog(leftColumns, stateRef);
+    });
+
+    ipcRenderer.on("start-csv-concatenate", () => {
+      const curState = mutableGet(stateRef);
+      const schema = curState.viewState?.baseSchema;
+      const originalColumns: { [colId: string]: string } = {};
+      if (schema) {
+        for (const cid of schema.columns) {
+          originalColumns[cid] = schema.columnMetadata[cid]?.columnType ?? "VARCHAR";
+        }
+      }
+      actions.openConcatCsvDialog(originalColumns, stateRef);
     });
 
     ipcRenderer.on("open-column-histogram", (event, req) => {
