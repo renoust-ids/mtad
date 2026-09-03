@@ -1,7 +1,11 @@
 # Confusion Matrix View — Implementation Plan
 
 Branch: `confusion_matrix`
-Status: **design approved, implementation not started**
+Status: **implemented, released in v0.0.8** (see [CHANGELOG](../CHANGELOG.md))
+
+> This document describes the original design and its implementation. The
+> feature shipped as **Analytics ▸ Confusion Matrix**. For user-facing
+> documentation see [features.md](features.md) and [analytics.md](analytics.md).
 
 ## Objective
 
@@ -150,14 +154,26 @@ is desired — decide in implementation).
   in-memory DuckDB + a new `test/support/*.csv`; assert counts, binning, conditional
   frequencies, threshold blanking.
 
-## Open implementation questions (to resolve during coding)
+## Resolved implementation questions
 
-- Cell-click → filter: whether clicking a cell should push a row/column filter via
-  `setAnalyticsClauses` (nice-to-have; default: no, keep scope tight).
-- Rendering library: use CSS grid + filled rectangles (recommended) vs Victory heatmap
-  rects. Recommend CSS grid for simplicity and fast repaint.
-- Temporal binning labels: reuse existing epoch-based temporal binning from
-  `histogram.ts` (`temporalValueQuery`) so TIME/DATE columns behave consistently.
+The open questions below were answered during implementation:
+
+- **Cell-click → filter**: implemented. Clicking a cell pushes an analytics
+  filter via `setAnalyticsClauses` — a numeric/temporal range for a numeric
+  bin, or the categorical value for a class — and a second click on the same
+  cell clears it (`clearConfusionMatrixFilter`). This required exposing the
+  numeric bin low/high edges on `CmBin` so the dialog can build the range.
+- **Rendering library**: CSS grid + filled rectangles (as recommended).
+- **Temporal binning labels**: reuses the epoch-based temporal binning from
+  `histogram.ts`, consistent with the Distribution view.
+- **A-vs-A same-column pairing**: axis specs are cached per column id so the
+  row and column axes reuse one deterministic category ordering; otherwise tied
+  category frequencies could permute the two axes and break the diagonal.
+- **Empty rows/columns**: the dialog prunes bins with no surviving (post-
+  threshold) cell when rendering, so empty rows/columns disappear as the bin
+  count or minimum-occurrence threshold changes.
+- **Numeric bin defaults**: row/col bin counts default to 5 and are applied on
+  open (not deferred until the user touches a slider).
 
 ## Rollout / verification
 

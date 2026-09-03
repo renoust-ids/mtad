@@ -7,9 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.8] - 2026-09-03
+
 ### Added
 
-- Automatic release notes: each GitHub release now lists the feature summary for its version, extracted from this changelog by the release workflow.
+- **Confusion Matrix** — Analytics ▸ Confusion Matrix renders a co-occurrence (2D histogram) matrix between a chosen **row variable** and **column variable**. Numeric and temporal columns are auto-binned (adjustable row/col bin counts, default 5 on open), categorical columns use their distinct values as classes; each cell shows its count and is heat-mapped by value.
+  - **Conditional modes** — toggle between raw count, row-normalized `P(col|row)`, and column-normalized `P(row|col)`.
+  - **Minimum-occurrence threshold** — cells below the threshold are blanked (hidden) and excluded from the conditional normalization; empty rows/columns disappear as the bin count or threshold changes.
+  - **Cell-click analytics filtering** — click any cell to filter the grid on both axes (a numeric/temporal bin range, or the categorical value); clicking the selected cell again removes the filter. Highlighting follows the distribution-selection color scheme.
+  - **Apply Table Filters / Use all rows** switches, a **swap axes** button, and pivot-aware computation, mirroring the Scatter Plot dialog. Choosing the same column for both axes yields a within-column co-occurrence matrix.
+- **reltab confusion-matrix layer** — `getConfusionMatrixData()` in `packages/reltab/src/confusionMatrix.ts` (exported from `reltab`), with unit tests and DuckDB integration tests.
+- **SPLOM categorical association stats** — the matrix now reports `eta` for categorical×numeric pairs and Cramér's V for categorical×categorical pairs.
+- **Soft check-for-updates** — a **Help ▸ Check for Updates** menu item points to the latest release page.
+
+### Changed
+
+- **Join File** — the "Join CSV" menu label was renamed to "Join File" to reflect the broader file-type support.
+- **Release automation** — the CHANGELOG now drives per-version release notes, and GitHub releases are published automatically when a version tag is pushed.
+
+### Fixed
+
+- **Bare `TIME` values** — rendering a time-only column (e.g. from an Excel import) no longer logs spurious `Invalid time value` conversion errors.
+- **`_rid` duplication** — table leaf schemas that already expose a `_rid` column no longer get a duplicate.
+- **SPLOM regression line** — the trend line and regression stats are skipped when either operand is categorical.
+- **`findDOMNode` deprecation** — the grid's Blueprint `ResizeSensor` was replaced with a ref-based `ResizeObserver`, removing one source of the deprecation warning.
+
+### Chores
+
+- Route xlsx inference-fallback logs through `loglevel`; remove stray debug `console.log` calls from the normal UI flow; stop auto-opening/closing DevTools on window creation; remove the redundant diagonal-distribution label in SPLOM.
 
 ## [0.0.7] - 2026-09-02
 
@@ -62,7 +87,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CSV join materialization** — join CSV files and materialize the result as a DuckDB table.
 - **Cell context menu** — edit / edit-all options on right-click; improved date/time display formatting.
 
-[Unreleased]: https://github.com/renoust-ids/mtad/compare/v0.0.7...HEAD
+[Unreleased]: https://github.com/renoust-ids/mtad/compare/v0.0.8...HEAD
+[0.0.8]: https://github.com/renoust-ids/mtad/compare/v0.0.7...v0.0.8
 [0.0.7]: https://github.com/renoust-ids/mtad/compare/v0.0.6...v0.0.7
 [0.0.6]: https://github.com/renoust-ids/mtad/compare/v0.0.5...v0.0.6
 [0.0.5]: https://github.com/renoust-ids/mtad/compare/v0.0.4...v0.0.5

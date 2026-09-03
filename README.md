@@ -69,6 +69,16 @@ MTad supports editing cell values directly in the data grid:
 - **Pivot-aware**: on pivoted views the chart is computed over the grouped query results
 - See [doc/analytics.md](doc/analytics.md) for the full walkthrough and screenshots
 
+### Confusion Matrix
+
+- **Analytics ▸ Confusion Matrix** opens a co-occurrence matrix between a chosen **row variable** and **column variable** (a 2D histogram of two columns)
+- Numeric and temporal columns are auto-binned with adjustable **row/col bin** counts; categorical columns use their distinct values as classes; selecting the **same column twice** gives a within-column co-occurrence matrix
+- Cells are heat-mapped by value and by default show their **count**; a mode selector switches to **conditional on rows** `P(col|row)` or **conditional on columns** `P(row|col)`
+- A **minimum-occurrence** threshold blanks out rare cells (and excludes them from normalization); empty rows/columns disappear as it changes
+- **Click a cell** to filter the grid on both axes (a bin range, or the categorical value); clicking it again removes the filter
+- **Apply Table Filters / Use all rows** switches, a **swap-axes** button, and pivot-aware computation
+- See [doc/features.md](doc/features.md) and [doc/analytics.md](doc/analytics.md)
+
 ### Table & Analytics Filters
 
 MTad distinguishes between the query filter of the view and ad-hoc exploration filters:
@@ -189,6 +199,7 @@ used to build the MTad desktop application:
   (or electron renderer process) and a reltab backend server.
   - Key methods: `execSql()` for DML statements, `getSqlForQuery()` for SQL generation, `renameColumn()` for schema changes, `insertRow()` and `insertColumn()` for adding rows and columns
   - Binned and categorical single-column distribution queries, including temporal (date/time/timestamp) columns
+  - Two-dimensional co-occurrence (confusion-matrix) queries via `getConfusionMatrixData()`
 - [**reltab-duckdb**](./packages/reltab-duckdb/) -- reltab driver for DuckDb
 - [**aggtree**](./packages/aggtree/) - A library built on top of reltab for constructing pivot trees from relational queries.
 - [**tadviewer**](./packages/tadviewer/) - The core MTad pivot table UI as a standalone, embeddable React component.
@@ -198,6 +209,7 @@ used to build the MTad desktop application:
   - Pivot-aware editing (aggregate rows vs leaf rows)
   - Multi-cell selections preserved on right-click; hover draws a thick border highlight
   - Interactive Distribution dialog (binned histograms, categorical bars, temporal columns) with brush-to-filter
+  - Scatter Plot Matrix, Scatter Plot, and Confusion Matrix analytics dialogs with brush/click-to-filter
   - Split Table / Analytics filters with live SQL summaries and apply toggles
 - [**tad-app**](./packages/tad-app/) - The MTad desktop application, built with Electron
 

@@ -1,6 +1,6 @@
 # Data Exploration with MTad
 
-This guide walks through the interactive data-exploration features MTad adds on top of the classic Tad pivot-table viewer: the **Distribution dialog**, the **Scatter Plot Matrix (SPLOM)** and **Scatter Plot** views, and the split **Table / Analytics filters**. The examples use the included [`examples/histogram_test.csv`](../examples/histogram_test.csv) (1,000 rows with numeric, categorical and temporal columns).
+This guide walks through the interactive data-exploration features MTad adds on top of the classic Tad pivot-table viewer: the **Distribution dialog**, the **Scatter Plot Matrix (SPLOM)**, **Scatter Plot**, and **Confusion Matrix** views, and the split **Table / Analytics filters**. The examples use the included [`examples/histogram_test.csv`](../examples/histogram_test.csv) (1,000 rows with numeric, categorical and temporal columns).
 
 ## Opening a Distribution
 
@@ -62,6 +62,16 @@ A single X/Y pair plotted as a 2D scatter, opened from **Analytics ▸ Scatter P
 - The **linear regression** trend line (slope/intercept via `regr_slope`/`regr_intercept`) and a stats row (`n`, `r`, `r²`, the fitted line, per-axis ranges). Regression is n/a when either axis is categorical.
 - **Sampling** (default 5 000, adjustable up to 20 000) bounds the points; **Use all rows** disables sampling. **Apply Table Filters** (default on) computes the plot over the table-filtered subset.
 
+## Confusion Matrix
+
+The **Analytics ▸ Confusion Matrix** menu opens a co-occurrence matrix between a **row variable** and a **column variable** (a 2D histogram of two columns). Pick both with the dropdowns — numeric, temporal, and categorical columns are all allowed, and you may choose the **same column twice** for a within-column co-occurrence matrix.
+
+- **Binning** — numeric/temporal axes auto-bin on a "nice" range with adjustable **row/col bin** counts (slider or typed value); categorical axes use their values. A **swap-axes** button exchanges the two variables and bin counts.
+- **Cells** — each cell shows its count and is heat-mapped by value. The **Min occurrences** slider blanks out rare cells (hidden, and excluded from normalization).
+- **Conditional modes** — switch between raw **Count**, **Conditional on rows** `P(col|row)`, and **Conditional on columns** `P(row|col)`; the kept cells renormalize per row or per column.
+- **Click a cell** to filter the grid on both axes (a bin range, or the categorical value); clicking the same cell again clears the filter. The selected cell is highlighted using the distribution-selection color scheme.
+- **Apply Table Filters** (default on) computes the matrix over the table-filtered subset; on pivoted views it follows the aggregated view query.
+
 ## Table vs Analytics Filters
 
 The footer separates the view's filter from exploratory filters, in two strictly-separated tabs with their own editors:
@@ -85,4 +95,5 @@ Each tab shows a live SQL summary of its filter. Hovering a tab, or editing a fi
 - Histograms are computed in the database: `width_bucket` over auto-computed "nice" bin edges (or a Sturges-based default when no bin count is given).
 - Temporal histograms bin `DATE_PART('epoch', col)` and derive summary stats from the same epoch conversion.
 - Category frequencies come from a `GROUP BY ... ORDER BY COUNT(*) DESC LIMIT 20` query.
+- Confusion-matrix cells come from a `GROUP BY rowBin, colBin` count over per-row derived bin/class expressions; numeric bins use the same "nice" range and `floor((cast(value, DOUBLE) - niceMin) / binWidth)` as the histogram (epoch-converted for temporal columns).
 - Brush filters stay on the raw column with typed literals (`salary >= 31666.67 AND salary <= 183333.33`, `birth_date BETWEEN '2024-01-15' AND '2024-02-19'`), so they survive editing and DuckDB casts them implicitly.

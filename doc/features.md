@@ -78,6 +78,17 @@ The standalone **Scatter Plot** dialog (**Analytics ▸ Scatter Plot**) plots an
 - **Color by** assigns each distinct value a palette color and renders a legend next to the plot.
 - **Sampling** (default 5 000, adjustable up to 20 000) bounds the number of points; **Use all rows** disables sampling. The **Apply Table Filters** switch (default on) computes the plot over the table-filtered subset.
 
+## Confusion Matrix
+
+The **Confusion Matrix** dialog (**Analytics ▸ Confusion Matrix**) renders a co-occurrence matrix between a chosen **row variable** and **column variable**: one cell for every `(row class, column class)` pair, counting the source rows that fall into both. It is a 2D histogram of two columns at once.
+
+- **Axis columns** — pick the row and column variables with the two dropdowns; columns tagged `(cat)` are categorical. Choosing the **same column twice** (A-vs-A) yields the within-column co-occurrence (off-diagonal) matrix. A **swap-axes** button swaps the two variables and their bin counts.
+- **Binning** — numeric and temporal columns are auto-binned on a "nice" range with an adjustable row/col bin count (slider or typed value, default 5, applied on open); categorical columns use their distinct values (ordered by frequency) as classes.
+- **Cells** — each cell shows its count and is heat-mapped by value (light tint → accent color). Hovering shows the exact class/bin; cells below the **minimum-occurrence** threshold are blanked out and **excluded** from the conditional normalization.
+- **Conditional modes** — a mode selector switches between raw **Count**, **Conditional on rows** `P(col|row)`, and **Conditional on columns** `P(row|col)` (rows/columns renormalize over the kept cells only).
+- **Cell-click analytics filtering** — click any cell to filter the grid on both axes (a numeric/temporal bin range, or the categorical value); clicking the selected cell again removes the filter. The selected cell is highlighted with the distribution-selection color scheme.
+- **Apply Table Filters / Use all rows** switches and **pivot-aware** computation, mirroring the Scatter Plot dialog.
+
 ## Table & Analytics Filters
 
 The footer splits filtering into two independent concepts:
@@ -118,3 +129,6 @@ Footer behavior:
 | Categorical frequency | `SELECT "c", COUNT(*) GROUP BY "c" ORDER BY COUNT(*) DESC LIMIT 20` |
 | Categorical bar filter | `WHERE "c" IN (...)` or `WHERE "c" IS NULL` |
 | Analytics filters | combined with the table filter as `WHERE (table_filter) AND (analytics_filter)` |
+| Confusion matrix | `SELECT rowBin, colBin, COUNT(1) GROUP BY rowBin, colBin` over derived bin/class expressions per axis |
+| CM numeric bin | `floor((CAST(value AS DOUBLE) - <niceMin>) / <binWidth>)` (epoch-converted for temporal columns) |
+| CM cell filter | row/col clause: `WHERE "c" >= <lo> AND "c" < <hi>` (numeric/temporal bin) or `WHERE "c" IN (<class>)` (categorical) |
