@@ -130,7 +130,6 @@ jobs:
         run: |
           version="${GITHUB_REF#refs/tags/v}"
           body="$(awk -v ver="$version" 'BEGIN{found=0} /^## \[/ { if (index($0, "[" ver "]") == 4) { found=1; next } if (found) exit } found {print}' CHANGELOG.md)"
-          echo "DELIMITER_MY_HEREDOC" >> "$GITHUB_ENV"
           echo "RELEASE_BODY<<DELIMITER_MY_HEREDOC" >> "$GITHUB_ENV"
           echo "$body" >> "$GITHUB_ENV"
           echo "DELIMITER_MY_HEREDOC" >> "$GITHUB_ENV"
