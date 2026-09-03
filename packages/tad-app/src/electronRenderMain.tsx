@@ -307,6 +307,9 @@ const init = async () => {
       const originalColumns: { [colId: string]: string } = {};
       if (schema) {
         for (const cid of schema.columns) {
+          // Exclude MTad internal columns (_rid, _depth, Rec, ...) that should
+          // not be part of the concatenated output.
+          if (cid === "Rec" || cid.startsWith("_")) continue;
           originalColumns[cid] = schema.columnMetadata[cid]?.columnType ?? "VARCHAR";
         }
       }

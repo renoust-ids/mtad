@@ -1583,7 +1583,9 @@ export const confirmConcatCsv = async (
     appState.showRecordCount
   );
 
-  const displayColumns = newBaseSchema.columns.slice();
+  const displayColumns = newBaseSchema.columns.filter(
+    (cid) => !cid.startsWith("_") && cid !== "Rec"
+  );
   const openPaths = new PathTree();
   const initialViewParams = new ViewParams({
     displayColumns,
