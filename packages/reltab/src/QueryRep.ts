@@ -108,6 +108,58 @@ export interface JoinCsvQueryRep {
   from: QueryRep;
 }
 
+/*
+ * A single output column of a file concatenate. The result table has exactly
+ * one column per ConcatCsvOutputColumn, in the order given. Each output column
+ * may source its value from the original table (originalCol), from the
+ * concatenated file (newCol), or both.
+ *
+ * - matched : value present on both sides; newCol is cast to `castType`
+ *   (the selected widest/result type) when reading the concatenated file.
+ * - originalOnly : column exists only in the original table; the concatenated
+ *   rows contribute NULL.
+ * - newOnly : column exists only in the concatenated file; the original rows
+ *   contribute NULL. `newColType` is the file's inferred SQL type.
+ */
+export type ConcatCsvOutputColumn =
+  | {
+      kind: "matched";
+      originalCol: string;
+      newCol: string;
+      castType: string;
+      nullString?: string;
+    }
+  | {
+      kind: "originalOnly";
+      originalCol: string;
+      // sql type of the original column, used to keep the UNION typing stable
+      originalType: string;
+    }
+  | {
+      kind: "newOnly";
+      newCol: string;
+      newColType: string;
+      nullString?: string;
+    };
+
+export interface ConcatCsvArgs {
+  rightTablePath: string;
+  // Alternative to rightTablePath: an already-imported DuckDB table (e.g. an
+  // imported .xlsx sheet). When set the file is referenced as a table name
+  // instead of read_csv_auto(rightTablePath).
+  rhsTableName?: string;
+  // The full list of result columns (in final output order).
+  outputColumns: ConcatCsvOutputColumn[];
+}
+
+export interface ConcatCsvQueryRep {
+  operator: "concatCsv";
+  args: ConcatCsvArgs;
+  rhsSchema: ColumnMetaMap;
+  rhsColumns: string[];
+  from: QueryRep;
+}
+
 export type QueryRep =
   | SqlQueryRep
   | TableQueryRep
@@ -120,7 +172,8 @@ export type QueryRep =
   | SortQueryRep
   | ExtendQueryRep
   | JoinQueryRep
-  | JoinCsvQueryRep;
+  | JoinCsvQueryRep
+  | ConcatCsvQueryRep;
 
 // A "leaf dependency" is either a SqlQuery or a table name
 export type QueryLeafDep = SqlQueryRep | TableQueryRep;

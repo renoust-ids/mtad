@@ -2,7 +2,7 @@
  * various unpagedQueryToSql functions, for transforming reltab QueryRep trees to SQLQueryAST trees
  */
 
-import { SQLDialect } from "./dialect";
+import { SQLDialect, ensureDialectColumnType } from "./dialect";
 import {
   TableQueryRep,
   ProjectQueryRep,
@@ -14,6 +14,8 @@ import {
   ExtendQueryRep,
   JoinQueryRep,
   JoinCsvQueryRep,
+  ConcatCsvQueryRep,
+  ConcatCsvOutputColumn,
   SqlQueryRep,
 } from "./QueryRep";
 import {
@@ -27,6 +29,7 @@ import {
   mkSubSelectList,
   SQLFromJoin,
   SQLFromCsvJoin,
+  SQLFromCsvConcat,
 } from "./SQLQuery";
 import { ppSQLQuery } from "./pp";
 import { col, ColumnExtendExp } from "./defs";
@@ -563,6 +566,130 @@ const joinCsvQueryToSql = (
   };
 };
 
+/*
+ * Build the SELECT-list expression that reads `colName` from the concatenated
+ * file (aliased `tblAlias`), casting it to `castType`. When a per-column
+ * nullString is set, values equal to that string are first normalised to NULL
+ * (compared as text) and TRY_CAST is used so any leftover incompatible value
+ * becomes NULL instead of failing the whole query.
+ */
+const concatNewColSql = (
+  dialect: SQLDialect,
+  colName: string,
+  tblAlias: string,
+  castType: string,
+  nullString?: string
+): string => {
+  let ref = `${tblAlias}.${dialect.quoteCol(colName)}`;
+  if (nullString != null && nullString !== "") {
+    ref = `NULLIF(CAST(${ref} AS VARCHAR), ${JSON.stringify(nullString)})`;
+  }
+  return `TRY_CAST(${ref} AS ${castType})`;
+};
+
+const concatOutputResultName = (oc: ConcatCsvOutputColumn): string =>
+  oc.kind === "newOnly" ? oc.newCol : oc.originalCol;
+
+const concatCsvQueryToSql = (
+  dialect: SQLDialect,
+  tableMap: LeafSchemaMap,
+  query: ConcatCsvQueryRep
+): SQLQueryAST => {
+  const { args, from } = query;
+  const rhsTblAlias = "t1";
+
+  const typeOf = (name: string): ColumnType =>
+    dialect.columnTypes[name] ?? ensureDialectColumnType(dialect, name);
+
+  const lhsSql = unpagedQueryToSql(dialect, tableMap, from);
+
+  // SELECT 1: original rows. Columns absent from the original (newOnly) are NULL.
+  const origSelectCols: SQLSelectListItem[] = args.outputColumns.map((oc) => {
+    const resultName = concatOutputResultName(oc);
+    if (oc.kind === "newOnly") {
+      return {
+        colExp: col(oc.newCol),
+        colType: typeOf(oc.newColType),
+        rawSql: `CAST(NULL AS ${oc.newColType})`,
+        as: resultName,
+      };
+    }
+    return {
+      colExp: col(oc.originalCol),
+      colType: typeOf(oc.kind === "matched" ? oc.castType : oc.originalType),
+      as: resultName,
+    };
+  });
+
+  const origSel: SQLSelectAST = {
+    selectCols: origSelectCols,
+    from: { expType: "query", query: lhsSql },
+    groupBy: [],
+    orderBy: [],
+  };
+
+  // SELECT 2: concatenated-file rows. Columns absent from the file (originalOnly)
+  // are NULL; matched/newOnly columns are cast to the result type.
+  const fileSelectCols: SQLSelectListItem[] = args.outputColumns.map((oc) => {
+    const resultName = concatOutputResultName(oc);
+    switch (oc.kind) {
+      case "matched":
+        return {
+          colExp: col(oc.newCol, rhsTblAlias),
+          colType: typeOf(oc.castType),
+          rawSql: concatNewColSql(
+            dialect,
+            oc.newCol,
+            rhsTblAlias,
+            oc.castType,
+            oc.nullString
+          ),
+          as: resultName,
+        };
+      case "originalOnly":
+        return {
+          colExp: col(oc.originalCol),
+          colType: typeOf(oc.originalType),
+          rawSql: `CAST(NULL AS ${oc.originalType})`,
+          as: resultName,
+        };
+      case "newOnly":
+        return {
+          colExp: col(oc.newCol, rhsTblAlias),
+          colType: typeOf(oc.newColType),
+          rawSql: concatNewColSql(
+            dialect,
+            oc.newCol,
+            rhsTblAlias,
+            oc.newColType,
+            oc.nullString
+          ),
+          as: resultName,
+        };
+    }
+  });
+
+  let readCsvOptions = "header=True";
+  const fromClause: SQLFromCsvConcat = {
+    expType: "csvConcat",
+    rhsCsvPath: args.rightTablePath,
+    rhsTableName: args.rhsTableName,
+    rhsTblAlias,
+    readCsvOptions,
+  };
+
+  const fileSel: SQLSelectAST = {
+    selectCols: fileSelectCols,
+    from: fromClause,
+    groupBy: [],
+    orderBy: [],
+  };
+
+  return {
+    selectStmts: [origSel, fileSel],
+  };
+};
+
 export const unpagedQueryToSql = (
   dialect: SQLDialect,
   tableMap: LeafSchemaMap,
@@ -605,6 +732,9 @@ export const unpagedQueryToSql = (
       break;
     case "joinCsv":
       ret = joinCsvQueryToSql(dialect, tableMap, query);
+      break;
+    case "concatCsv":
+      ret = concatCsvQueryToSql(dialect, tableMap, query);
       break;
     default:
       const invalidQuery: never = query;

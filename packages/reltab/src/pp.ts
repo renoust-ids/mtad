@@ -87,10 +87,14 @@ const ppSelListItem = (
   item: SQLSelectListItem
 ): string => {
   let ret: string;
-  if (item.colExp == null) {
-    throw new Error("ppSelListItem fail: " + item.toString());
+  if (item.rawSql != null) {
+    ret = item.rawSql;
+  } else {
+    if (item.colExp == null) {
+      throw new Error("ppSelListItem fail: " + item.toString());
+    }
+    ret = ppValExp(dialect, item.colExp, item.colType);
   }
-  ret = ppValExp(dialect, item.colExp, item.colType);
   if (item.as != null) {
     ret += ` as ${dialect.quoteCol(item.as)}`;
   }
@@ -186,6 +190,13 @@ const ppSQLSelect = (
         : `read_csv_auto('${rhsCsvPath}', ${readCsvOptions})`;
     dst.push(`${joinKw} ${rhsRef} ${rhsTblAlias}\n`);
     dst.push(`ON ${leftColRef} = ${rightColRef}\n`);
+  } else if (fromVal.expType === "csvConcat") {
+    const { rhsCsvPath, rhsTableName, rhsTblAlias, readCsvOptions } = fromVal;
+    const rhsRef =
+      rhsTableName != null && rhsTableName !== ""
+        ? rhsTableName
+        : `read_csv_auto('${rhsCsvPath}', ${readCsvOptions})`;
+    dst.push(`${rhsRef} ${rhsTblAlias}\n`);
   } else {
     dst.push("(\n");
     auxPPSQLQuery(dialect, dst, depth + 1, fromVal.query);

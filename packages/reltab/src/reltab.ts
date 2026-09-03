@@ -15,7 +15,16 @@ export * from "./AggFn";
 export * from "./ColumnType";
 export * from "./DataSource";
 export * from "./toSql";
-export { AggColSpec, ColumnMapInfo, JoinCsvArgs, JoinCsvQueryRep, CsvJoinType } from "./QueryRep";
+export {
+  AggColSpec,
+  ColumnMapInfo,
+  JoinCsvArgs,
+  JoinCsvQueryRep,
+  CsvJoinType,
+  ConcatCsvArgs,
+  ConcatCsvQueryRep,
+  ConcatCsvOutputColumn,
+} from "./QueryRep";
 export * from "./remote/Transport";
 export * from "./remote/server";
 export * from "./apiUtils";

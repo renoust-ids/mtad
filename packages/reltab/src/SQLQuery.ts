@@ -24,6 +24,10 @@ export type SQLSelectListItem = {
   colExp: SQLValExp;
   colType: ColumnType; // needed by some dialects, like BigQuery
   as?: string;
+  // Optional raw SQL fragment emitted verbatim (skips colExp rendering).
+  // Used for generated expressions such as TRY_CAST / NULLIF / CAST(NULL AS ...)
+  // in the file-concatenate feature.
+  rawSql?: string;
 };
 
 export const mkColSelItem = (
@@ -67,9 +71,18 @@ export type SQLFromQuery = {
   expType: "query";
   query: SQLQueryAST;
 };
+export type SQLFromCsvConcat = {
+  expType: "csvConcat";
+  rhsCsvPath: string;
+  // When set, reference an already-imported DuckDB table instead of
+  // read_csv_auto(rhsCsvPath) (e.g. an imported .xlsx sheet).
+  rhsTableName?: string;
+  rhsTblAlias: string;
+  readCsvOptions: string;
+};
 export type SQLSelectAST = {
   selectCols: Array<SQLSelectListItem>;
-  from: string | SQLFromQuery | SQLFromJoin | SQLFromCsvJoin;
+  from: string | SQLFromQuery | SQLFromJoin | SQLFromCsvJoin | SQLFromCsvConcat;
   on?: Array<string>;
   where?: FilterExp;
   groupBy: Array<string>;
