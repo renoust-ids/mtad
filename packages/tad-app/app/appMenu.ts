@@ -151,6 +151,12 @@ export const createMenu = () => {
       focusedWindow?.webContents.send("open-scatter-plot", {});
     },
   },
+  {
+    label: "Confusion Matrix",
+    click: (item: MenuItem, focusedWindow: BrowserWindow | undefined) => {
+      focusedWindow?.webContents.send("open-confusion-matrix", {});
+    },
+  },
 ];
   const debugSubmenu: MenuItemConstructorOptions[] = [
     {

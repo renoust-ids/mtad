@@ -14,6 +14,7 @@ import { CellEditModal } from "./CellEditModal";
 import HistogramDialog from "./HistogramDialog";
 import SplomDialog from "./SplomDialog";
 import ScatterPlotDialog from "./ScatterPlotDialog";
+import ConfusionMatrixDialog from "./ConfusionMatrixDialog";
 import { ScatterAxisFilterArg } from "./categoricalAxis";
 import { SimpleClipboard } from "./SimpleClipboard";
 
@@ -356,6 +357,11 @@ const GridPaneInternal: React.FunctionComponent<GridPaneProps> = ({
     [stateRef]
   );
 
+  const handleCloseConfusionMatrix = React.useCallback(
+    () => actions.closeConfusionMatrix(stateRef),
+    [stateRef]
+  );
+
   // A non-diagonal SPLOM cell was clicked: open that XY pair as a standalone
   // Scatter Plot dialog (closing the SPLOM).
   const handleOpenScatterPlotForPair = React.useCallback(
@@ -671,6 +677,17 @@ const GridPaneInternal: React.FunctionComponent<GridPaneProps> = ({
         onClose={handleCloseScatterPlot}
         onBrushFilter={handleScatterPlotBrushFilter}
       />
+      <ConfusionMatrixDialog
+        appState={appState}
+        stateRef={stateRef}
+        onClose={handleCloseConfusionMatrix}
+        onFilter={(rowArg, colArg) =>
+          actions.setConfusionMatrixFilter(rowArg, colArg, stateRef)
+        }
+        onClearFilter={(rowColId, colColId) =>
+          actions.clearConfusionMatrixFilter(rowColId, colColId, stateRef)
+        }
+      />
     </>
   );
 };
@@ -695,7 +712,9 @@ const gridPanePropsEqual = (oldProps: any, nextProps: any): boolean => {
     oldProps.appState.splomDialogOpen ===
       nextProps.appState.splomDialogOpen &&
     oldProps.appState.scatterPlotDialogOpen ===
-      nextProps.appState.scatterPlotDialogOpen;
+      nextProps.appState.scatterPlotDialogOpen &&
+    oldProps.appState.confusionMatrixDialogOpen ===
+      nextProps.appState.confusionMatrixDialogOpen;
   return ret;
 };
 

@@ -1055,6 +1055,84 @@ export const setScatterPlotBrushFilter = (
   setAnalyticsClauses([xArg.colId, yArg.colId], constraints, stateRef);
 };
 
+// --- Confusion Matrix Dialog Actions ---
+
+// Open / close the "Analytics > Confusion Matrix" dialog (state lives in
+// AppState so it can be opened from the app menu).
+export const openConfusionMatrix = (stateRef: StateRef<AppState>) => {
+  const app = mutableGet(stateRef);
+  if (app.viewState == null) {
+    return;
+  }
+  update(
+    stateRef,
+    (s) => s.set("confusionMatrixDialogOpen", true) as AppState
+  );
+};
+
+export const closeConfusionMatrix = (stateRef: StateRef<AppState>) => {
+  update(
+    stateRef,
+    (s) => s.set("confusionMatrixDialogOpen", false) as AppState
+  );
+};
+
+// Data backing the confusion-matrix dialog for the chosen (row, column) pair
+// and options.
+export interface ConfusionMatrixViewData {
+  data: reltab.ConfusionMatrixData;
+}
+
+export async function loadConfusionMatrixData(
+  dbc: DataSourceConnection,
+  query: reltab.QueryExp,
+  schema: reltab.Schema,
+  rowColId: string,
+  colColId: string,
+  opts: reltab.ConfusionMatrixOptions
+): Promise<ConfusionMatrixViewData> {
+  const data = await reltab.getConfusionMatrixData(
+    dbc,
+    query,
+    schema,
+    rowColId,
+    colColId,
+    opts
+  );
+  return { data };
+}
+
+// Apply a confusion-matrix cell as an analytics filter: one clause per axis —
+// a numeric/temporal range for a numeric bin, or an IN of the category for a
+// categorical class. Cleans up prior clauses on both columns (mirrors
+// setScatterPlotBrushFilter).
+export const setConfusionMatrixFilter = (
+  rowArg: ScatterAxisFilterArg,
+  colArg: ScatterAxisFilterArg,
+  stateRef: StateRef<AppState>
+) => {
+  const appState = mutableGet(stateRef);
+  const constraints = [
+    mkAxisArgConstraint(appState, rowArg),
+    mkAxisArgConstraint(appState, colArg),
+  ].filter((c) => c != null) as AnalyticsConstraint[];
+  setAnalyticsClauses(
+    [rowArg.colId, colArg.colId].filter((c) => c != null && c.length > 0),
+    constraints,
+    stateRef
+  );
+};
+
+// Clear any confusion-matrix analytics filter previously applied to the two
+// axes (e.g. when the user clicks the already-selected cell to deselect it).
+export const clearConfusionMatrixFilter = (
+  rowColId: string,
+  colColId: string,
+  stateRef: StateRef<AppState>
+) => {
+  setAnalyticsClauses([rowColId, colColId], [], stateRef);
+};
+
 // --- Join CSV Dialog Actions ---
 
 export const openJoinCsvDialog = (

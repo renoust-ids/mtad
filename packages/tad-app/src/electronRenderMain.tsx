@@ -302,6 +302,10 @@ const init = async () => {
       actions.openScatterPlot(stateRef);
     });
 
+    ipcRenderer.on("open-confusion-matrix", () => {
+      actions.openConfusionMatrix(stateRef);
+    });
+
     document.addEventListener("copy", function (e) {});
 
     ipcRenderer.send("render-init-complete");
