@@ -91,6 +91,8 @@ const CheckboxOption: React.FC<
 const round3 = (n: number): number =>
   Number(Math.round(Number(n + "e3")) + "e-3");
 
+const countLabel = (n: number): string => n.toLocaleString();
+
 const CorrCell: React.FC<{
   value: number | null;
   n: number;
@@ -129,6 +131,8 @@ const CorrelationMatrixDialog: React.FunctionComponent<
   const [selectedCols, setSelectedCols] = useState<string[]>([]);
   const [rank, setRank] = useState(false);
   const [useAllRows, setUseAllRows] = useState(false);
+  const [sampleLimit, setSampleLimit] = useState<number>(DEFAULT_SAMPLE);
+  const [sampleSliderVal, setSampleSliderVal] = useState<number | null>(null);
   const [applyTableFilters, setApplyTableFilters] = useState(true);
   const [minOccurrence, setMinOccurrence] = useState<number>(1);
   const [data, setData] = useState<CorrelationMatrixViewData | null>(null);
@@ -234,6 +238,7 @@ const CorrelationMatrixDialog: React.FunctionComponent<
   }, [colGroupedOptions, selectedCols]);
 
   const curMinOcc = minOccurrence;
+  const curSample = sampleSliderVal ?? sampleLimit;
 
   useEffect(() => {
     if (selectedCols.length < 2) {
@@ -258,7 +263,7 @@ const CorrelationMatrixDialog: React.FunctionComponent<
     setData(null);
     loadCorrelationMatrixData(v.dbc, query, schema, selectedCols, {
       rank,
-      sampleLimit: useAllRows ? 0 : DEFAULT_SAMPLE,
+      sampleLimit: useAllRows ? 0 : curSample,
       minOccurrence: curMinOcc,
     })
       .then((res) => {
@@ -282,6 +287,7 @@ const CorrelationMatrixDialog: React.FunctionComponent<
     rank,
     curMinOcc,
     useAllRows,
+    curSample,
     applyTableFilters,
     tableFilterKey,
     stateRef,
@@ -289,6 +295,24 @@ const CorrelationMatrixDialog: React.FunctionComponent<
 
   const isOpen = vs != null && appState.correlationMatrixDialogOpen;
   const nSel = selectedCols.length;
+
+  // All pickable column ids (excludes null/constant/id-like), for Select all.
+  const allSelectableCols = useMemo(() => {
+    return colGroupedOptions.flatMap((g) => g.options.map((o) => o.value));
+  }, [colGroupedOptions]);
+
+  const handleSelectAll = () => {
+    setSelectedCols(allSelectableCols.slice(0, MAX_MATRIX_COLS));
+  };
+
+  const handleClear = () => {
+    setSelectedCols([]);
+  };
+
+  // Remove a single column (row & column) from the matrix, e.g. on right-click.
+  const removeCol = (cid: string) => {
+    setSelectedCols((prev) => prev.filter((c) => c !== cid));
+  };
 
   // Build an N×N lookup (symmetric): value(i,j) for i<j from the upper
   // triangle returned by the backend; diagonal is 1.
@@ -403,12 +427,30 @@ const CorrelationMatrixDialog: React.FunctionComponent<
               }
             />
           </div>
+          {allSelectableCols.length > 0 && (
+            <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+              <Button
+                small
+                minimal
+                disabled={
+                  nSel >=
+                  Math.min(allSelectableCols.length, MAX_MATRIX_COLS)
+                }
+                onClick={handleSelectAll}
+              >
+                Select all
+              </Button>
+              <Button small minimal disabled={nSel === 0} onClick={handleClear}>
+                Clear
+              </Button>
+            </div>
+          )}
           {excluded.length > 0 && (
             <div className="bp4-text-muted" style={{ marginTop: 6 }}>
               <Tag intent="warning" minimal>
-                Always-null / constant
+                Not usable (null / constant / ID)
               </Tag>{" "}
-              (not usable): {excluded.map((cid) => viewSchema?.displayName(cid) ?? cid).join(", ")}
+              (excluded): {excluded.map((cid) => viewSchema?.displayName(cid) ?? cid).join(", ")}
             </div>
           )}
         </div>
@@ -448,6 +490,20 @@ const CorrelationMatrixDialog: React.FunctionComponent<
               style={{ width: 64 }}
             />
           </div>
+          <div>
+            <div className="bp4-text-muted" style={{ fontSize: 11 }}>
+              Sample: {useAllRows ? "all" : countLabel(curSample)}
+            </div>
+            <Slider
+              min={500}
+              max={20000}
+              stepSize={500}
+              labelRenderer={false}
+              value={curSample}
+              disabled={useAllRows}
+              onChange={(v: number) => setSampleSliderVal(v)}
+            />
+          </div>
           <Switch
             label="Use all rows"
             checked={useAllRows}
@@ -473,7 +529,7 @@ const CorrelationMatrixDialog: React.FunctionComponent<
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: `auto repeat(${nSel}, minmax(64px, 1fr))`,
+                gridTemplateColumns: `auto repeat(${nSel}, minmax(72px, 1fr))`,
                 gap: 2,
                 fontSize: 11,
                 alignItems: "stretch",
@@ -485,19 +541,21 @@ const CorrelationMatrixDialog: React.FunctionComponent<
               {selectedCols.map((cid) => (
                 <div
                   key={`h${cid}`}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    removeCol(cid);
+                  }}
                   style={{
                     fontSize: 11,
                     fontWeight: 600,
                     transform: "rotate(-45deg)",
                     transformOrigin: "bottom left",
                     whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    maxWidth: 120,
-                    height: 40,
                     color: "#445",
+                    cursor: "context-menu",
+                    padding: "2px 4px",
                   }}
-                  title={viewSchema?.displayName(cid) ?? cid}
+                  title={`${viewSchema?.displayName(cid) ?? cid} (right-click to remove)`}
                 >
                   {viewSchema?.displayName(cid) ?? cid}
                 </div>
@@ -505,16 +563,18 @@ const CorrelationMatrixDialog: React.FunctionComponent<
               {selectedCols.map((cid, ri) => (
                 <React.Fragment key={`r${cid}`}>
                   <div
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      removeCol(cid);
+                    }}
                     style={{
                       fontWeight: 600,
                       color: "#445",
                       padding: "2px 6px",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
                       whiteSpace: "nowrap",
-                      maxWidth: 160,
+                      cursor: "context-menu",
                     }}
-                    title={viewSchema?.displayName(cid) ?? cid}
+                    title={`${viewSchema?.displayName(cid) ?? cid} (right-click to remove)`}
                   >
                     {viewSchema?.displayName(cid) ?? cid}
                   </div>

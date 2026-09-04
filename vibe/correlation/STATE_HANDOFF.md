@@ -9,7 +9,14 @@ Ajouter une vue analytique "Correlation Matrix" (menu Analytics → Correlation 
 - **Plan rédigé** : `vibe/correlation/CORRELATION_MATRIX_PLAN.md`.
 - **Branche** : `correlation`.
 - **Toutes les étapes implémentées** : Step 1-2 (backend reltab, tests TDD), Step 3-4 (AppState + actions), Step 5 (Dialog UI), Step 6 (GridPane wiring), Step 7 (menu), Step 8 (IPC).
-- **Vérifications finales** : reltab `npm test` → **72 pass** ; typecheck tadviewer + tad-app OK ; tad-app `npm run build-prod` → **compiled successfully**.
+- **Fix round appliqué (retour utilisateur)** :
+  1. Noms de colonnes toujours affichés (plus de troncature sur en-têtes −45° ni labels de lignes).
+  2. Slider de taille d'échantillonnage (Sample: N, 500..20000, désactivé si Use all rows).
+  3. Boutons "Select all" / "Clear" dans le picker.
+  4. `constantOrNullColIds` exclut aussi les colonnes "id-like" (count(non-null)==count(distinct)) → avis "Not usable (null / constant / ID)".
+  5. Pas de doublons symétriques (déjà upper-triangle ; testé).
+  6. Clic droit sur un en-tête (ligne/colonne) → retire la colonne de la matrice.
+- **Vérifications finales** : reltab `npm test` → **75 pass** ; typecheck tadviewer + tad-app OK ; tad-app `npm run build-prod` → **compiled successfully**.
 - `vibe-instructions.md` déjà mis à jour.
 
 ## Décisions validées (à respecter)
@@ -53,6 +60,6 @@ Ajouter une vue analytique "Correlation Matrix" (menu Analytics → Correlation 
 - Aucun. Toutes les décisions de design sont prises.
 
 ## Commande de vérif (tests/typecheck/build)
-- `cd packages/reltab && npm test` → **72 pass**
+- `cd packages/reltab && npm test` → **75 pass**
 - Typecheck tadviewer + tad-app ; `cd packages/tad-app && npm run build-prod`
 

@@ -502,10 +502,16 @@ const xName2Cid = (
 };
 
 /**
- * Identify the given columns that are "always-null" (no non-null value) or
- * "constant" (exactly one distinct non-null value). Such columns carry no
- * usable correlation signal: they are excluded from the column picker and
- * listed to the user as an advisory. Returns their column ids.
+ * Identify the given columns that carry no usable correlation signal, so they
+ * can be excluded from the column picker and listed as an advisory:
+ *
+ *   - "always-null": zero non-null values (count = 0);
+ *   - "constant": a single distinct non-null value (count(DISTINCT) <= 1);
+ *   - "id-like": every non-null value is distinct (count = count(DISTINCT)),
+ *     e.g. primary keys / unique identifiers — such columns hold no
+ *     correlation information with any other column.
+ *
+ * Returns their column ids.
  */
 export async function constantOrNullColIds(
   dsConn: DataSourceConnection,
@@ -535,7 +541,11 @@ export async function constantOrNullColIds(
     const cid = row.__cid;
     const nn = numOrNull(row.__nn) ?? 0;
     const uniq = numOrNull(row.__uniq) ?? 0;
-    if (typeof cid === "string" && (nn === 0 || uniq <= 1)) {
+    if (
+      typeof cid === "string" &&
+      // always-null, constant, or id-like (all non-null values unique)
+      (nn === 0 || uniq <= 1 || (nn > 1 && uniq === nn))
+    ) {
       bad.push(cid);
     }
   }

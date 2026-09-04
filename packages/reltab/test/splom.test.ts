@@ -521,6 +521,29 @@ describe("getCorrelationMatrix", () => {
       .find((s) => /ORDER BY random\(\)/.test(s) && /LIMIT 50/.test(s));
     expect(baseSql).toBeDefined();
   });
+
+  test("computes each unordered pair once (no symmetric duplicates)", async () => {
+    const { ds, runSqlQuery } = mkIface([
+      { __x: "a", __y: "b", __r: 0.5, __n: BigInt(10) },
+    ]);
+
+    const corr = await getCorrelationMatrix(
+      ds,
+      tableQuery("t"),
+      tableSchema,
+      ["a", "b"]
+    );
+
+    // exactly one pair returned, no duplicate reversed entry (a,b) vs (b,a)
+    expect(corr).toEqual([
+      { xColId: "a", yColId: "b", measure: "r", r: 0.5, strength: 0.5, n: 10 },
+    ]);
+    // the batched Pearson query contains a single (a,b) corr(...), not (b,a)
+    const corrSql = runSqlQuery.mock.calls
+      .map((c) => c[0] as string)
+      .find((s) => s.includes("corr("));
+    expect(corrSql?.match(/corr\(/g)?.length ?? 0).toBe(1);
+  });
 });
 
 describe("constantOrNullColIds", () => {
@@ -530,11 +553,11 @@ describe("constantOrNullColIds", () => {
     return { ds, runSqlQuery };
   };
 
-  test("reports always-null and single-value columns", async () => {
+  test("reports always-null, single-value, and id-like columns", async () => {
     const { ds, runSqlQuery } = mkCountIface([
-      { __cid: "a", __nn: BigInt(3), __uniq: BigInt(3) },
-      { __cid: "b", __nn: BigInt(0), __uniq: BigInt(0) },
-      { __cid: "c", __nn: BigInt(5), __uniq: BigInt(1) },
+      { __cid: "a", __nn: BigInt(3), __uniq: BigInt(3) }, // id-like
+      { __cid: "b", __nn: BigInt(0), __uniq: BigInt(0) }, // always-null
+      { __cid: "c", __nn: BigInt(5), __uniq: BigInt(1) }, // constant
     ]);
 
     const result = await constantOrNullColIds(
@@ -544,7 +567,7 @@ describe("constantOrNullColIds", () => {
       ["a", "b", "c"]
     );
 
-    expect(result).toEqual(["b", "c"]);
+    expect(result).toEqual(["a", "b", "c"]);
     expect(runSqlQuery).toHaveBeenCalledTimes(1);
     const sql = runSqlQuery.mock.calls[0][0] as string;
     expect(sql).toContain("count(");
@@ -553,7 +576,7 @@ describe("constantOrNullColIds", () => {
 
   test("returns an empty list when every column varies", async () => {
     const { ds } = mkCountIface([
-      { __cid: "a", __nn: BigInt(3), __uniq: BigInt(3) },
+      { __cid: "a", __nn: BigInt(3), __uniq: BigInt(2) },
       { __cid: "b", __nn: BigInt(4), __uniq: BigInt(2) },
     ]);
 
@@ -565,6 +588,41 @@ describe("constantOrNullColIds", () => {
     );
 
     expect(result).toEqual([]);
+  });
+
+  test("flags id-like columns whose non-null values are all distinct", async () => {
+    const { ds } = mkCountIface([
+      // id column: 3 rows, 3 distinct -> unusable
+      { __cid: "id", __nn: BigInt(3), __uniq: BigInt(3) },
+      // real variable: 3 rows, 2 distinct -> usable
+      { __cid: "a", __nn: BigInt(3), __uniq: BigInt(2) },
+    ]);
+
+    const result = await constantOrNullColIds(
+      ds,
+      tableQuery("t"),
+      tableSchema,
+      ["id", "a"]
+    );
+
+    expect(result).toEqual(["id"]);
+  });
+
+  test("flags single-value and mixed rows as unusable, not repeated halves of a pair", async () => {
+    const { ds } = mkCountIface([
+      { __cid: "p", __nn: BigInt(5), __uniq: BigInt(1) }, // constant
+      { __cid: "q", __nn: BigInt(0), __uniq: BigInt(0) }, // always-null
+      { __cid: "r", __nn: BigInt(4), __uniq: BigInt(4) }, // id-like
+    ]);
+
+    const result = await constantOrNullColIds(
+      ds,
+      tableQuery("t"),
+      tableSchema,
+      ["p", "q", "r"]
+    );
+
+    expect(result).toEqual(["p", "q", "r"]);
   });
 
   test("handles an empty selection", async () => {

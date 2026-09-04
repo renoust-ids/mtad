@@ -2,6 +2,21 @@
 
 Branch: `correlation` (Feature: Correlation Matrix, version app 0.0.9)
 
+## Fix round (post-review) — DONE
+User-requested fixes implemented:
+1. **Colonnes toujours visibles** : retrait de `overflow:hidden`/`textOverflow`/`maxWidth` sur les en-têtes de colonnes (rotation −45°) et les labels de lignes → les noms s'affichent en entier.
+2. **Contrôle de la taille d'échantillonnage** : slider "Sample: N" (`min 500 / max 20000 / step 500`, state `sampleLimit`/`sampleSliderVal`), désactivé quand "Use all rows" ; le `useEffect` dépend de `curSample`.
+3. **Ajout de toutes les colonnes** : boutons "Select all" / "Clear" sous le picker (sélectionne jusqu'à `MAX_MATRIX_COLS=24` colonnes pickables).
+4. **Pas de corrélation pour les colonnes de type ID** : `constantOrNullColIds` étendu pour flaguer les colonnes "id-like" (`count(non-null) == count(distinct)`, valeurs toutes uniques) en plus des toujours-nulles et constantes → exclues du picker + liste d'avis "Not usable (null / constant / ID)".
+5. **Pas de calcul symétrique en double** : vérifié + test unitaire — le backend calcule déjà chaque paire non ordonnée une seule fois (batched upper-triangle pour num-num ; eta/V une fois par paire). Test : `corr(` apparaît une seule fois.
+6. **Suppression ligne/colonne au clic droit** : `onContextMenu` sur les en-têtes (colonne + ligne) → retire la colonne de `selectedCols` (`removeCol`).
+
+- Tests backend : `packages/reltab/test/splom.test.ts` (4 tests nouveaux/modifiés) → **75 pass**.
+- Vérifs : typecheck tadviewer + tad-app OK ; tad-app `npm run build-prod` → **compiled successfully**.
+- **Note** : un `lerna bootstrap` (déclenchés par le build) a temporairement hoisté les deps dans le `package.json` racine + créé `package.json.lerna_backup` — **reverté** (hors scope), commit conservé atomique.
+
+**Commands** : `git add packages/reltab/src/splom.ts packages/reltab/test/splom.test.ts packages/tadviewer/src/components/CorrelationMatrixDialog.tsx` → commit.
+
 ## Step 5-8 — Dialog UI + wiring + menu + IPC (DONE)
 - **Step 5** — `packages/tadviewer/src/components/CorrelationMatrixDialog.tsx` (nouveau) :
   - Props `{ appState, stateRef, onClose }` (aucun onFilter/onClearFilter, lecture seule).
