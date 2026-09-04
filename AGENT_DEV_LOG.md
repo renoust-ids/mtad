@@ -2,6 +2,25 @@
 
 Branch: `correlation` (Feature: Correlation Matrix, version app 0.0.9)
 
+## Step 5-8 — Dialog UI + wiring + menu + IPC (DONE)
+- **Step 5** — `packages/tadviewer/src/components/CorrelationMatrixDialog.tsx` (nouveau) :
+  - Props `{ appState, stateRef, onClose }` (aucun onFilter/onClearFilter, lecture seule).
+  - Picker MultiSelect react-select réutilisé depuis la SPLOM (CheckboxOption, colGroupedOptions numeric/temporal vs categorical, `MAX_MATRIX_COLS=24`) ; colonnes null/constantes exclues des options + liste d'avis Tag "Always-null / constant".
+  - Contrôles : HTMLSelect **Pearson / Spearman** (`rank`), Slider+NumericInput **Min non-null occurrences** (default 1), Switches **Use all rows** (sampleLimit `DEFAULT_SAMPLE=20000`) + **Apply Table Filters**.
+  - `useEffect` recharge sur `matrixKey`/`rank`/`curMinOcc`/`useAllRows`/`applyTableFilters`/`tableFilterKey`/`stateRef`, guard `selectedCols.length >= 2`; `loadCorrelationMatrixData(...)` avec `{rank, sampleLimit: useAllRows?0:DEFAULT_SAMPLE, minOccurrence}`.
+  - Grille heat-map `cellColor` (diagonale 1.00, symétrique, `CorrCell` affiche valeur arrondie 3 décimales + `n` en tooltip, case vide si `strength==null`).
+- **Step 6** — `packages/tadviewer/src/components/GridPane.tsx` : import `CorrelationMatrixDialog` (l.18), `handleCloseCorrelationMatrix`, montage `<CorrelationMatrixDialog appState stateRef onClose>` (après ConfusionMatrix), guard mémoïsation `gridPanePropsEqual` + `correlationMatrixDialogOpen`.
+- **Step 7** — `packages/tad-app/app/appMenu.ts` : `analyticsSubmenu` + "Correlation Matrix" → `open-correlation-matrix` (après Confusion Matrix).
+- **Step 8** — `packages/tad-app/src/electronRenderMain.tsx` : `ipcRenderer.on("open-correlation-matrix", () => actions.openCorrelationMatrix(stateRef))`.
+- **Vérif** : 
+  - `npm run build-dev`-ish de tadviewer : `npx tsc` (dist modules) + `npm run build-prod` (webpack bundle `dist/tadviewer.js`) — nécessité de re-`cp src/slickgrid.scss dist/slickgrid.scss` après `npx tsc` (tsc vide outDir, voir note infra).
+  - `npx tsc --noEmit` tadviewer OK ; `npx tsc --noEmit` tad-app OK (après rebuild dist tadviewer — actions/AppState compilés).
+  - `cd packages/tad-app && npm run build-prod` → **webpack compiled successfully**.
+  - `cd packages/reltab && npm test` → **72 pass**.
+  - **Note** : `npx tsc` dans tadviewer vide `outDir` (`dist`) et supprime les assets non-TS (`slickgrid.scss`, html/public). Restaurer avec `cp src/slickgrid.scss dist/slickgrid.scss` + `npm run build-prod` (webpack tadviewer) avant le build tad-app.
+
+**Commands** : `git add` (fichiers source UI/menu/IPC, hors dist/hors xlsx) → commit.
+
 ## Step 3-4 — AppState + actions (DONE)
 - `packages/tadviewer/src/AppState.ts`: added `correlationMatrixDialogOpen: boolean` (interface ~l.134, default `false` ~l.163, class property `public readonly ...!: boolean` ~l.194). No data fields (dialog state is local).
 - `packages/tadviewer/src/actions.ts`: added Correlation Matrix block before Join CSV:

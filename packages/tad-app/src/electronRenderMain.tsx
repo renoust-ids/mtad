@@ -340,6 +340,10 @@ const init = async () => {
       actions.openConfusionMatrix(stateRef);
     });
 
+    ipcRenderer.on("open-correlation-matrix", () => {
+      actions.openCorrelationMatrix(stateRef);
+    });
+
     document.addEventListener("copy", function (e) {});
 
     ipcRenderer.send("render-init-complete");

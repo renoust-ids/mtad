@@ -165,6 +165,12 @@ export const createMenu = () => {
       focusedWindow?.webContents.send("open-confusion-matrix", {});
     },
   },
+  {
+    label: "Correlation Matrix",
+    click: (item: MenuItem, focusedWindow: BrowserWindow | undefined) => {
+      focusedWindow?.webContents.send("open-correlation-matrix", {});
+    },
+  },
 ];
   const debugSubmenu: MenuItemConstructorOptions[] = [
     {
