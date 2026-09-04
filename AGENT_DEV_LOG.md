@@ -1,6 +1,23 @@
-# Agent Dev Log — Concatenate File feature
+# CORRELATION MATRIX — Agent Dev Log
 
-Branch: `concatenate`
+Branch: `correlation` (Feature: Correlation Matrix, version app 0.0.9)
+
+## Step 1-2 — Backend reltab (DONE)
+Extended `packages/reltab/src/splom.ts` [TDD] to support the Correlation Matrix options:
+- Added `CorrelationMatrixOptions { rank?, sampleLimit?, minOccurrence? }` interface.
+- Added `pairwiseRankCorrelationSql(baseSql, pairs)` — Spearman rank correlation: ranks each operand via `rank() OVER (ORDER BY ...)` (DuckDB assigns average ranks for ties) inside a MATERIALIZED CTE, then `corr()` on the ranked columns; same single-scan batched structure as `pairwiseCorrelationSql`.
+- Extended `getCorrelationMatrix(dsConn, baseQuery, schema, matrixColIds, opts?)`:
+  - `rank: true` → uses `pairwiseRankCorrelationSql` for numeric/temporal pairs (eta/V categorical pairs unchanged).
+  - `sampleLimit > 0` → wraps the scatter source in `SELECT * FROM (...) __splom_s ORDER BY random() LIMIT n` so the correlation is computed over the sample.
+  - `minOccurrence > 0` → forces `strength`/`r` to `null` for pairs with `n < minOccurrence`.
+- Added `constantOrNullColIds(dsConn, baseQuery, schema, colIds)` — one `UNION ALL` query batched over the columns; counts `count(col)` and `count(DISTINCT col)`; returns ids with zero non-null or ≤1 distinct value (always-null / constant), for exclusion from the picker + advisory list.
+- Tests (new in `packages/reltab/test/splom.test.ts`): rank SQL structure, Spearman mode routing, rank leaves eta unchanged, min-occurrence blanking (below/above), sampleLimit wraps source with `ORDER BY random() LIMIT n`, constantOrNullColIds detection, empty selection.
+
+**Result**: `cd packages/reltab && npm test` → **72 passed** (62 before + 10 new). `npm run build` passes. Commands: `git add packages/reltab/src/splom.ts packages/reltab/test/splom.test.ts packages/reltab/src/reltab.ts`.
+
+---
+# ARCHIVE — Concatenate File feature (previous mission)
+
 
 ## Step 1 — Branch + research
 - Created branch `concatenate` (`git checkout -b concatenate`).

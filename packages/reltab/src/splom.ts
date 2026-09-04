@@ -76,6 +76,19 @@ export interface PairRegression {
   n: number;
 }
 
+// Options controlling the correlation-matrix computation.
+export interface CorrelationMatrixOptions {
+  // true => Spearman (rank correlation) on numeric × numeric / temporal pairs.
+  // Categorical pairs (eta/V) are unaffected.
+  rank?: boolean;
+  // 0/undefined => no sampling; a positive value bounds the number of rows
+  // used to compute each correlation (ORDER BY random() LIMIT n).
+  sampleLimit?: number;
+  // Pairs whose co-observed row count (n) is strictly below this threshold are
+  // blanked (strength forced to null).
+  minOccurrence?: number;
+}
+
 // Name of the derived column carrying the epoch-second value of a temporal
 // column in the scatter query.
 const scatterDerivedPrefix = "__splom_";
@@ -215,6 +228,38 @@ export function pairwiseCorrelationSql(
 }
 
 /**
+ * Same single-scan structure as pairwiseCorrelationSql, but computes Spearman
+ * (rank) correlation: each operand is ranked over the source with average
+ * ranks for ties (the RANK() window function in DuckDB assigns average ranks
+ * to tied values), then corr() is applied to the ranked columns.
+ */
+export function pairwiseRankCorrelationSql(
+  baseSql: string,
+  pairs: Array<[xColId: string, yColId: string]>
+): string {
+  const srcHead = `WITH __splom_src AS MATERIALIZED (\n  ${baseSql}\n)\n`;
+  if (pairs.length === 0) {
+    return `${srcHead}SELECT NULL AS __x, NULL AS __y, NULL AS __r, 0 AS __n\nFROM __splom_src\nWHERE 1 = 0`;
+  }
+  const srcRank = `,\n__splom_ranked AS (\n  SELECT\n${pairs
+    .map(([x, y]) => {
+      return `    rank() OVER (ORDER BY ${quoteColName(x)}) AS __rank_${x},\n    rank() OVER (ORDER BY ${quoteColName(y)}) AS __rank_${y}`;
+    })
+    .join(",\n")}\n  FROM __splom_src\n)\n`;
+  const selectSeqs = pairs.map(([x, y]) => {
+    const rqx = `__rank_${x}`;
+    const rqy = `__rank_${y}`;
+    return [
+      `SELECT ${sqlEscapeString(x)} AS __x, ${sqlEscapeString(y)} AS __y,`,
+      `       corr(${rqx}, ${rqy}) AS __r,`,
+      `       regr_count(${rqx}, ${rqy}) AS __n`,
+      "FROM __splom_ranked",
+    ].join("\n");
+  });
+  return srcHead + srcRank + selectSeqs.join("\nUNION ALL\n");
+}
+
+/**
  * SQL computing the correlation ratio (eta) for a categorical × numeric pair.
  * eta is bounded 0..1 (1 = perfect separation of group means). n is the number
  * of rows where the category is non-null and the numeric value is non-null.
@@ -318,17 +363,24 @@ export async function getCorrelationMatrix(
   dsConn: DataSourceConnection,
   baseQuery: QueryExp,
   schema: Schema,
-  matrixColIds: string[]
+  matrixColIds: string[],
+  opts?: CorrelationMatrixOptions
 ): Promise<PairCorrelation[]> {
   if (matrixColIds.length < 2) {
     return [];
   }
+  const { rank, sampleLimit, minOccurrence } = opts ?? {};
   const { query, derivedNames } = splomScatterQuery(
     baseQuery,
     schema,
     matrixColIds
   );
-  const baseSql = await dsConn.getSqlForQuery(query);
+  const sampleLimitN =
+    sampleLimit != null && sampleLimit > 0 ? Math.floor(sampleLimit) : 0;
+  const queryFor = sampleLimitN > 0
+    ? await sampleQuery(dsConn, query, sampleLimitN)
+    : query;
+  const baseSql = await dsConn.getSqlForQuery(queryFor);
 
   const made: PairCorrelation[] = [];
   // (name, cid) for numeric/temporal and categorical columns respectively.
@@ -344,7 +396,8 @@ export async function getCorrelationMatrix(
     }
   }
 
-  // Pearson: numeric/temporal × numeric/temporal, batched in one query.
+  // Pearson / Spearman: numeric/temporal × numeric/temporal, batched (rank
+  // mode computes the Spearman rank correlation instead of plain corr()).
   if (numNames.length >= 2) {
     const numPairs: Array<[string, string]> = [];
     for (let i = 0; i < numNames.length - 1; i++) {
@@ -352,7 +405,9 @@ export async function getCorrelationMatrix(
         numPairs.push([numNames[i][0], numNames[j][0]]);
       }
     }
-    const corrSql = pairwiseCorrelationSql(baseSql, numPairs);
+    const corrSql = rank
+      ? pairwiseRankCorrelationSql(baseSql, numPairs)
+      : pairwiseCorrelationSql(baseSql, numPairs);
     const res = await dsConn.evalQuery(sqlQuery(corrSql));
     for (const row of res.rowData) {
       const xName = row.__x;
@@ -408,8 +463,30 @@ export async function getCorrelationMatrix(
     }
   }
 
+  // Blank pairs whose co-observed count is below the min-occurrence threshold.
+  if (minOccurrence != null && minOccurrence > 0) {
+    for (const p of made) {
+      if (p.n < minOccurrence) {
+        p.strength = null;
+        p.r = null;
+      }
+    }
+  }
+
   return made;
 }
+
+// Wrap the scatter query so the correlation is computed over a random sample
+// of at most `limit` rows, bounding the cost of the correlation itself.
+const sampleQuery = async (
+  dsConn: DataSourceConnection,
+  query: QueryExp,
+  limit: number
+): Promise<QueryExp> => {
+  const baseSql = await dsConn.getSqlForQuery(query);
+  const sampledSql = `SELECT * FROM ( ${baseSql} ) AS __splom_s ORDER BY random() LIMIT ${limit}`;
+  return sqlQuery(sampledSql);
+};
 
 // Resolve a projected (derived) column name back to the original column id.
 const xName2Cid = (
@@ -423,6 +500,47 @@ const xName2Cid = (
   }
   return name;
 };
+
+/**
+ * Identify the given columns that are "always-null" (no non-null value) or
+ * "constant" (exactly one distinct non-null value). Such columns carry no
+ * usable correlation signal: they are excluded from the column picker and
+ * listed to the user as an advisory. Returns their column ids.
+ */
+export async function constantOrNullColIds(
+  dsConn: DataSourceConnection,
+  baseQuery: QueryExp,
+  schema: Schema,
+  colIds: string[]
+): Promise<string[]> {
+  if (colIds.length === 0) {
+    return [];
+  }
+  const baseSql = await dsConn.getSqlForQuery(baseQuery);
+  const queries = colIds
+    .map((cid) => {
+      const qc = quoteColName(cid);
+      return [
+        `SELECT`,
+        `  count(${qc}) AS __nn,`,
+        `  count(DISTINCT ${qc}) AS __uniq,`,
+        `  ${sqlEscapeString(cid)} AS __cid`,
+        `FROM ( ${baseSql} ) __cn`,
+      ].join("\n");
+    })
+    .join("\nUNION ALL\n");
+  const res = await dsConn.evalQuery(sqlQuery(queries));
+  const bad: string[] = [];
+  for (const row of res.rowData) {
+    const cid = row.__cid;
+    const nn = numOrNull(row.__nn) ?? 0;
+    const uniq = numOrNull(row.__uniq) ?? 0;
+    if (typeof cid === "string" && (nn === 0 || uniq <= 1)) {
+      bad.push(cid);
+    }
+  }
+  return bad;
+}
 
 /**
  * Linear regression (and correlation) of y over x, for the master-detail trend

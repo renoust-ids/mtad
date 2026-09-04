@@ -7,11 +7,14 @@ Ajouter une vue analytique "Correlation Matrix" (menu Analytics → Correlation 
 
 ## État
 - **Plan rédigé** : `vibe/correlation/CORRELATION_MATRIX_PLAN.md` (décisions de design validées, steps d'implémentation détaillées avec chemins de fichiers et n° de lignes, tests TDD, risques).
-- **Branche** : `correlation`, 2 commits de docs, **aucun code implémenté pour l'instant** :
-  - `76a8488` docs(correlation): plan Correlation Matrix feature, update mission to correlation
-  - `d59d9f6` docs(correlation): remove filtering interaction, matrix is read-only
-- `vibe-instructions.md` **déjà mis à jour** (MISSION ACTUELLE = Correlation Matrix, branche `correlation`, plan référencé).
-- Toutes les décisions de design sont prises ; le point ouvert (filtrage) a été tranché : **pas de filtrage**.
+- **Branche** : `correlation`.
+- **Step 1-2 (backend reltab) TERMINÉE** — `packages/reltab/src/splom.ts` étendu [TDD] :
+  - `CorrelationMatrixOptions { rank?, sampleLimit?, minOccurrence? }` (interface).
+  - `pairwiseRankCorrelationSql(baseSql, pairs)` — Spearman (rank() + corr(), MATERIALIZED CTE, single-scan batch).
+  - `getCorrelationMatrix` accepte `opts?`: rank→Spearman (numeric/temporal only), sampleLimit>0→source `ORDER BY random() LIMIT n`, minOccurrence>0→force strength/r=null quand n<threshold.
+  - `constantOrNullColIds(dsConn, baseQuery, schema, colIds)` — détecte colonnes toujours-null (count=0) / constantes (≤1 distinct), batched en une requête UNION ALL.
+  - Tests : `packages/reltab/test/splom.test.ts` (10 nouveaux) → **72 tests passent**, `npm run build` OK.
+- `vibe-instructions.md` mis à jour (MISSION ACTUELLE = Correlation Matrix, branche `correlation`).
 
 ## Décisions validées (à respecter)
 1. Périmètre colonnes = toutes (Pearson/eta/V comme SPLOM).
@@ -22,25 +25,19 @@ Ajouter une vue analytique "Correlation Matrix" (menu Analytics → Correlation 
 6. **Aucune interaction de filtrage** : matrice **lecture seule** (heat-map + en-têtes), pas d'`onFilter`/`onClearFilter`.
 
 ## Prochaine étape (à faire au redémarrage)
-**Step 1-2 du plan — backend reltab, en TDD** (`packages/reltab/src/splom.ts`) :
-- Étendre `getCorrelationMatrix` pour accepter `CorrelationMatrixOptions { rank?, sampleLimit?, minOccurrence? }`.
-- Ajouter `pairwiseRankCorrelationSql` (Spearman via `rank()`/`dense_rank()` + `corr()` sur les rangs, rangs moyens pour ex-æquo).
-- Échantillonnage `ORDER BY random() LIMIT n` sur la source (`splomScatterQuery`) quand `sampleLimit > 0`.
-- Blank des paires sous `minOccurrence` (forcer `strength = null`).
-- Helper de détection des colonnes toujours-nulles / constantes.
-- **Commencer par les tests unitaires** (Pearson, Spearman vs Pearson sur relation monotone, min-occurrence blanking, sampleLimit borne `n`, colonne constante/nulle → null).
-Puis : Step 3 AppState → Step 4 actions → Step 5 Dialog → Step 6 GridPane wiring → Step 7 menu → Step 8 IPC.
+**Step 3-4 — AppState + actions** (`packages/tadviewer/src/AppState.ts`, `packages/tadviewer/src/actions.ts`) :
+- AppState : ajouter `correlationMatrixDialogOpen: boolean` (près l.132) + default false (~l.161) + propriété classe (`public readonly ...!: boolean`, ~l.192) — pas de champs de données (state local du dialog).
+- actions : `openCorrelationMatrix(stateRef)` / `closeCorrelationMatrix(stateRef)` (pattern `openSplom`/`closeSplom` l.881-891) ; `CorrelationMatrixViewData { data: reltab.PairCorrelation[]; constantOrNullColIds?: string[] }` ; `loadCorrelationMatrixData(dbc, query, schema, colIds, opts)` appelant `reltab.getCorrelationMatrix(...)` + `reltab.constantOrNullColIds(...)`. Pas d'actions de filtre.
 
 ## Fichiers clés (références découvertes)
 - `packages/reltab/src/splom.ts` :
-  - `getCorrelationMatrix(dsConn, baseQuery, schema, matrixColIds): Promise<PairCorrelation[]>` (l.317-412) — actuellement Pearson uniquement, sans options.
-  - `PairCorrelation { xColId, yColId, measure: "r"|"eta"|"V", r, strength, n }` (l.59-66).
-  - `splomScatterQuery(baseQuery, schema, matrixColIds, colorColId?)` (l.89-113) → `{ query, derivedNames }`.
-  - `pairwiseCorrelationSql(baseSql, pairs)` (l.196-215) — `corr(x,y)` + `regr_count` batched.
-  - `etaPairSql` (l.223-249), `cramerPairSql` (l.256-291) — une requête par paire.
-  - `numOrNull(v)` (l.293-303) — convertit NaN→null (colonne constante/variance nulle).
-  - `splomColKind(ct)` (l.24-25), `columnKindIsNumeric` (l.21-22), `SplomColKind`.
-- `packages/reltab/src/reltab.ts` : `export * from "./splom"` (l.7) + `./confusionMatrix` (l.8).
+  - `getCorrelationMatrix(dsConn, baseQuery, schema, matrixColIds, opts?: CorrelationMatrixOptions)` (l.~370) — Pearson/eta/V + rank + sampling + minOccurrence.
+  - `PairCorrelation { xColId, yColId, measure: "r"|"eta"|"V", r, strength, n }`.
+  - `pairwiseCorrelationSql(baseSql, pairs)` (Pearson), `pairwiseRankCorrelationSql(baseSql, pairs)` (Spearman).
+  - `splomScatterQuery(baseQuery, schema, matrixColIds, colorColId?)` → `{ query, derivedNames }`.
+  - `constantOrNullColIds(dsConn, baseQuery, schema, colIds): Promise<string[]>`.
+  - `numOrNull(v)`, `splomColKind(ct)`, `columnKindIsNumeric(ct)`, `SplomColKind`.
+- `packages/reltab/src/reltab.ts` : `export * from "./splom"` (l.7) — déjà OK, aucun ajout nécessaire (tout dans splom.ts).
 - `packages/tadviewer/src/AppState.ts` : `splomDialogOpen` (l.123), `confusionMatrixDialogOpen` (l.132) ; defaults l.157/l.161 ; classes l.188/l.192. → ajouter `correlationMatrixDialogOpen`.
 - `packages/tadviewer/src/actions.ts` :
   - `openSplom`/`closeSplom` (l.881-891) ; `openConfusionMatrix`/`closeConfusionMatrix` (l.1065-1081). → pattern pour `openCorrelationMatrix`/`closeCorrelationMatrix`.
@@ -56,5 +53,6 @@ Puis : Step 3 AppState → Step 4 actions → Step 5 Dialog → Step 6 GridPane 
 - Aucun. Toutes les décisions de design sont prises.
 
 ## Commande de vérif (tests/typecheck/build)
-- `cd packages/reltab && npm test`
+- `cd packages/reltab && npm test` → **72 pass**
 - Typecheck tadviewer + tad-app ; `cd packages/tad-app && npm run build-prod`
+

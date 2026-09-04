@@ -3,10 +3,13 @@ import { Schema } from "../src/Schema";
 import { tableQuery } from "../src/QueryExp";
 import { DuckDBDialect } from "../src/dialects/DuckDBDialect";
 import {
+  constantOrNullColIds,
+  CorrelationMatrixOptions,
   getCorrelationMatrix,
   getPairRegression,
   getScatterPlotData,
   pairwiseCorrelationSql,
+  pairwiseRankCorrelationSql,
   splomColKind,
   splomScatterQuery,
 } from "../src/splom";
@@ -233,15 +236,35 @@ describe("pairwiseCorrelationSql", () => {
   });
 });
 
+describe("pairwiseRankCorrelationSql", () => {
+  test("uses rank() and correlates on ranked columns", () => {
+    const sql = pairwiseRankCorrelationSql("SELECT 1", [["a", "b"]]);
+    expect(sql).toContain("WITH __splom_src AS MATERIALIZED");
+    expect(sql).toContain("rank()");
+    expect(sql).toContain("corr(");
+    expect(sql).toContain("__rank_a");
+    expect(sql).toContain("__rank_b");
+    expect(sql).toContain("regr_count");
+  });
+
+  test("returns an empty result query when there are no pairs", () => {
+    const sql = pairwiseRankCorrelationSql("SELECT 1", []);
+    expect(sql).toContain("WHERE 1 = 0");
+  });
+});
+
 describe("getCorrelationMatrix", () => {
   // runSqlQuery mock that returns rows keyed by the SQL body: one set for the
   // Pearson (corr) query, one for the eta query, one for the Cramér's V query.
   const mkIface = (
     pearson: unknown[],
     eta: unknown[] | null = null,
-    cramer: unknown[] | null = null
+    cramer: unknown[] | null = null,
+    rank: unknown[] | null = null
   ) => {
     const runSqlQuery = jest.fn().mockImplementation((query: string) => {
+      if (rank != null && /__rank_/.test(query))
+        return Promise.resolve(rank);
       if (eta != null && /sbtw/.test(query)) return Promise.resolve(eta);
       if (cramer != null && /least\(nr - 1, nc - 1\)/.test(query))
         return Promise.resolve(cramer);
@@ -394,6 +417,166 @@ describe("getCorrelationMatrix", () => {
     expect(corr).toEqual([
       { xColId: "a", yColId: "b", measure: "r", r: null, strength: null, n: 1 },
     ]);
+  });
+
+  test("rank=true uses the rank (Spearman) SQL for numeric pairs", async () => {
+    const rank = { __x: "a", __y: "b", __r: 0.9, __n: BigInt(6) };
+    const { ds, runSqlQuery } = mkIface([], null, null, [rank]);
+
+    const corr = await getCorrelationMatrix(
+      ds,
+      tableQuery("t"),
+      tableSchema,
+      ["a", "b"],
+      { rank: true }
+    );
+
+    expect(corr).toEqual([
+      { xColId: "a", yColId: "b", measure: "r", r: 0.9, strength: 0.9, n: 6 },
+    ]);
+    const rankSql = runSqlQuery.mock.calls
+      .map((c) => c[0] as string)
+      .find((s) => /__rank_/.test(s));
+    expect(rankSql).toBeDefined();
+    expect(rankSql).toContain("rank()");
+  });
+
+  test("rank=true leaves eta/V categorical pairs unchanged", async () => {
+    const eta = { __x: "c", __y: "a", __r: 0.63, __n: BigInt(12) };
+    const { ds, runSqlQuery } = mkIface([], [eta]);
+
+    const corr = await getCorrelationMatrix(
+      ds,
+      tableQuery("t"),
+      tableSchema,
+      ["a", "c"],
+      { rank: true }
+    );
+
+    expect(corr).toEqual([
+      { xColId: "c", yColId: "a", measure: "eta", r: 0.63, strength: 0.63, n: 12 },
+    ]);
+    // eta pair never goes through the rank query
+    const rankSql = runSqlQuery.mock.calls
+      .map((c) => c[0] as string)
+      .filter((s) => /__rank_/.test(s));
+    expect(rankSql).toHaveLength(0);
+  });
+
+  test("minOccurrence blanks pair strength below the threshold", async () => {
+    const { ds } = mkIface([{ __x: "a", __y: "b", __r: 0.5, __n: BigInt(2) }]);
+
+    const corr = await getCorrelationMatrix(
+      ds,
+      tableQuery("t"),
+      tableSchema,
+      ["a", "b"],
+      { minOccurrence: 5 }
+    );
+
+    expect(corr).toEqual([
+      { xColId: "a", yColId: "b", measure: "r", r: null, strength: null, n: 2 },
+    ]);
+  });
+
+  test("minOccurrence only blanks pairs below the threshold", async () => {
+    const { ds, runSqlQuery } = mkIface([
+      { __x: "a", __y: "b", __r: 0.5, __n: BigInt(10) },
+      { __x: "a", __y: "d", __r: 0.7, __n: BigInt(1) },
+    ]);
+
+    const corr = await getCorrelationMatrix(
+      ds,
+      tableQuery("t"),
+      tableSchema,
+      ["a", "b", "d"],
+      { minOccurrence: 5 }
+    );
+
+    expect(corr).toEqual([
+      { xColId: "a", yColId: "b", measure: "r", r: 0.5, strength: 0.5, n: 10 },
+      { xColId: "a", yColId: "d", measure: "r", r: null, strength: null, n: 1 },
+    ]);
+  });
+
+  test("sampleLimit wraps the source in ORDER BY random() LIMIT n", async () => {
+    const { ds, runSqlQuery } = mkIface([
+      { __x: "a", __y: "b", __r: 0.5, __n: BigInt(200) },
+    ]);
+
+    const corr = await getCorrelationMatrix(
+      ds,
+      tableQuery("t"),
+      tableSchema,
+      ["a", "b"],
+      { sampleLimit: 50 }
+    );
+
+    expect(corr).toEqual([
+      { xColId: "a", yColId: "b", measure: "r", r: 0.5, strength: 0.5, n: 200 },
+    ]);
+    // the correlation is computed over a random LIMIT sample of the source
+    const baseSql = runSqlQuery.mock.calls
+      .map((c) => c[0] as string)
+      .find((s) => /ORDER BY random\(\)/.test(s) && /LIMIT 50/.test(s));
+    expect(baseSql).toBeDefined();
+  });
+});
+
+describe("constantOrNullColIds", () => {
+  const mkCountIface = (rows: Array<Record<string, unknown>>) => {
+    const runSqlQuery = jest.fn().mockResolvedValue(rows);
+    const ds = new DbDataSource(makeDriver(runSqlQuery));
+    return { ds, runSqlQuery };
+  };
+
+  test("reports always-null and single-value columns", async () => {
+    const { ds, runSqlQuery } = mkCountIface([
+      { __cid: "a", __nn: BigInt(3), __uniq: BigInt(3) },
+      { __cid: "b", __nn: BigInt(0), __uniq: BigInt(0) },
+      { __cid: "c", __nn: BigInt(5), __uniq: BigInt(1) },
+    ]);
+
+    const result = await constantOrNullColIds(
+      ds,
+      tableQuery("t"),
+      tableSchema,
+      ["a", "b", "c"]
+    );
+
+    expect(result).toEqual(["b", "c"]);
+    expect(runSqlQuery).toHaveBeenCalledTimes(1);
+    const sql = runSqlQuery.mock.calls[0][0] as string;
+    expect(sql).toContain("count(");
+    expect(sql).toMatch(/count\(DISTINCT/i);
+  });
+
+  test("returns an empty list when every column varies", async () => {
+    const { ds } = mkCountIface([
+      { __cid: "a", __nn: BigInt(3), __uniq: BigInt(3) },
+      { __cid: "b", __nn: BigInt(4), __uniq: BigInt(2) },
+    ]);
+
+    const result = await constantOrNullColIds(
+      ds,
+      tableQuery("t"),
+      tableSchema,
+      ["a", "b"]
+    );
+
+    expect(result).toEqual([]);
+  });
+
+  test("handles an empty selection", async () => {
+    const { ds, runSqlQuery } = mkCountIface([]);
+    const result = await constantOrNullColIds(
+      ds,
+      tableQuery("t"),
+      tableSchema,
+      []
+    );
+    expect(result).toEqual([]);
+    expect(runSqlQuery).not.toHaveBeenCalled();
   });
 });
 
