@@ -20,6 +20,8 @@ import {
   Button,
   Dialog,
   HTMLSelect,
+  Menu,
+  MenuItem,
   NumericInput,
   Slider,
   Spinner,
@@ -309,10 +311,62 @@ const CorrelationMatrixDialog: React.FunctionComponent<
     setSelectedCols([]);
   };
 
-  // Remove a single column (row & column) from the matrix, e.g. on right-click.
+  // Remove a single column (row & column) from the matrix, e.g. via context menu.
   const removeCol = (cid: string) => {
     setSelectedCols((prev) => prev.filter((c) => c !== cid));
   };
+
+  // Fixed-position context menu ("Remove" on a row/column header).
+  const [ctxMenu, setCtxMenu] = useState<{
+    x: number;
+    y: number;
+    cid: string;
+    label: string;
+  } | null>(null);
+
+  const openCtxMenu = (e: React.MouseEvent, cid: string) => {
+    e.preventDefault();
+    setCtxMenu({
+      x: e.clientX,
+      y: e.clientY,
+      cid,
+      label: viewSchema?.displayName(cid) ?? cid,
+    });
+  };
+
+  useEffect(() => {
+    if (ctxMenu == null) {
+      return;
+    }
+    const close = () => setCtxMenu(null);
+    const onKey = (ev: KeyboardEvent) => {
+      if (ev.key === "Escape") {
+        setCtxMenu(null);
+      }
+    };
+    window.addEventListener("mousedown", close);
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("blur", close);
+    window.addEventListener("scroll", close, true);
+    return () => {
+      window.removeEventListener("mousedown", close);
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("blur", close);
+      window.removeEventListener("scroll", close, true);
+    };
+  }, [ctxMenu]);
+
+  // Vertical headroom for the -45deg column headers so long names stay visible
+  // (each header rotates about its own bottom-left; reach ~ nameLen * sin(45deg)).
+  const headerH = useMemo(() => {
+    if (selectedCols.length === 0) {
+      return 40;
+    }
+    const maxNameLen = Math.max(
+      ...selectedCols.map((cid) => (viewSchema?.displayName(cid) ?? cid).length)
+    );
+    return Math.max(40, Math.min(Math.ceil(maxNameLen * 4.5) + 14, 200));
+  }, [selectedCols, viewSchema]);
 
   // Build an N×N lookup (symmetric): value(i,j) for i<j from the upper
   // triangle returned by the backend; diagonal is 1.
@@ -545,11 +599,10 @@ const CorrelationMatrixDialog: React.FunctionComponent<
               {selectedCols.map((cid) => (
                 <div
                   key={`h${cid}`}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    removeCol(cid);
-                  }}
+                  onContextMenu={(e) => openCtxMenu(e, cid)}
                   style={{
+                    display: "flex",
+                    alignItems: "flex-end",
                     fontSize: 11,
                     fontWeight: 600,
                     transform: "rotate(-45deg)",
@@ -558,8 +611,10 @@ const CorrelationMatrixDialog: React.FunctionComponent<
                     color: "#445",
                     cursor: "context-menu",
                     padding: "2px 4px",
+                    height: headerH,
+                    overflow: "visible",
                   }}
-                  title={`${viewSchema?.displayName(cid) ?? cid} (right-click to remove)`}
+                  title={`${viewSchema?.displayName(cid) ?? cid} (right-click for actions)`}
                 >
                   {viewSchema?.displayName(cid) ?? cid}
                 </div>
@@ -567,10 +622,7 @@ const CorrelationMatrixDialog: React.FunctionComponent<
               {selectedCols.map((cid, ri) => (
                 <React.Fragment key={`r${cid}`}>
                   <div
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      removeCol(cid);
-                    }}
+                    onContextMenu={(e) => openCtxMenu(e, cid)}
                     style={{
                       fontWeight: 600,
                       color: "#445",
@@ -578,7 +630,7 @@ const CorrelationMatrixDialog: React.FunctionComponent<
                       whiteSpace: "nowrap",
                       cursor: "context-menu",
                     }}
-                    title={`${viewSchema?.displayName(cid) ?? cid} (right-click to remove)`}
+                    title={`${viewSchema?.displayName(cid) ?? cid} (right-click for actions)`}
                   >
                     {viewSchema?.displayName(cid) ?? cid}
                   </div>
@@ -603,6 +655,28 @@ const CorrelationMatrixDialog: React.FunctionComponent<
           </div>
         ) : null}
       </div>
+      {ctxMenu != null && (
+        <div
+          style={{
+            position: "fixed",
+            left: ctxMenu.x,
+            top: ctxMenu.y,
+            zIndex: 30,
+          }}
+          onContextMenu={(e) => e.preventDefault()}
+        >
+          <Menu>
+            <MenuItem
+              icon="trash"
+              text={`Remove "${ctxMenu.label}"`}
+              onClick={() => {
+                removeCol(ctxMenu.cid);
+                setCtxMenu(null);
+              }}
+            />
+          </Menu>
+        </div>
+      )}
       <div className="bp4-dialog-footer">
         <div className="bp4-dialog-footer-actions">
           <Button onClick={onClose}>Close</Button>

@@ -2,6 +2,12 @@
 
 Branch: `correlation` (Feature: Correlation Matrix, version app 0.0.9)
 
+## Header visibility + context menu "Remove" (DONE)
+- **En-têtes de colonnes visibles** : rotation −45° (origin bottom-left) + `display:flex; alignItems:flex-end` + `height: headerH` (headroom = `max(40, min(⌈longName*4.5⌉+14, 200))`) → le texte en diagonale a assez de place au-dessus et n'est plus coupé par le conteneur `overflow:auto`. Headroom ≠ lié au nb de colonnes (chaque en-tête a son propre origin).
+- **Menu contextuel** : clic droit (en-tête colonne OU ligne) → ouvre un `Menu` Blueprint positionné fixe avec l'item **"Remove «colonne»"** (icône trash) qui appelle `removeCol(cid)`. Fermeture sur clic à l'extérieur / Escape / blur / scroll.
+- Remplace l'ancien comportement "suppression immédiate au clic droit" par une étape de menu « Remove ».
+- Vérifs : typecheck tadviewer + tad-app OK ; `build-prod` tad-app **compiled successfully**. Commit `git add`.
+
 ## Post-fix tuning — sample slider recompute on release only (DONE)
 - Slider d'échantillonnage : `onChange` met à jour uniquement la valeur visuelle (`sampleSliderVal`), `onRelease` commite dans `sampleLimit` (déclenche le recalcul). L'effet dépend de `curSample = sampleLimit`, donc pas de recalcul pendant le déplacement du curseur. Pattern identique à ScatterPlotDialog/SplomDialog.
 - Vérifs : typecheck + `build-prod` tad-app OK (aucun test backend affecté).
