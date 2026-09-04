@@ -238,7 +238,7 @@ const CorrelationMatrixDialog: React.FunctionComponent<
   }, [colGroupedOptions, selectedCols]);
 
   const curMinOcc = minOccurrence;
-  const curSample = sampleSliderVal ?? sampleLimit;
+  const curSample = sampleLimit;
 
   useEffect(() => {
     if (selectedCols.length < 2) {
@@ -499,9 +499,13 @@ const CorrelationMatrixDialog: React.FunctionComponent<
               max={20000}
               stepSize={500}
               labelRenderer={false}
-              value={curSample}
+              value={sampleSliderVal ?? sampleLimit}
               disabled={useAllRows}
               onChange={(v: number) => setSampleSliderVal(v)}
+              onRelease={(v: number) => {
+                setSampleSliderVal(v);
+                setSampleLimit(v);
+              }}
             />
           </div>
           <Switch

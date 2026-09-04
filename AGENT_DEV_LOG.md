@@ -2,6 +2,10 @@
 
 Branch: `correlation` (Feature: Correlation Matrix, version app 0.0.9)
 
+## Post-fix tuning — sample slider recompute on release only (DONE)
+- Slider d'échantillonnage : `onChange` met à jour uniquement la valeur visuelle (`sampleSliderVal`), `onRelease` commite dans `sampleLimit` (déclenche le recalcul). L'effet dépend de `curSample = sampleLimit`, donc pas de recalcul pendant le déplacement du curseur. Pattern identique à ScatterPlotDialog/SplomDialog.
+- Vérifs : typecheck + `build-prod` tad-app OK (aucun test backend affecté).
+
 ## Fix round (post-review) — DONE
 User-requested fixes implemented:
 1. **Colonnes toujours visibles** : retrait de `overflow:hidden`/`textOverflow`/`maxWidth` sur les en-têtes de colonnes (rotation −45°) et les labels de lignes → les noms s'affichent en entier.
