@@ -3,7 +3,7 @@
 Branche : `correlation`. Date : 2026-09-04.
 
 ## Overview
-Ajouter une vue analytique **"Correlation Matrix"** (menu Analytics → Correlation Matrix) qui affiche une matrice N×N des indices de corrélation entre les colonnes de la table. Le design reprend l'architecture de la **Confusion Matrix** (grille heat-map colorée, cases cliquables pour filtrer), mais chaque ligne/colonne correspond à **une colonne de la table** (pas à un bin), et la valeur de chaque case est un **indice de corrélation** mesuré exactement comme dans la **SPLOM**.
+Ajouter une vue analytique **"Correlation Matrix"** (menu Analytics → Correlation Matrix) qui affiche une matrice N×N des indices de corrélation entre les colonnes de la table. Le design reprend l'architecture de la **Confusion Matrix** (grille heat-map colorée) et la SPLOM (les mesures, plus le picker de colonnes), mais chaque ligne/colonne correspond à **une colonne de la table** (pas à un bin), et la valeur de chaque case est un **indice de corrélation** mesuré exactement comme dans la **SPLOM**. La matrice est **en lecture seule** (aucune interaction de filtrage).
 
 ## Décisions de design validées (questions répondues)
 1. **Périmètre des colonnes** : toutes les colonnes, comme la SPLOM — Pearson `r` (num×num), `eta` (cat×num), Cramér's `V` (cat×cat).
@@ -21,7 +21,7 @@ Ajouter une vue analytique **"Correlation Matrix"** (menu Analytics → Correlat
    - Switch **"Apply Table Filters"**.
    - **Min non-null occurrence** (threshold global) : les paires avec `n` (nombre de lignes où les deux colonnes sont non-null) < threshold sont **blanquées**.
 5. **Colonnes toujours-nulles / à valeur unique** : exclues du picker + liste d'avis dans le dialog.
-6. **Filtrage analytics** : cliquer une case → filtre croisé sur les deux colonnes concernées (comme la Confusion Matrix, via `setAnalyticsClauses`).
+6. **Aucune interaction de filtrage** : la matrice est en **lecture seule** (heat-map + en-têtes). Pas de clic de cellule → filtre analytics, pas d'`onFilter`/`onClearFilter`.
 
 ## Implementation Steps
 
@@ -80,19 +80,17 @@ Une requête par sélection de colonnes, ex. `SELECT count(<c>) ... ` par colonn
   }
   ```
 - `loadCorrelationMatrixData(dbc, query, schema, colIds, opts)` : appelle `reltab.getCorrelationMatrix(...)` (+ helper Step 2) et retourne `{ data, constantOrNullColIds }`.
-- `setCorrelationMatrixFilter(rowArg, colArg, stateRef)` / `clearCorrelationMatrixFilter(rowColId, colColId, stateRef)` : pattern `setConfusionMatrixFilter`/`clearConfusionMatrixFilter` (l.1112-1137), passant par `setAnalyticsClauses`.
+- **Pas** d'actions de filtre (matrice lecture seule ; inutile de toucher à `setAnalyticsClauses`/`setConfusionMatrixFilter`).
 
 ### Step 5: Dialog component
 **File** : `packages/tadviewer/src/components/CorrelationMatrixDialog.tsx` (nouveau)
 
-Props (pattern ConfusionMatrixDialog) :
+Props (sans interaction de filtrage) :
 ```ts
 interface CorrelationMatrixDialogProps {
   appState: AppState;
   stateRef: StateRef<AppState>;
   onClose: () => void;
-  onFilter: (rowArg: ScatterAxisFilterArg, colArg: ScatterAxisFilterArg) => void;
-  onClearFilter: (rowArg: ScatterAxisFilterArg, colArg: ScatterAxisFilterArg) => void;
 }
 ```
 
@@ -114,7 +112,7 @@ Layout (Blueprint `Dialog`, style ConfusionMatrixDialog) :
 │ [colA]   [1.00]   [0.87]   [0.12]                            │
 │ [colB]   [0.87]   [1.00]   [0.03]                            │
 │ [colC]   [0.12]   [0.03]   [1.00]                            │
-│  … heat-map cellColor, diagonal 1.00, cells cliquables …     │
+│  … heat-map cellColor, diagonal 1.00 (lecture seule) …       │
 ├──────────────────────────────────────────────────────────────┤
 │ [Close]                                                      │
 └──────────────────────────────────────────────────────────────┘
@@ -126,15 +124,14 @@ Détails UI :
 - **Mode toggle** : `HTMLSelect` ou groupe Radio "Pearson / Spearman" → `rank` (Decision 2).
 - **Min non-null occurrence** : `NumericInput`/`Slider`, default 1 (pattern `minOccurrence` ConfusionMatrix).
 - **Sampling** : `Switch "Use all rows"` (pattern ConfusionMatrix `useAllRows`) + `sampleLimit` par défaut `DEFAULT_SAMPLE = 20000`.
-- **Grille** : layout grid type SPLOM (en-têtes rotatifs −45°) mêlé au heat-map ConfusionMatrix (`cellColor`). Diagonale = 1.00. Symétrique : value(i,j) = corrélation de la paire (peu importe le triangle, on renvoie la même valeur).
+- **Grille** : layout grid type SPLOM (en-têtes rotatifs −45°) mêlé au heat-map ConfusionMatrix (`cellColor`). Diagonale = 1.00. Symétrique : value(i,j) = corrélation de la paire (peu importe le triangle, on renvoie la même valeur). Matrice **lecture seule** (aucun filtre).
 - **Chargement** : `useEffect` sur `matrixKey`/`rank`/`minOccurrence`/`useAllRows`/`applyTableFilters`, guard sur `selectedCols.length >= 2`, appelle `loadCorrelationMatrixData`. Blank tant que selectedCols < 2.
-- **Filtrage** : cellule cliquée → `onFilter(rowArg, colArg)` avec `ScatterAxisFilterArg` (`{ colId, range?, values? }`). Pour des colonnes numériques, un filtre de plage n'a pas de sens sur une longueur de corrélation — voir Points ouverts (filtrer sélectionne probablement la paire de colonnes via un état). `onClearFilter` via bouton dans le dialog.
 
 ### Step 6: Wiring GridPane
 **File** : `packages/tadviewer/src/components/GridPane.tsx`
 - Importer `CorrelationMatrixDialog` (près l.17).
 - `handleCloseCorrelationMatrix = () => actions.closeCorrelationMatrix(stateRef)` (près l.350-362).
-- Monter le dialog (près l.667-690) avec `appState`, `stateRef`, `onClose`, `onFilter`, `onClearFilter` (pattern ConfusionMatrixDialog).
+- Monter le dialog (près l.667-690) avec `appState`, `stateRef`, `onClose` (pattern `SplomDialog` — pas d'`onFilter`/`onClearFilter`).
 - Ajouter `oldProps.appState.correlationMatrixDialogOpen === nextProps.appState.correlationMatrixDialogOpen` au guard de mémoïsation `gridPanePropsEqual` (l.712-717).
 
 ### Step 7: Menu
@@ -166,13 +163,12 @@ Détails UI :
 8. **Modify** : `packages/reltab/src/reltab.ts` (si nouveau fichier backend)
 
 ## Dependencies
-- Existant : `getCorrelationMatrix`, `splomScatterQuery`, `pairwiseCorrelationSql`, `etaPairSql`, `cramerPairSql`, `numOrNull`, `splomColKind` (SPLOM) ; `ConfusionMatrixDialog` (pattern UI + `setAnalyticsClauses`) ; react-select (déjà présent) ; BlueprintJS.
+- Existant : `getCorrelationMatrix`, `splomScatterQuery`, `pairwiseCorrelationSql`, `etaPairSql`, `cramerPairSql`, `numOrNull`, `splomColKind` (SPLOM) ; `ConfusionMatrixDialog` (pattern UI, heat-map `cellColor`) ; react-select (déjà présent) ; BlueprintJS.
 
 ## Risks & Mitigations
 1. **Spearman SQL** : corrélation de rang avec ex-æquo (rangs moyens) délicate en pur SQL DuckDB (`rank() OVER`). → Implémenter avec `rank()`/`dense_rank()` sur chaque colonne et `corr()` sur les rangs ; valider par test unitaire contre une référence (ex. scipy/numpy en commentaire de test).
 2. **Échantillonnage ≈ corrélation approximative** : assumé (Decision 3). Le tooltip/de l'UI peut indiquer "sampled".
 3. **Colonnes toujours-nulles** : le helper de détection doit gérer les tables vides (count=0). → Retourner liste vide et laisser la grille vide.
-4. **Filtrage de cellule sur corrélation** : une case = une paire de colonnes, pas une plage de valeurs. → Voir Points ouverts : le filtre croisé "sélectionne" la paire (highlight) plutôt qu'un filtre de plage numérique classique.
 
 ## Next Steps
 1. Step 1-2 (backend reltab) + tests unitaires.

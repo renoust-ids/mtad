@@ -44,9 +44,10 @@ Ajouter une vue analytique "Correlation Matrix" (menu Analytics → Correlation 
 3. Échantillonnage optionnel borne le calcul de corrélation lui-même (`ORDER BY random() LIMIT n`) sauf "Use all rows".
 4. Colonnes toujours-nulles / à valeur unique : exclues du picker + **liste d'avis** dans le dialog (nommées).
 5. Picker de colonnes = MultiSelect react-select de la SPLOM.
+6. **Aucune interaction de filtrage** : matrice **lecture seule** (heat-map + en-têtes), pas d'`onFilter`/`onClearFilter`.
 
 ## Points ouverts
-- **Filtrage de cellule** : une case = une paire de colonnes de corrélation, pas une plage de valeurs. Définir le comportement exact du clic (highlight de la paire / filtre croisé large ?) avant l'implémentation de la Step 5.
+- Aucun. (Décision : pas de filtrage par clic de cellule.)
 
 ## TODO immédiat
 - [ ] Mettre à jour `vibe-instructions.md` : MISSION ACTUELLE → Correlation Matrix (branche `correlation`), et version restant 0.0.9.
