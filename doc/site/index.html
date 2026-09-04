@@ -82,8 +82,8 @@
         <div class="col-sm-4">
           <div class="specs-holder">
             <img src="images/csv-icon@2x.png" alt="csv">
-            <p><strong>Excel Join &amp; Materialization</strong></p>
-            <p>Join your data against CSV, TSV, or Excel (.xlsx) worksheets and materialize the result as a DuckDB table, with per-sheet worksheet selection and automatic type detection.</p>
+            <p><strong>Join &amp; Concatenate</strong></p>
+            <p>Join your data against CSV, TSV, or Excel (.xlsx) worksheets and materialize the result as a DuckDB table (with per-sheet selection), or append external rows with automatic case-insensitive column matching and DuckDB type casting. <a href="#relnotes">Learn more</a></p>
           </div>
         </div>
         <div class="col-sm-4">
@@ -159,7 +159,7 @@
         <li><strong>Pivot-aware editing</strong> for aggregate and leaf rows</li>
         <li><strong>Row and column insertion</strong> from the grid right-click menus</li>
         <li><strong>Column rename</strong> via header context menu</li>
-        <li><strong>Excel and worksheet joins</strong> — join CSV/TSV/Excel data with per-sheet selection and materialize into DuckDB tables</li>
+        <li><strong>Join &amp; Concatenate</strong> — join CSV/TSV/Excel data with per-sheet selection and materialize into DuckDB tables, or concatenate external rows with automatic column matching and type casting</li>
         <li><strong>Selection-aware context menus</strong> that keep multi-cell selections on right-click</li>
       </ul>
       <p style="margin-top: 20px;">
@@ -172,7 +172,16 @@
   <div id="news" class="section news-section">
     <div class="container">
     <h3>News</h3>
-    <p class="lead">MTad 0.0.7 - September 2026</p>
+    <p class="lead">MTad 0.0.8 - September 2026</p>
+    <p>
+    MTad adds a <strong>Confusion Matrix</strong> view under the Analytics menu — a co-occurrence
+    (2D histogram) matrix between a chosen <strong>row variable</strong> and <strong>column variable</strong>,
+    with adjustable binning, heat-mapped cells, conditional (row/column) normalization, and click-to-filter
+    into the grid. The Scatter Plot Matrix now also reports <strong>eta</strong> (categorical×numeric) and
+    <strong>Cramér's V</strong> (categorical×categorical) association stats, and a Help menu item offers a
+    soft <strong>Check for Updates</strong> pointing to the latest release page.
+    </p>
+    <p class="lead" style="margin-top: 15px;">MTad 0.0.7 - September 2026</p>
     <p>
     MTad adds <strong>Excel (.xlsx) import</strong> with native DuckDB type inference — a <strong>worksheet picker</strong> when
     opening (or joining against) a multi-sheet workbook, and an automatic per-column inference fallback for mixed-type columns
@@ -224,6 +233,16 @@
     <h3>Release Notes</h3>
 
     <div class="release-section">
+      <h4>MTad 0.0.8 - September 2026</h4>
+      <h5>New Features</h5>
+      <ul>
+        <li><strong>Confusion Matrix</strong> - Analytics ▸ Confusion Matrix renders a co-occurrence (2D histogram) matrix between a chosen row variable and column variable. Numeric/temporal columns auto-bin (adjustable row/col bin counts), categorical columns use their values; cells are heat-mapped by value and support conditional (row/column) normalization, a minimum-occurrence threshold, and click-to-filter into the grid</li>
+        <li><strong>SPLOM association stats</strong> - the Scatter Plot Matrix reports eta (categorical×numeric) and Cramér's V (categorical×categorical) association statistics</li>
+        <li><strong>Soft check-for-updates</strong> - a Help ▸ Check for Updates item points to the latest release page</li>
+      </ul>
+    </div>
+
+    <div class="release-section">
       <h4>MTad 0.0.7 - September 2026</h4>
       <h5>New Features</h5>
       <ul>
@@ -242,6 +261,24 @@
         <li><strong>Scatter Plot</strong> - Analytics ▸ Scatter Plot (or clicking an off-diagonal SPLOM cell) opens any single X/Y pair as a 2D scatter with 2D brush-to-filter, log X/Y toggles, linear regression trend line and stats row</li>
         <li><strong>Strict Table / Analytics filter separation</strong> - the footer uses two independent editors (table-filter-editor and analytics-filter-editor); table filters are set only manually, while analytics filters also come from View interactions (brushing, bar clicks)</li>
         <li><strong>Categorical-only SPLOM</strong> - the matrix can now be built from categorical-only column selections</li>
+      </ul>
+    </div>
+
+    <div class="release-section">
+      <h4>MTad 0.0.5 - September 2026</h4>
+      <h5>New Features</h5>
+      <ul>
+        <li><strong>Temporal Distribution charts</strong> - the Distribution dialog charts date/time/timestamp columns with type-aware labels (YYYY-MM-DD, HH:MM, YYYY-MM-DD HH:MM)</li>
+        <li><strong>Editable bin counts</strong> - double-click the bin-count value to type a number directly; categorical charts get a min-frequency threshold to hide rare values</li>
+        <li><strong>Table &amp; Analytics Filters split</strong> - the footer separates the two filters into their own editors with live SQL summaries, apply toggles, and one-click clear buttons</li>
+      </ul>
+    </div>
+
+    <div class="release-section">
+      <h4>MTad 0.0.4 - September 2026</h4>
+      <h5>New Features</h5>
+      <ul>
+        <li><strong>Interactive column histograms</strong> - right-click a column header for a binned histogram with a bin-count slider, log scale, null bar, statistics panel, and brush-to-filter into the grid</li>
       </ul>
     </div>
 

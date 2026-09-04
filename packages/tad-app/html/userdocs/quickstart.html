@@ -201,6 +201,14 @@ $ tad somefile.csv
         <li><b>Scatter Plot</b> - plot any single X/Y column pair as a 2D scatter with a 2D brush (filter the grid on both axes), log X/Y toggles, and a linear regression trend line with stats.</li>
         </ul>
         </P>
+        <h5>Join &amp; Concatenate Files</h5>
+        <P>
+        The <b>File</b> menu lets you combine your current table with an external file (CSV, TSV, or an Excel <code>.xlsx</code> sheet):
+        <ul>
+        <li><b>Join File</b> - join the current table against an external file and materialize the result as a new editable table, with inner / left / right / outer join types and worksheet selection for multi-sheet workbooks.</li>
+        <li><b>Concatenate File</b> - append the rows of an external file to the current table. Columns are auto-matched by name (case-insensitive) and cast to a common type using DuckDB rules (<code>TRY_CAST</code>); the dialog shows the full mapping, highlights columns that will be cast, lets you add custom mappings with <b>+</b>, and provides a per-column <b>null string</b>.</li>
+        </ul>
+        </P>
         <h5>Grid Interaction Notes</h5>
         <ul>
         <li>Hovering over a cell draws a thick dark blue border around it, so cell values remain readable while you navigate.</li>
