@@ -57,7 +57,7 @@ Le backend reltab (`concatCsv` operator) et l'UI (`ConcatCsvDialog`) sont **term
 ## Informations sur le projet
 - **Nom du produit** : MTad (application Electron)
 - **App ID** : `com.mtad.app`
-- **Version actuelle** : `0.0.8`
+- **Version actuelle** : `0.0.9`
 - **Dépôt** : https://github.com/renoust-ids/mtad
 - **Branche principale** : `master`
 - **Auteur** : Benjamin Renoust (from Antony Courtney)

@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.9] - 2026-09-04
+
+### Added
+
+- **Concatenate File** — **File ▸ Concatenate File** appends the rows of an external file (CSV/TSV/Excel `.xlsx`) to the current table and materializes the result as a new editable DuckDB table.
+  - **Auto column matching** — columns are matched by name (case-insensitive) in an interactive mapping dialog that lists matched, original-only, and new columns; a **+** button adds custom mappings.
+  - **DuckDB type casting** — matched/new columns are cast to a common type using DuckDB's coercion rules (`TRY_CAST` so incompatible values become `NULL`), with the cast indicated live in the dialog.
+  - **Per-column null string** — a placeholder text is mapped to `NULL` (compared as text before casting).
+  - **Internal-column exclusion** — MTad bookkeeping columns (`_rid`, `Rec`, `_`-prefixed) are excluded from the result; a fresh `_rid` is re-added when the new table loads.
+- **reltab `concatCsv` layer** — `concatCsv()` query operator (`ConcatCsvArgs`, SQL `UNION ALL` generation, schema inference) and `concatCsvGetSchema`, with unit + DuckDB integration tests.
+
 ## [0.0.8] - 2026-09-03
 
 ### Added
@@ -87,7 +98,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CSV join materialization** — join CSV files and materialize the result as a DuckDB table.
 - **Cell context menu** — edit / edit-all options on right-click; improved date/time display formatting.
 
-[Unreleased]: https://github.com/renoust-ids/mtad/compare/v0.0.8...HEAD
+[Unreleased]: https://github.com/renoust-ids/mtad/compare/v0.0.9...HEAD
+[0.0.9]: https://github.com/renoust-ids/mtad/compare/v0.0.8...v0.0.9
 [0.0.8]: https://github.com/renoust-ids/mtad/compare/v0.0.7...v0.0.8
 [0.0.7]: https://github.com/renoust-ids/mtad/compare/v0.0.6...v0.0.7
 [0.0.6]: https://github.com/renoust-ids/mtad/compare/v0.0.5...v0.0.6

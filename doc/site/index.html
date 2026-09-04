@@ -172,7 +172,16 @@
   <div id="news" class="section news-section">
     <div class="container">
     <h3>News</h3>
-    <p class="lead">MTad 0.0.8 - September 2026</p>
+    <p class="lead">MTad 0.0.9 - September 2026</p>
+    <p>
+    MTad adds <strong>File ▸ Concatenate File</strong>: append the rows of an external file (CSV, TSV, or Excel
+    <code>.xlsx</code>) to the current table and materialize the result as a new editable table. Columns are
+    <strong>auto-matched by name</strong> (case-insensitive) with an interactive mapping dialog — matched, original-only and
+    new columns, live cast indications, custom mappings, and a per-column <strong>null string</strong> — using
+    <strong>DuckDB's casting rules</strong> (<code>TRY_CAST</code>). Internal MTad columns (<code>_rid</code>, <code>Rec</code>)
+    are excluded from the result.
+    </p>
+    <p class="lead" style="margin-top: 15px;">MTad 0.0.8 - September 2026</p>
     <p>
     MTad adds a <strong>Confusion Matrix</strong> view under the Analytics menu — a co-occurrence
     (2D histogram) matrix between a chosen <strong>row variable</strong> and <strong>column variable</strong>,
@@ -231,6 +240,14 @@
   <div id="relnotes" class="section relnotes-section">
     <div class="container">
     <h3>Release Notes</h3>
+
+    <div class="release-section">
+      <h4>MTad 0.0.9 - September 2026</h4>
+      <h5>New Features</h5>
+      <ul>
+        <li><strong>Concatenate File</strong> - File ▸ Concatenate File appends the rows of an external CSV/TSV/Excel (.xlsx) file to the current table and materializes the result as a new editable DuckDB table. Columns are auto-matched by name (case-insensitive) and cast to a common type with DuckDB rules (TRY_CAST); the dialog offers matched / original-only / new columns, live cast indications, custom mappings, a per-column null string, and excludes MTad internal columns (_rid, Rec)</li>
+      </ul>
+    </div>
 
     <div class="release-section">
       <h4>MTad 0.0.8 - September 2026</h4>
