@@ -39,18 +39,20 @@ Avant de commencer, crée un fichier `AGENT_DEV_LOG.md` à la racine. Pour **cha
 - Les problèmes rencontrés et les solutions appliquées.
 
 **B. Git & Revert-Ability**
-1. **Branche** : Crée et place-toi sur une nouvelle branche dédiée à la feature (ex: `git checkout -b feat/mon-android`). La branche courante de cette mission est `concatenate`.
+1. **Branche** : Crée et place-toi sur une nouvelle branche dédiée à la feature (ex: `git checkout -b feat/mon-android`). La branche courante de cette mission est `correlation`.
 2. **Commits Atomiques** : Tu dois faire un commit *après chaque étape validée*. Utilise la convention *Conventional Commits* (ex: `feat(reltab): add ConcatCsv AST node`).
 3. Ne fais jamais de commit global (`git commit -am "wip"`). Ne groupe pas le backend et l'UI dans le même commit.
 
 # MISSION ACTUELLE
-Intégrer la fonctionnalité **"Concatenate File..."** (branche `concatenate`), qui permet d'ajouter les lignes d'un fichier externe (CSV/TSV/XLSX) à la table actuelle :
-- **Menu** : File → Concatenate File... → ouvre un dialog (Blueprint `Dialog`) qui propose d'aligner les colonnes de la table d'origine avec celles du nouveau fichier.
-- **Alignement automatique** : correspondance des colonnes par nom (insensible à la casse) et proposition de casting vers un type commun selon les règles de DuckDB (`TRY_CAST` pour la sécurité).
-- **Dialog** : mapping table colonne-à-colonne, bouton "+" pour ajouter des mappings personnalisés, NULL string par colonne, affichage des nouvelles colonnes qui seront ajoutées, indication visuelle quand un cast est appliqué.
-- **Résultat** : matérialise le résultat dans une nouvelle table DuckDB éditable, en excluant les colonnes internes MTad (`_rid`, `Rec`, colonnes préfixées `_`).
+Intégrer la fonctionnalité **"Correlation Matrix"** (branche `correlation`), une vue analytique ouverte via Analytics → Correlation Matrix qui affiche une matrice N×N des indices de corrélation entre les colonnes de la table :
+- **Grille** : chaque ligne/colonne = une colonne de la table (diagonale = 1). Valeurs = indices de corrélation heat-map, cases cliquables (architecture de la Confusion Matrix, en-têtes de colonnes type SPLOM).
+- **Mesures** : identiques à la SPLOM — Pearson `r` (num×num), `eta` (cat×num), Cramér's `V` (cat×cat), plus un **mode toggle Pearson / Spearman** (corrélation de rang pour les paires num/temporal).
+- **Échantillonnage optionnel** : borne les lignes utilisées pour le calcul de corrélation (sauf "Use all rows"=non).
+- **Min non-null occurrence** : les paires avec trop peu de lignes co-observées sont blanquées.
+- **Colonnes toujours-nulles / à valeur unique** : exclues du picker de colonnes et affichées dans une liste d'avis dans le dialog.
+- **Column picker** : MultiSelect react-select réutilisé depuis la SPLOM.
 
-Le backend reltab (`concatCsv` operator) et l'UI (`ConcatCsvDialog`) sont **terminés et testés** ; la mission en cours peut être considérée comme close une fois la doc mise à jour et commitée.
+Le plan d'implémentation est dans `vibe/correlation/CORRELATION_MATRIX_PLAN.md`. Le `STATE_HANDOFF.md` (dans `vibe/correlation/`) trace l'état et les décisions validées.
 
 # PROTOCOLE DE RELEASE (MTad)
 
@@ -160,5 +162,5 @@ Le workflow `.github/workflows/build.yml` :
 ## Mission
 - La mission courante est décrite dans le fichier `AGENT_DEV_LOG.md` à la racine.
 - Le journal de bord (traceability) est maintenu dans `AGENT_DEV_LOG.md`.
-- Le plan d'implémentation de la mission Concatenate est dans `vibe/concatenate/CONCATENATE_FILE_PLAN.md`.
+- Le plan d'implémentation de la mission Correlation Matrix est dans `vibe/correlation/CORRELATION_MATRIX_PLAN.md`.
 - Les missions terminées sont archivées dans `vibe/<feature>/` (ex: `vibe/histogram/`, `vibe/excel/`, `vibe/splom/`, `vibe/concatenate/`).
