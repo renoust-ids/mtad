@@ -89,6 +89,18 @@ The **Confusion Matrix** dialog (**Analytics ▸ Confusion Matrix**) renders a c
 - **Cell-click analytics filtering** — click any cell to filter the grid on both axes (a numeric/temporal bin range, or the categorical value); clicking the selected cell again removes the filter. The selected cell is highlighted with the distribution-selection color scheme.
 - **Apply Table Filters / Use all rows** switches and **pivot-aware** computation, mirroring the Scatter Plot dialog.
 
+## Correlation Matrix
+
+The **Correlation Matrix** dialog (**Analytics ▸ Correlation Matrix**) renders an N×N matrix of pairwise association indices between the columns you pick — one row and one column per chosen table column, the diagonal being always 1. The measures are exactly those of the SPLOM: **Pearson `r`** for numeric×numeric pairs, **eta** for categorical×numeric pairs, and **Cramér's V** for categorical×categorical pairs.
+
+- **Column picker** — a searchable multi-select (grouped numeric/temporal vs categorical, as in the SPLOM) selects which columns make up the matrix (up to 24). **Select all** / **Clear** buttons fill or empty the selection.
+- **Not-usable columns** — always-null, constant, and **ID-like** columns (every non-null value distinct) are excluded from the picker and listed as *Not usable (null / constant / ID)* in the dialog.
+- **Pearson / Spearman toggle** — switches the numeric pairs to the **rank correlation** (Spearman, computed on average ranks); categorical pairs keep eta/V unchanged.
+- **Sample** — an optional random sample bounds the rows used for each correlation (**Sample** slider, 500–20 000, recomputed on release); **Use all rows** disables sampling.
+- **Min non-null occurrence** — pairs with too few co-observed (non-null) rows are blanked out.
+- **Remove on right-click** — right-click any row/column header and choose **Remove** to drop that column from the matrix. The matrix itself is **read-only** (no cell-click filtering).
+- **Apply Table Filters** (default on) and **pivot-aware** computation, mirroring the other analytics dialogs.
+
 ## Table & Analytics Filters
 
 The footer splits filtering into two independent concepts:
@@ -146,5 +158,10 @@ The **File ▸ Concatenate File** dialog appends the rows of an external file (C
 | Confusion matrix | `SELECT rowBin, colBin, COUNT(1) GROUP BY rowBin, colBin` over derived bin/class expressions per axis |
 | CM numeric bin | `floor((CAST(value AS DOUBLE) - <niceMin>) / <binWidth>)` (epoch-converted for temporal columns) |
 | CM cell filter | row/col clause: `WHERE "c" >= <lo> AND "c" < <hi>` (numeric/temporal bin) or `WHERE "c" IN (<class>)` (categorical) |
+| Correlation (Pearson) | `SELECT corr(x, y) AS __r, regr_count(x, y) AS __n` per numeric pair, computed once per unordered pair (upper triangle) |
+| Correlation (Spearman) | same query over `rank() OVER (ORDER BY x)` / `rank() OVER (ORDER BY y)` (ranked columns, materialized CTE) |
+| Correlation (eta / V) | categorical×numeric (`sqrt(sbtw/stot)`) and categorical×categorical Cramér's V, as in the SPLOM |
+| Correlation sampling | `SELECT * FROM ( <base> ) AS __splom_s ORDER BY random() LIMIT n` bounds rows before the index is computed |
+| Correlation unusable columns | `SELECT count(c), count(DISTINCT c) ...` flags always-null / constant / all-distinct (ID-like) columns |
 | Concatenate rows | `SELECT ... FROM <current> UNION ALL SELECT CAST(NULL AS T), ... FROM read_csv_auto('file')` with matched/new columns wrapped in `TRY_CAST(... AS <commonType>)` and `NULLIF(CAST(col AS VARCHAR), '<nullString>')` applied when a null string is set |
 | Concat cast | `TRY_CAST(<expr> AS <type>)` returns `NULL` for any value that cannot be coerced |

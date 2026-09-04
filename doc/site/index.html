@@ -145,6 +145,16 @@
           </div>
         </div>
       </div>
+
+      <div class="row" style="margin-top: 20px;">
+        <div class="col-sm-6 col-sm-offset-3">
+          <div class="specs-holder">
+            <img src="images/pivot-icon@2x.png" alt="pivot">
+            <p><strong>Correlation Matrix</strong></p>
+            <p>Open <strong>Analytics ▸ Correlation Matrix</strong> to view an N×N heat-map of pairwise association indices across the columns you pick — <strong>Pearson</strong> (numeric×numeric), <strong>eta</strong> (categorical×numeric) and <strong>Cramér's V</strong> (categorical×categorical), with a <strong>Pearson / Spearman</strong> rank toggle, optional sampling, and automatic exclusion of always-null, constant, and ID columns. Right-click a heading and choose <strong>Remove</strong> to drop a column.</p>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -172,7 +182,16 @@
   <div id="news" class="section news-section">
     <div class="container">
     <h3>News</h3>
-    <p class="lead">MTad 0.0.9 - September 2026</p>
+    <p class="lead">MTad 0.0.10 - September 2026</p>
+    <p>
+    MTad adds a <strong>Correlation Matrix</strong> view under the Analytics menu — an N×N heat-map of
+    pairwise association indices across the columns you pick, using the SPLOM measures
+    (<strong>Pearson</strong>, <strong>eta</strong>, <strong>Cramér's V</strong>) with a <strong>Pearson / Spearman</strong>
+    rank toggle, an optional sample, a min-occurrence threshold, and automatic exclusion of always-null,
+    constant, and ID columns. Right-click a heading and choose <strong>Remove</strong> to drop a column;
+    the matrix is read-only.
+    </p>
+    <p class="lead" style="margin-top: 15px;">MTad 0.0.9 - September 2026</p>
     <p>
     MTad adds <strong>File ▸ Concatenate File</strong>: append the rows of an external file (CSV, TSV, or Excel
     <code>.xlsx</code>) to the current table and materialize the result as a new editable table. Columns are
@@ -240,6 +259,14 @@
   <div id="relnotes" class="section relnotes-section">
     <div class="container">
     <h3>Release Notes</h3>
+
+    <div class="release-section">
+      <h4>MTad 0.0.10 - September 2026</h4>
+      <h5>New Features</h5>
+      <ul>
+        <li><strong>Correlation Matrix</strong> - Analytics ▸ Correlation Matrix renders an N×N heat-map of pairwise association indices across the selected columns. Measures follow the SPLOM (Pearson r for numeric×numeric, eta for categorical×numeric, Cramér's V for categorical×categorical) with a Pearson/Spearman rank toggle for numeric pairs; an optional sample bounds the rows, a min-occurrence threshold blanks poor pairs, and always-null / constant / ID columns are excluded from the picker. Right-click a heading and choose Remove to drop a column; the matrix is read-only</li>
+      </ul>
+    </div>
 
     <div class="release-section">
       <h4>MTad 0.0.9 - September 2026</h4>

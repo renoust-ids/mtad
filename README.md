@@ -79,6 +79,16 @@ MTad supports editing cell values directly in the data grid:
 - **Apply Table Filters / Use all rows** switches, a **swap-axes** button, and pivot-aware computation
 - See [doc/features.md](doc/features.md) and [doc/analytics.md](doc/analytics.md)
 
+### Correlation Matrix
+
+- **Analytics ▸ Correlation Matrix** opens an N×N matrix of pairwise association indices between the columns you pick (the full table scope, like the SPLOM)
+- Measures follow the SPLOM — **Pearson `r`** (numeric×numeric), **eta** (categorical×numeric) and **Cramér's V** (categorical×categorical) — with a **Pearson / Spearman** toggle that switches the numeric pairs to the rank correlation (Spearman); categorical pairs keep eta/V
+- Click within a row/column (or a header) to **remove** that column from the matrix; the matrix itself is **read-only** (no cell-click filtering)
+- An optional **sample** bounds the rows used for each correlation (with a **Sample** slider, released to recompute); a **min non-null occurrence** threshold blanks poorly-observed pairs
+- Always-null, constant, and **ID-like** columns (all values distinct) are excluded from the picker and listed as not usable
+- **Apply Table Filters / Use all rows** switches and pivot-aware computation
+- See [doc/features.md](doc/features.md) and [doc/analytics.md](doc/analytics.md)
+
 ### Table & Analytics Filters
 
 MTad distinguishes between the query filter of the view and ad-hoc exploration filters:
@@ -209,8 +219,9 @@ used to build the MTad desktop application:
 - [**reltab**](./packages/reltab) - The core abstraction used in MTad for programmatically constructing and executing relational SQL queries. This also defines the driver interface implemented by specific database back-ends, and a small, transport-agnostic remoting layer to allow queries and results to be transmitted between a web browser
   (or electron renderer process) and a reltab backend server.
   - Key methods: `execSql()` for DML statements, `getSqlForQuery()` for SQL generation, `renameColumn()` for schema changes, `insertRow()` and `insertColumn()` for adding rows and columns
-  - Binned and categorical single-column distribution queries, including temporal (date/time/timestamp) columns
-  - Two-dimensional co-occurrence (confusion-matrix) queries via `getConfusionMatrixData()`
+   - Binned and categorical single-column distribution queries, including temporal (date/time/timestamp) columns
+   - Two-dimensional co-occurrence (confusion-matrix) queries via `getConfusionMatrixData()`
+   - Pairwise correlation matrices via `getCorrelationMatrix()` (Pearson / Spearman rank, sampling, min-occurrence) with null/constant/ID-column detection via `constantOrNullColIds()`
 - [**reltab-duckdb**](./packages/reltab-duckdb/) -- reltab driver for DuckDb
 - [**aggtree**](./packages/aggtree/) - A library built on top of reltab for constructing pivot trees from relational queries.
 - [**tadviewer**](./packages/tadviewer/) - The core MTad pivot table UI as a standalone, embeddable React component.
@@ -220,7 +231,7 @@ used to build the MTad desktop application:
   - Pivot-aware editing (aggregate rows vs leaf rows)
   - Multi-cell selections preserved on right-click; hover draws a thick border highlight
   - Interactive Distribution dialog (binned histograms, categorical bars, temporal columns) with brush-to-filter
-  - Scatter Plot Matrix, Scatter Plot, and Confusion Matrix analytics dialogs with brush/click-to-filter
+  - Scatter Plot Matrix, Scatter Plot, Confusion Matrix and Correlation Matrix analytics dialogs (the correlation matrix with Pearson/Spearman rank, sampling, and ID-column exclusion)
   - Join File and Concatenate File dialogs with auto column matching and type casting
   - Split Table / Analytics filters with live SQL summaries and apply toggles
 - [**tad-app**](./packages/tad-app/) - The MTad desktop application, built with Electron

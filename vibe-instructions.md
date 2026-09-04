@@ -49,17 +49,17 @@ Intégrer la fonctionnalité **"Correlation Matrix"** (branche `correlation`), u
 - **Mesures** : identiques à la SPLOM — Pearson `r` (num×num), `eta` (cat×num), Cramér's `V` (cat×cat), plus un **mode toggle Pearson / Spearman** (corrélation de rang pour les paires num/temporal).
 - **Échantillonnage optionnel** : borne les lignes utilisées pour le calcul de corrélation (sauf "Use all rows"=non).
 - **Min non-null occurrence** : les paires avec trop peu de lignes co-observées sont blanquées.
-- **Colonnes toujours-nulles / à valeur unique** : exclues du picker de colonnes et affichées dans une liste d'avis dans le dialog.
+- **Colonnes toujours-nulles / à valeur unique (+ ID-like)** : exclues du picker de colonnes et affichées dans une liste d'avis dans le dialog.
 - **Column picker** : MultiSelect react-select réutilisé depuis la SPLOM.
 
-Le plan d'implémentation est dans `vibe/correlation/CORRELATION_MATRIX_PLAN.md`. Le `STATE_HANDOFF.md` (dans `vibe/correlation/`) trace l'état et les décisions validées.
+> **Statut** : implémentée, tests verts (75 reltab), typecheck + build-prod OK. **Release en cours** → `v0.0.10` (voir PROTOCOLE DE RELEASE ci-dessous). Le plan est dans `vibe/correlation/CORRELATION_MATRIX_PLAN.md` ; `vibe/correlation/STATE_HANDOFF.md` trace l'état et les décisions.
 
 # PROTOCOLE DE RELEASE (MTad)
 
 ## Informations sur le projet
 - **Nom du produit** : MTad (application Electron)
 - **App ID** : `com.mtad.app`
-- **Version actuelle** : `0.0.9`
+- **Version actuelle** : `0.0.10`
 - **Dépôt** : https://github.com/renoust-ids/mtad
 - **Branche principale** : `master`
 - **Auteur** : Benjamin Renoust (from Antony Courtney)

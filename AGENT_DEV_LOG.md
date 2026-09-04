@@ -2,6 +2,18 @@
 
 Branch: `correlation` (Feature: Correlation Matrix, version app 0.0.9)
 
+## RELEASE 0.0.10 — docs + bump + tag (DONE)
+- **Version cible** : `0.0.10` (release next après `0.0.9` sur master).
+- **Docs mises à jour** :
+  - `README.md` : section "Correlation Matrix" (après Confusion Matrix) + bullets packages reltab/tadviewer.
+  - `doc/features.md` : section "Correlation Matrix" + 5 lignes SQL dans "Under the Hood".
+  - `doc/analytics.md` : section "Correlation Matrix" + intro + bullet "Under the hood".
+  - `doc/site/index.html` (guide utilisateur/site) : carte feature, news "MTad 0.0.10", section release notes 0.0.10.
+  - `CHANGELOG.md` : section `## [0.0.10] - 2026-09-04` (Added Correlation Matrix + reltab layer), `[Unreleased]` vide en haut, liens compare mis à jour (`v0.0.10`).
+- **Bump** : `package.json` racine, `package-lock.json` (2 lignes "version" du haut), `packages/tad-app/package.json` → `0.0.10`.
+- **Release via CI** : le tag `v0.0.10` déclenche `.github/workflows/build.yml` (mac/win/linux) ; le job `release` extrait la section `## [0.0.10]` de `CHANGELOG.md` comme corps + publie la release (`make_latest`).
+- **Remarque** : pas de `gh` CLI disponible → la "publication" se fait par push du tag (CI). Ne pas committer `examples/Buddha Face*.xlsx` (untracked, hors scope).
+
 ## Header visibility + context menu "Remove" (DONE)
 - **En-têtes de colonnes visibles** : rotation −45° (origin bottom-left) + `display:flex; alignItems:flex-end` + `height: headerH` (headroom = `max(40, min(⌈longName*4.5⌉+14, 200))`) → le texte en diagonale a assez de place au-dessus et n'est plus coupé par le conteneur `overflow:auto`. Headroom ≠ lié au nb de colonnes (chaque en-tête a son propre origin).
 - **Menu contextuel** : clic droit (en-tête colonne OU ligne) → ouvre un `Menu` Blueprint positionné fixe avec l'item **"Remove «colonne»"** (icône trash) qui appelle `removeCol(cid)`. Fermeture sur clic à l'extérieur / Escape / blur / scroll.

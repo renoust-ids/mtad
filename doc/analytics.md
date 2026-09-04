@@ -1,6 +1,6 @@
 # Data Exploration with MTad
 
-This guide walks through the interactive data-exploration features MTad adds on top of the classic Tad pivot-table viewer: the **Distribution dialog**, the **Scatter Plot Matrix (SPLOM)**, **Scatter Plot**, and **Confusion Matrix** views, and the split **Table / Analytics filters**. The examples use the included [`examples/histogram_test.csv`](../examples/histogram_test.csv) (1,000 rows with numeric, categorical and temporal columns).
+This guide walks through the interactive data-exploration features MTad adds on top of the classic Tad pivot-table viewer: the **Distribution dialog**, the **Scatter Plot Matrix (SPLOM)**, **Scatter Plot**, **Confusion Matrix**, and **Correlation Matrix** views, and the split **Table / Analytics filters**. The examples use the included [`examples/histogram_test.csv`](../examples/histogram_test.csv) (1,000 rows with numeric, categorical and temporal columns).
 
 ## Opening a Distribution
 
@@ -72,6 +72,17 @@ The **Analytics ▸ Confusion Matrix** menu opens a co-occurrence matrix between
 - **Click a cell** to filter the grid on both axes (a bin range, or the categorical value); clicking the same cell again clears the filter. The selected cell is highlighted using the distribution-selection color scheme.
 - **Apply Table Filters** (default on) computes the matrix over the table-filtered subset; on pivoted views it follows the aggregated view query.
 
+## Correlation Matrix
+
+The **Analytics ▸ Correlation Matrix** menu opens an N×N matrix of pairwise association indices between the columns you select (up to 24) — one heading per table column, diagonal always 1. The measures mirror the SPLOM.
+
+- **Pick columns** — a searchable multi-select (grouped numeric/temporal vs categorical) selects the matrix columns, with **Select all** / **Clear** buttons. Columns that are always-null, constant, or **ID-like** (all non-null values distinct) are excluded from the picker and listed as *Not usable (null / constant / ID)*.
+- **Association measure** — numeric×numeric pairs use **Pearson `r`**; a **Pearson / Spearman** toggle switches the numeric pairs to the **rank correlation** (Spearman), while categorical pairs keep **eta** (categorical×numeric) and **Cramér's V** (categorical×categorical).
+- **Sampling** — an optional random **sample** (slider 500–20 000, recomputed when released) bounds the rows used for each index; **Use all rows** disables it.
+- **Min non-null occurrence** — pairs with too few co-observed rows are blanked out.
+- **Remove a column** — right-click a row/column heading and choose **Remove** from the context menu. The matrix is **read-only** (no cell-click filtering).
+- **Apply Table Filters** (default on) computes the matrix over the table-filtered subset; on pivoted views it follows the aggregated view query.
+
 ## Table vs Analytics Filters
 
 The footer separates the view's filter from exploratory filters, in two strictly-separated tabs with their own editors:
@@ -96,4 +107,5 @@ Each tab shows a live SQL summary of its filter. Hovering a tab, or editing a fi
 - Temporal histograms bin `DATE_PART('epoch', col)` and derive summary stats from the same epoch conversion.
 - Category frequencies come from a `GROUP BY ... ORDER BY COUNT(*) DESC LIMIT 20` query.
 - Confusion-matrix cells come from a `GROUP BY rowBin, colBin` count over per-row derived bin/class expressions; numeric bins use the same "nice" range and `floor((cast(value, DOUBLE) - niceMin) / binWidth)` as the histogram (epoch-converted for temporal columns).
+- Correlation-matrix indices come from the SPLOM measures (`corr(x, y)` for Pearson, the same over `rank() OVER (...)` columns for Spearman, eta / Cramér's V for categorical pairs), each unordered pair computed once with an optional `ORDER BY random() LIMIT n` sample bounding the rows.
 - Brush filters stay on the raw column with typed literals (`salary >= 31666.67 AND salary <= 183333.33`, `birth_date BETWEEN '2024-01-15' AND '2024-02-19'`), so they survive editing and DuckDB casts them implicitly.
