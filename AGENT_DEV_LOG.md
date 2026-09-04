@@ -2,6 +2,17 @@
 
 Branch: `correlation` (Feature: Correlation Matrix, version app 0.0.9)
 
+## Step 3-4 — AppState + actions (DONE)
+- `packages/tadviewer/src/AppState.ts`: added `correlationMatrixDialogOpen: boolean` (interface ~l.134, default `false` ~l.163, class property `public readonly ...!: boolean` ~l.194). No data fields (dialog state is local).
+- `packages/tadviewer/src/actions.ts`: added Correlation Matrix block before Join CSV:
+  - `openCorrelationMatrix(stateRef)` / `closeCorrelationMatrix(stateRef)` (pattern openSplom, guard viewState != null).
+  - `CorrelationMatrixViewData { data: reltab.PairCorrelation[]; constantOrNullColIds?: string[] }`.
+  - `loadCorrelationMatrixData(dbc, query, schema, colIds, opts)` — `Promise.all` of `reltab.getCorrelationMatrix(...)` + `reltab.constantOrNullColIds(...)`.
+- **No filter actions** (matrix read-only by design).
+- **Result**: `npx tsc --noEmit -p tsconfig.json` in tadviewer passes.
+
+**Commands**: `git add packages/tadviewer/src/AppState.ts packages/tadviewer/src/actions.ts` → commit.
+
 ## Step 1-2 — Backend reltab (DONE)
 Extended `packages/reltab/src/splom.ts` [TDD] to support the Correlation Matrix options:
 - Added `CorrelationMatrixOptions { rank?, sampleLimit?, minOccurrence? }` interface.

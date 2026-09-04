@@ -25,9 +25,15 @@ Ajouter une vue analytique "Correlation Matrix" (menu Analytics → Correlation 
 6. **Aucune interaction de filtrage** : matrice **lecture seule** (heat-map + en-têtes), pas d'`onFilter`/`onClearFilter`.
 
 ## Prochaine étape (à faire au redémarrage)
-**Step 3-4 — AppState + actions** (`packages/tadviewer/src/AppState.ts`, `packages/tadviewer/src/actions.ts`) :
-- AppState : ajouter `correlationMatrixDialogOpen: boolean` (près l.132) + default false (~l.161) + propriété classe (`public readonly ...!: boolean`, ~l.192) — pas de champs de données (state local du dialog).
-- actions : `openCorrelationMatrix(stateRef)` / `closeCorrelationMatrix(stateRef)` (pattern `openSplom`/`closeSplom` l.881-891) ; `CorrelationMatrixViewData { data: reltab.PairCorrelation[]; constantOrNullColIds?: string[] }` ; `loadCorrelationMatrixData(dbc, query, schema, colIds, opts)` appelant `reltab.getCorrelationMatrix(...)` + `reltab.constantOrNullColIds(...)`. Pas d'actions de filtre.
+**Step 5 — Dialog component** (`packages/tadviewer/src/components/CorrelationMatrixDialog.tsx`, nouveau) :
+- Props : `{ appState, stateRef, onClose }`. **Pas** d'`onFilter`/`onClearFilter` (matrice lecture seule).
+- State local : `selectedCols: string[]` (multi), `rank: boolean` (Pearson/Spearman), `useAllRows`, `applyTableFilters`, `minOccurrence`, `data`, `loading`, `error`, `hover`. 
+- Picker réutilisé depuis SPLOM (MultiSelect react-select, groupes numeric/temporal vs categorical, `MAX_MATRIX_COLS`) ; exclure les colonnes null/constantes (Step 2) de `options` + les lister dans un avis.
+- Toggle Pearson/Spearman, Slider/NumericInput Min non-null occurrence (default 1), Switch "Use all rows" (sampleLimit default 20000) + "Apply Table Filters".
+- Chargement : `useEffect` sur `selectedCols`/`rank`/`minOccurrence`/`useAllRows`/`applyTableFilters`, guard `selectedCols.length >= 2`, appelle `loadCorrelationMatrixData`.
+- Grille heat-map `cellColor` type ConfusionMatrix + en-têtes type SPLOM, diagonale 1.00, symétrique, lecture seule.
+
+(State 3-4 fait. AppState + actions à jour.)
 
 ## Fichiers clés (références découvertes)
 - `packages/reltab/src/splom.ts` :
@@ -38,11 +44,10 @@ Ajouter une vue analytique "Correlation Matrix" (menu Analytics → Correlation 
   - `constantOrNullColIds(dsConn, baseQuery, schema, colIds): Promise<string[]>`.
   - `numOrNull(v)`, `splomColKind(ct)`, `columnKindIsNumeric(ct)`, `SplomColKind`.
 - `packages/reltab/src/reltab.ts` : `export * from "./splom"` (l.7) — déjà OK, aucun ajout nécessaire (tout dans splom.ts).
-- `packages/tadviewer/src/AppState.ts` : `splomDialogOpen` (l.123), `confusionMatrixDialogOpen` (l.132) ; defaults l.157/l.161 ; classes l.188/l.192. → ajouter `correlationMatrixDialogOpen`.
+- `packages/tadviewer/src/AppState.ts` : `correlationMatrixDialogOpen` ajouté (interface ~l.134, default ~l.163, classe ~l.194). `splomDialogOpen` (l.123), `confusionMatrixDialogOpen` (l.132).
 - `packages/tadviewer/src/actions.ts` :
-  - `openSplom`/`closeSplom` (l.881-891) ; `openConfusionMatrix`/`closeConfusionMatrix` (l.1065-1081). → pattern pour `openCorrelationMatrix`/`closeCorrelationMatrix`.
-  - `SplomViewData` (l.873-877), `ConfusionMatrixViewData { data }` (l.1085-1087). → `CorrelationMatrixViewData { data, constantOrNullColIds? }`.
-  - `loadSplomData` (l.947-968), `loadConfusionMatrixData` (l.1089-1106). → `loadCorrelationMatrixData`.
+  - `openCorrelationMatrix`/`closeCorrelationMatrix` (bloc avant Join CSV) ; `CorrelationMatrixViewData { data, constantOrNullColIds? }` ; `loadCorrelationMatrixData(dbc, query, schema, colIds, opts)`.
+  - Références pattern : `openSplom`/`closeSplom` (l.881-891), `openConfusionMatrix`/`closeConfusionMatrix`, `loadSplomData`, `loadConfusionMatrixData`.
 - `packages/tadviewer/src/components/ConfusionMatrixDialog.tsx` : pattern UI (Blueprint `Dialog`, `HTMLSelect`, `Slider`, `NumericInput`, `Switch`, `Tooltip` ; `DEFAULT_SAMPLE = 20000` ; `useAllRows`/`sampleLimit` ; `minOccurrence` ; `cellColor` heat-map ; grille + en-têtes). **Ne PAS copier les props de filtrage**.
 - `packages/tadviewer/src/components/SplomDialog.tsx` : column picker react-select MultiSelect (imports l.10-15, `ColOption` l.96-100, `colGroupedOptions` l.216-243, `colSelectedOptions` l.245-251, JSX MultiSelect l.767-809, grille/en-têtes l.925-972, `MAX_MATRIX_COLS`). Colonnes : `viewSchema.columns.filter(cid => !cid.startsWith("_") && cid !== "Rec")`.
 - `packages/tadviewer/src/components/GridPane.tsx` : imports l.15/l.17 ; close handlers l.350-362 ; montage dialogs l.667-690 ; guard mémoïsation l.712-717. → monter `CorrelationMatrixDialog` comme `SplomDialog` (sans onFilter).

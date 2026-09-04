@@ -1136,6 +1136,50 @@ export const clearConfusionMatrixFilter = (
   setAnalyticsClauses([rowColId, colColId], [], stateRef);
 };
 
+// --- Correlation Matrix Dialog Actions ---
+
+// Open / close the "Analytics > Correlation Matrix" dialog (state lives in
+// AppState so it can be opened from the app menu).
+export const openCorrelationMatrix = (stateRef: StateRef<AppState>) => {
+  const app = mutableGet(stateRef);
+  if (app.viewState == null) {
+    return;
+  }
+  update(
+    stateRef,
+    (s) => s.set("correlationMatrixDialogOpen", true) as AppState
+  );
+};
+
+export const closeCorrelationMatrix = (stateRef: StateRef<AppState>) => {
+  update(
+    stateRef,
+    (s) => s.set("correlationMatrixDialogOpen", false) as AppState
+  );
+};
+
+// Data backing the correlation-matrix dialog: the pairwise correlations plus
+// the (always-null / constant) columns excluded from the picker and listed as
+// an advisory.
+export interface CorrelationMatrixViewData {
+  data: reltab.PairCorrelation[];
+  constantOrNullColIds?: string[];
+}
+
+export async function loadCorrelationMatrixData(
+  dbc: DataSourceConnection,
+  query: reltab.QueryExp,
+  schema: reltab.Schema,
+  colIds: string[],
+  opts: reltab.CorrelationMatrixOptions
+): Promise<CorrelationMatrixViewData> {
+  const [data, constantOrNullColIds] = await Promise.all([
+    reltab.getCorrelationMatrix(dbc, query, schema, colIds, opts),
+    reltab.constantOrNullColIds(dbc, query, schema, colIds),
+  ]);
+  return { data, constantOrNullColIds };
+}
+
 // --- Join CSV Dialog Actions ---
 
 export const openJoinCsvDialog = (
