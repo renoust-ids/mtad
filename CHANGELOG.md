@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.10] - 2026-09-04
+
+### Added
+
+- **Correlation Matrix** — **Analytics ▸ Correlation Matrix** renders an N×N heat-map of pairwise association indices between the columns you select (up to 24), one heading per table column, diagonal always 1.
+  - **SPLOM measures** — numeric×numeric pairs use **Pearson `r`**, categorical×numeric pairs use **eta**, and categorical×categorical pairs use **Cramér's V**.
+  - **Pearson / Spearman toggle** — a selector switches the numeric pairs to the **rank correlation** (Spearman, computed over ranked columns); categorical pairs keep eta/V unchanged.
+  - **Sampling** — an optional random sample bounds the rows used for each index (**Sample** slider 500–20 000, recomputed when released); **Use all rows** disables it.
+  - **Min non-null occurrence** — pairs with too few co-observed rows are blanked out.
+  - **Unusable columns** — always-null, constant, and **ID-like** (all non-null values distinct) columns are excluded from the picker and listed as *Not usable (null / constant / ID)*.
+  - **Remove on right-click** — a context-menu **Remove** action drops a row/column from the matrix; the matrix itself is **read-only** (no cell-click filtering).
+- **reltab correlation layer** — `getCorrelationMatrix()` extended with `CorrelationMatrixOptions` (`rank`, `sampleLimit`, `minOccurrence`), a Spearman implementation, and `constantOrNullColIds()` for null/constant/ID-column detection, with unit tests.
+
 ## [0.0.9] - 2026-09-04
 
 ### Added
@@ -98,7 +111,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CSV join materialization** — join CSV files and materialize the result as a DuckDB table.
 - **Cell context menu** — edit / edit-all options on right-click; improved date/time display formatting.
 
-[Unreleased]: https://github.com/renoust-ids/mtad/compare/v0.0.9...HEAD
+[Unreleased]: https://github.com/renoust-ids/mtad/compare/v0.0.10...HEAD
+[0.0.10]: https://github.com/renoust-ids/mtad/compare/v0.0.9...v0.0.10
 [0.0.9]: https://github.com/renoust-ids/mtad/compare/v0.0.8...v0.0.9
 [0.0.8]: https://github.com/renoust-ids/mtad/compare/v0.0.7...v0.0.8
 [0.0.7]: https://github.com/renoust-ids/mtad/compare/v0.0.6...v0.0.7
