@@ -111,10 +111,24 @@ Footer behavior:
 
 ## Join & CSV Materialization
 
-- Join a table against a CSV/TSV/Excel (`.xlsx`) file and **materialize** the result as a new editable DuckDB table (`_fused_<timestamp>`)
-- The **Join** dialog accepts CSV, TSV, and Excel files; for a multi-sheet workbook a **sheet dropdown** selects the sheet to join against
+The **File ▸ Join File** dialog joins the current table against a CSV/TSV/Excel (`.xlsx`) file and **materializes** the result as a new editable DuckDB table (`_fused_<timestamp>`).
+
+- For a multi-sheet workbook a **sheet dropdown** selects the sheet to join against
 - Join types: inner, left, right, outer. Options: `forceStringCast`, `nullString`
 - Create **virtual tables** from CSV files with automatic type detection
+- Join types: inner, left, right, outer. Options: `forceStringCast`, `nullString`
+- Create **virtual tables** from CSV files with automatic type detection
+
+## Concatenate File
+
+The **File ▸ Concatenate File** dialog appends the rows of an external file (CSV/TSV/Excel `.xlsx`) to the current table and **materializes** the result as a new editable DuckDB table.
+
+- **File picker** — the dialog opens the file picker automatically; multi-sheet workbooks offer a **sheet dropdown**.
+- **Column alignment** — columns are **auto-matched by name** (case-insensitive). The mapping table lists every matched column, plus **original-only** columns (present in the current table, absent from the file → `NULL` in the appended rows) and **new** columns (present in the file, absent from the table → added to the result).
+- **Type casting** — for matched and new columns, values are cast to the common output type using **DuckDB's coercion rules**, applied with `TRY_CAST` so any leftover incompatible value becomes `NULL` instead of failing the load. The dialog highlights the columns that will be cast.
+- **Null strings** — a **per-column null-string** input maps a placeholder text to `NULL` (e.g. `N/A`), compared as text before casting.
+- **Custom mappings** — a **+** button adds user-defined column mappings (e.g. to import a file column under a different name).
+- **Internal columns** — MTad's bookkeeping columns (`_rid`, `Rec`, anything prefixed `_`) are **excluded** from the concatenated result (a fresh `_rid` is re-added when the new table loads).
 
 ## Under the Hood
 
@@ -132,3 +146,5 @@ Footer behavior:
 | Confusion matrix | `SELECT rowBin, colBin, COUNT(1) GROUP BY rowBin, colBin` over derived bin/class expressions per axis |
 | CM numeric bin | `floor((CAST(value AS DOUBLE) - <niceMin>) / <binWidth>)` (epoch-converted for temporal columns) |
 | CM cell filter | row/col clause: `WHERE "c" >= <lo> AND "c" < <hi>` (numeric/temporal bin) or `WHERE "c" IN (<class>)` (categorical) |
+| Concatenate rows | `SELECT ... FROM <current> UNION ALL SELECT CAST(NULL AS T), ... FROM read_csv_auto('file')` with matched/new columns wrapped in `TRY_CAST(... AS <commonType>)` and `NULLIF(CAST(col AS VARCHAR), '<nullString>')` applied when a null string is set |
+| Concat cast | `TRY_CAST(<expr> AS <type>)` returns `NULL` for any value that cannot be coerced |

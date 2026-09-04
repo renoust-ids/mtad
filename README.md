@@ -88,9 +88,20 @@ MTad distinguishes between the query filter of the view and ad-hoc exploration f
 - An **Apply Analytics Filters** checkbox in the footer controls whether analytics filters affect the current view
 - The Distribution dialog has its own **Apply Table Filters** switch so exploration always runs against your intended subset
 
-### CSV Materialization
+### Join File
 
-- Join CSV files and materialize the result as a new DuckDB table
+- **File ▸ Join File** opens a dialog to join the current table against an external file (CSV, TSV, or an Excel `.xlsx` sheet) and **materialize** the result as a new editable DuckDB table (`_fused_<timestamp>`)
+- Join types: inner, left, right, outer; options for forcing a string cast and specifying the null-string placeholder
+
+### Concatenate File
+
+- **File ▸ Concatenate File** appends the rows of an external file (CSV/TSV/XLSX) to the current table and materializes the result as a new editable DuckDB table
+- Columns are **auto-matched by name** (case-insensitive) and, when types differ, cast to a **common type using DuckDB's coercion rules** (`TRY_CAST` for safety)
+- The dialog shows the full column mapping — matched, original-only, and new columns — with a live indication when a cast is applied, a **+** button for custom mappings, and a **per-column null-string** input
+- MTad's internal columns (e.g. `_rid`, `Rec`) are excluded from the concatenated result
+
+### Virtual Tables
+
 - Create virtual tables from CSV files with automatic type detection
 
 # Installing MTad
@@ -210,6 +221,7 @@ used to build the MTad desktop application:
   - Multi-cell selections preserved on right-click; hover draws a thick border highlight
   - Interactive Distribution dialog (binned histograms, categorical bars, temporal columns) with brush-to-filter
   - Scatter Plot Matrix, Scatter Plot, and Confusion Matrix analytics dialogs with brush/click-to-filter
+  - Join File and Concatenate File dialogs with auto column matching and type casting
   - Split Table / Analytics filters with live SQL summaries and apply toggles
 - [**tad-app**](./packages/tad-app/) - The MTad desktop application, built with Electron
 

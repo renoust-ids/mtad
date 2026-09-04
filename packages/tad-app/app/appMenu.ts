@@ -98,6 +98,14 @@ export const createMenu = () => {
         }
       },
     },
+    {
+      label: "Concatenate File...",
+      click: (item: MenuItem, focusedWindow: BrowserWindow | undefined) => {
+        if (focusedWindow) {
+          focusedWindow.webContents.send("start-csv-concatenate");
+        }
+      },
+    },
 
     /*
     {

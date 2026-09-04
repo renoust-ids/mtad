@@ -39,113 +39,126 @@ Avant de commencer, crée un fichier `AGENT_DEV_LOG.md` à la racine. Pour **cha
 - Les problèmes rencontrés et les solutions appliquées.
 
 **B. Git & Revert-Ability**
-1. **Branche** : Crée et place-toi sur une nouvelle branche : `git checkout -b feat/join-csv`.
-2. **Commits Atomiques** : Tu dois faire un commit *après chaque étape validée*. Utilise la convention *Conventional Commits* (ex: `feat(reltab): add JoinCsv AST node`).
+1. **Branche** : Crée et place-toi sur une nouvelle branche dédiée à la feature (ex: `git checkout -b feat/mon-android`). La branche courante de cette mission est `concatenate`.
+2. **Commits Atomiques** : Tu dois faire un commit *après chaque étape validée*. Utilise la convention *Conventional Commits* (ex: `feat(reltab): add ConcatCsv AST node`).
 3. Ne fais jamais de commit global (`git commit -am "wip"`). Ne groupe pas le backend et l'UI dans le même commit.
 
 # MISSION ACTUELLE
-Intégrer une fonctionnalité d'**histogramme interactif de colonne** (branche `histograms`) : item "Histogram" dans le menu contextuel d'un en-tête de colonne (clic droit) → ouvre un dialog interactif (Blueprint `Dialog`) affichant la distribution de la colonne avec toutes les options d'affichage :
-- **Numérique** : histogramme binné (défaut Sturges, nombre de bins ajustable), échelle log Y, inclusion/exclusion des nulls, brush → filtre valeur sur la colonne (réutilise `actions.setHistogramBrushFilter`), panneau de statistiques (count, nulls, min, max, mean, approx_unique).
-- **Non-numérique** : bar chart catégoriel de la distribution de fréquences par valeur.
+Intégrer la fonctionnalité **"Concatenate File..."** (branche `concatenate`), qui permet d'ajouter les lignes d'un fichier externe (CSV/TSV/XLSX) à la table actuelle :
+- **Menu** : File → Concatenate File... → ouvre un dialog (Blueprint `Dialog`) qui propose d'aligner les colonnes de la table d'origine avec celles du nouveau fichier.
+- **Alignement automatique** : correspondance des colonnes par nom (insensible à la casse) et proposition de casting vers un type commun selon les règles de DuckDB (`TRY_CAST` pour la sécurité).
+- **Dialog** : mapping table colonne-à-colonne, bouton "+" pour ajouter des mappings personnalisés, NULL string par colonne, affichage des nouvelles colonnes qui seront ajoutées, indication visuelle quand un cast est appliqué.
+- **Résultat** : matérialise le résultat dans une nouvelle table DuckDB éditable, en excluant les colonnes internes MTad (`_rid`, `Rec`, colonnes préfixées `_`).
 
-La fondation historique existe déjà (reltab `histogram.ts`, `victory`, actions brush) ; le travail consiste à exposer une version interactive complète via le menu contextuel.
+Le backend reltab (`concatCsv` operator) et l'UI (`ConcatCsvDialog`) sont **terminés et testés** ; la mission en cours peut être considérée comme close une fois la doc mise à jour et commitée.
 
 # PROTOCOLE DE RELEASE (MTad)
 
 ## Informations sur le projet
 - **Nom du produit** : MTad (application Electron)
 - **App ID** : `com.mtad.app`
-- **Version actuelle** : `0.0.4`
+- **Version actuelle** : `0.0.8`
 - **Dépôt** : https://github.com/renoust-ids/mtad
 - **Branche principale** : `master`
 - **Auteur** : Benjamin Renoust (from Antony Courtney)
 
 ## Plateformes cibles
-| Plateforme | Format | Architecture | Commande electron-builder |
+| Plateforme | Format | Architecture | Command electron-builder |
 |------------|--------|--------------|---------------------------|
 | macOS | DMG + ZIP | arm64 (Apple Silicon) | `--mac --arm64` |
-| macOS | DMG + ZIP | x64 (Intel) | `--mac --x64` |
-| Windows | EXE (NSIS) | x64 | `--win --x64` |
-| Linux | DEB | x64 | `--linux deb` |
-| Linux | RPM | x64 | `--linux rpm` |
-| Linux | TAR.BZ2 | x64 | `--linux tar.bz2` |
+| Windows | EXE (NSIS) | x64 | `--win` |
+| Linux | DEB + RPM + TAR.BZ2 | x64 | `--linux deb rpm tar.bz2` |
+
+## Notes de version (release notes)
+- Chaque version est documentée dans un fichier **`CHANGELOG.md`** à la racine du dépôt (format [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)).
+- **Convention obligatoire** : `CHANGELOG.md` doit être mis à jour **dans le même commit que le bump de version**, avant de taguer. Le workflow CI extrait automatiquement la section du tag comme corps (body) du GitHub Release.
+- Format des sections : `## [X.Y.Z] - AAAA-MM-JJ` avec les catégories `### Added`, `### Changed`, `### Fixed`.
+- Historique des tags : le lien `[Unreleased]: .../compare/vX.Y.Z...HEAD` doit être mis à jour à chaque release.
 
 ## Workflow de release
 
 ### 1. Préparation
 ```bash
-# S'assurer d'être sur la dernière version de la branche
-git checkout main
-git pull origin main
+# S'assurer d'être sur la dernière version de la branche principale
+git checkout master
+git pull origin master
 
 # Vérifier que les tests passent
 npx lerna bootstrap --force-local --hoist --no-ci
 cd packages/reltab && npm test
+cd ../reltab-duckdb && npx jest 2>/dev/null || true
 ```
 
-### 2. Mise à jour des versions
+### 2. Bump de version + CHANGELOG (dans le même commit)
+Le bump concerne **uniquement l'app** — les packages internes restent en `0.0.2` (ne jamais les bump).
+
 ```bash
-# Mettre à jour les versions dans tous les package.json
-# (utiliser le script ou éditer manuellement)
-python3 << 'EOF'
-import json, glob
-for f in ["package.json"] + glob.glob("packages/*/package.json"):
-    with open(f) as fh:
-        data = json.load(fh)
-    data["version"] = "0.0.1"  # Version cible
-    with open(f, "w") as fh:
-        json.dump(data, fh, indent=2)
-        fh.write("\n")
-EOF
+# Mettre à jour la version dans exactement 3 fichiers :
+#   package.json              (racine)
+#   package-lock.json         (les 2 lignes "version" du haut uniquement)
+#   packages/tad-app/package.json
 ```
 
-### 3. Build local (test avant release)
-```bash
-# Build complet pour toutes les plateformes
-./build-dist.sh
+Puis, dans `CHANGELOG.md` :
+1. Renommer la section `## [Unreleased]` en `## [X.Y.Z] - AAAA-MM-JJ` (ou créer une nouvelle section en haut).
+2. Y résumer les changements faits depuis la dernière release (une ligne par feature, préfixée `- **Feature** — description`).
+3. Créer une nouvelle section `## [Unreleased]` vide en haut et mettre à jour les liens de comparaison en bas.
 
-# Ou build spécifique
+Commit conforme à la convention :
+```bash
+git commit -m "chore: bump version to X.Y.Z"
+```
+(toutes les modifications de version **et** de CHANGELOG dans ce seul commit)
+
+### 3. Build local (test avant release, optionnel)
+```bash
 cd packages/tad-app
-npx webpack --mode production
-npx electron-builder --mac --arm64 --x64 --publish=never
+npm run build-prod
+npx electron-builder --mac --arm64 --publish=never
 ```
 
-### 4. Publication GitHub (via CI)
+### 4. Tag et publication GitHub (via CI)
 ```bash
 # Créer et pusher un tag pour déclencher le CI
-git tag v0.0.1
-git push origin v0.0.1
-
-# Le workflow .github/workflows/build.yml se déclenchera automatiquement
-# et créera les artefacts pour toutes les plateformes
+git tag vX.Y.Z
+git push origin vX.Y.Z
 ```
 
-### 5. Téléchargement des artefacts
-1. Aller sur https://github.com/renoust-ids/mtad/actions
-2. Cliquer sur le workflow "Build & Release" correspondant au tag
-3. Télécharger les artefacts dans la section "Artifacts" de chaque job
+Le workflow `.github/workflows/build.yml` :
+- construit les artefacts macOS (arm64), Windows (EXE) et Linux (DEB/RPM/TAR.BZ2) ;
+- le job `release` crée **automatiquement** un GitHub Release **publié** (plus de draft) avec :
+  - le corps (body) extrait de la section `CHANGELOG.md` du tag ;
+  - les artefacts attachés ;
+  - `make_latest: true` (la release devient la "latest", visible via l'API `releases/latest`).
+
+### 5. Vérification
+1. https://github.com/renoust-ids/mtad/releases doit afficher le tag, le corps extrait du CHANGELOG et les artefacts.
+2. Si un **draft** existe déjà pour ce tag (ancien comportement `draft: true`), le publier manuellement depuis l'UI GitHub : la CI échouerait car un release existe déjà pour ce tag.
 
 ## Fichiers de configuration
 - **electron-builder config** : `packages/tad-app/package.json` (section "build")
 - **Workflow CI** : `.github/workflows/build.yml`
-- **Script de build local** : `build-dist.sh`
+- **Release notes** : `CHANGELOG.md` (racine)
 
 ## Notes importantes
 - **Signature Apple** : Désactivée pour les builds internes (pas de certificat Developer ID)
 - **Notarization** : Ignorée si la variable `APPLEID` n'est pas définie
 - **Modules natifs** : DuckDB est compilé nativement pour chaque plateforme via le CI
 - **Taille des DMG** : ~1-2 GB (inclut DuckDB + node_modules)
+- **Publication auto** : depuis v0.0.7, les releases sont publiées automatiquement (plus `draft: true`). Vérifier que `CHANGELOG.md` contient la section du tag avant de pusher le tag.
 
 ## Checklist de release
-- [ ] Version bumpée dans tous les package.json
-- [ ] Tests unitaires passent (`npm test` dans reltab)
-- [ ] Build production réussit (`npx webpack --mode production`)
-- [ ] Tag créé et pushé (`git tag v0.0.1 && git push origin v0.0.1`)
+- [ ] `CHANGELOG.md` mis à jour avec la section `## [X.Y.Z] - AAAA-MM-JJ` (résumé des features)
+- [ ] Version bumpée dans `package.json` (racine) + `package-lock.json` + `packages/tad-app/package.json`
+- [ ] Commit `chore: bump version to X.Y.Z` incluant version **et** CHANGELOG
+- [ ] Tests unitaires passent (`npm test` dans `reltab`, jest dans `reltab-duckdb`)
+- [ ] Build production réussit (`npm run build-prod` dans `tad-app`)
+- [ ] Tag créé et poussé (`git tag vX.Y.Z && git push origin vX.Y.Z`)
 - [ ] CI green sur GitHub Actions
-- [ ] Artefacts téléchargés et testés
-- [ ] Release draft créée sur GitHub
+- [ ] Release publiée sur GitHub avec le corps extrait du CHANGELOG et les artefacts attachés
 
 ## Mission
-- La mission est décrite dans le fichier `vibe/histogram/mission.md`
-- Le plan d'implémentation est dans `vibe/histogram/global_plan.md`
-- Demarre par la lecture de `vibe/histogram/STATE_HANDOFF.md`
+- La mission courante est décrite dans le fichier `AGENT_DEV_LOG.md` à la racine.
+- Le journal de bord (traceability) est maintenu dans `AGENT_DEV_LOG.md`.
+- Le plan d'implémentation de la mission Concatenate est dans `vibe/concatenate/CONCATENATE_FILE_PLAN.md`.
+- Les missions terminées sont archivées dans `vibe/<feature>/` (ex: `vibe/histogram/`, `vibe/excel/`, `vibe/splom/`, `vibe/concatenate/`).

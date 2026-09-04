@@ -5,6 +5,8 @@ import {
   ExportFormat,
   CsvJoinType,
   JoinCsvDialogState,
+  ConcatCsvDialogState,
+  ConcatCsvMapping,
 } from "./AppState";
 import * as reltab from "reltab";
 import { Activity, ColumnListTypes } from "./components/defs";
@@ -28,6 +30,7 @@ import {
 } from "reltab";
 import * as util from "./util";
 import { QueryView } from "./QueryView";
+import { autoMatchMappings, mappingsToOutputColumns } from "./utils/concatColumnMatcher";
 
 export async function initAppState(
   rtc: reltab.ReltabConnection,
@@ -1327,6 +1330,262 @@ export const confirmCsvJoin = async (
   );
 
   const displayColumns = newBaseSchema.columns.slice();
+  const openPaths = new PathTree();
+  const initialViewParams = new ViewParams({
+    displayColumns,
+    openPaths,
+  });
+
+  const viewStateNew = new ViewState({
+    dbc,
+    dsPath: viewState.dsPath,
+    baseSchema: newBaseSchema,
+    baseQuery: newBaseQuery,
+    viewParams: initialViewParams,
+    initialViewParams,
+  });
+
+  await awaitableUpdate_(
+    stateRef,
+    (st: AppState): AppState => st.set("viewState", viewStateNew) as AppState
+  );
+};
+
+// --- Concatenate File Dialog Actions ---
+
+export const openConcatCsvDialog = (
+  originalColumns: { [colId: string]: string },
+  stateRef: StateRef<AppState>
+) => {
+  update(stateRef, (s) =>
+    s.set("concatCsvDialog", {
+      open: true,
+      csvPath: null,
+      originalColumns,
+      newColumns: {},
+      sheets: [],
+      sheet: "",
+      mappings: [],
+      loaded: false,
+    } as ConcatCsvDialogState)
+  );
+};
+
+export const closeConcatCsvDialog = (stateRef: StateRef<AppState>) => {
+  update(stateRef, (s) =>
+    s.set("concatCsvDialog", {
+      ...s.concatCsvDialog,
+      open: false,
+    } as ConcatCsvDialogState)
+  );
+};
+
+export const setConcatCsvPath = (
+  csvPath: string,
+  newColumns: { [colId: string]: string },
+  stateRef: StateRef<AppState>,
+  sheets?: string[]
+) => {
+  const cur = mutableGet(stateRef).concatCsvDialog;
+  const mappings = autoMatchMappings(cur.originalColumns, newColumns);
+  update(stateRef, (s) =>
+    s.set("concatCsvDialog", {
+      ...s.concatCsvDialog,
+      csvPath,
+      newColumns,
+      sheets: sheets ?? s.concatCsvDialog.sheets,
+      sheet:
+        sheets != null && sheets.length > 0
+          ? sheets[0]
+          : s.concatCsvDialog.sheet,
+      mappings,
+      loaded: true,
+    } as ConcatCsvDialogState)
+  );
+};
+
+export const setConcatCsvSheet = (
+  sheet: string,
+  stateRef: StateRef<AppState>
+) => {
+  update(stateRef, (s) =>
+    s.set("concatCsvDialog", {
+      ...s.concatCsvDialog,
+      sheet,
+    } as ConcatCsvDialogState)
+  );
+};
+
+export const setConcatCsvMappings = (
+  mappings: ConcatCsvMapping[],
+  stateRef: StateRef<AppState>
+) => {
+  update(stateRef, (s) =>
+    s.set("concatCsvDialog", {
+      ...s.concatCsvDialog,
+      mappings,
+    } as ConcatCsvDialogState)
+  );
+};
+
+export const updateConcatCsvMapping = (
+  index: number,
+  mapping: ConcatCsvMapping,
+  stateRef: StateRef<AppState>
+) => {
+  update(stateRef, (s) => {
+    const mappings = s.concatCsvDialog.mappings.slice();
+    mappings[index] = mapping;
+    return s.set("concatCsvDialog", {
+      ...s.concatCsvDialog,
+      mappings,
+    } as ConcatCsvDialogState);
+  });
+};
+
+export const addConcatCsvMapping = (
+  stateRef: StateRef<AppState>
+): ConcatCsvMapping | null => {
+  const cur = mutableGet(stateRef).concatCsvDialog;
+  const { originalColumns, newColumns, mappings } = cur;
+
+  // find an unused original col and an unused new col
+  const usedOrig = new Set(mappings.map((m) => m.originalCol).filter(Boolean));
+  const usedNew = new Set(mappings.map((m) => m.newCol).filter(Boolean));
+  const freeOrig = Object.keys(originalColumns).find((c) => !usedOrig.has(c)) ?? "";
+  const freeNew = Object.keys(newColumns).find((c) => !usedNew.has(c)) ?? "";
+
+  const mapping: ConcatCsvMapping = {
+    originalCol: freeOrig,
+    newCol: freeNew,
+    matched: Boolean(freeOrig && freeNew),
+    originalType: freeOrig ? originalColumns[freeOrig] : "",
+    newType: freeNew ? newColumns[freeNew] : "",
+    castType: null,
+    nullString: "",
+  };
+
+  update(stateRef, (s) =>
+    s.set("concatCsvDialog", {
+      ...s.concatCsvDialog,
+      mappings: [...s.concatCsvDialog.mappings, mapping],
+    } as ConcatCsvDialogState)
+  );
+
+  return mapping;
+};
+
+export const removeConcatCsvMapping = (
+  index: number,
+  stateRef: StateRef<AppState>
+) => {
+  update(stateRef, (s) => {
+    const mappings = s.concatCsvDialog.mappings.slice();
+    mappings.splice(index, 1);
+    return s.set("concatCsvDialog", {
+      ...s.concatCsvDialog,
+      mappings,
+    } as ConcatCsvDialogState);
+  });
+};
+
+export const confirmConcatCsv = async (
+  concatArgs: {
+    csvPath: string;
+    sheet: string;
+    rightColumns: { [colId: string]: string };
+    mappings: ConcatCsvMapping[];
+  },
+  stateRef: StateRef<AppState>,
+  importXlsx?: (path: string, sheet: string) => Promise<string | undefined>,
+  onCsvData?: {
+    useRightTableName?: string;
+  }
+): Promise<void> => {
+  const appState = mutableGet(stateRef);
+  const { viewState } = appState;
+  if (!viewState || !viewState.baseQuery || !viewState.dbc) {
+    log.error("confirmConcatCsv: no active view to concatenate onto");
+    return;
+  }
+
+  const { baseQuery, dbc } = viewState;
+
+  // Build the outputColumns array from the mappings.
+  const { matched, originalOnly, newOnly } = mappingsToOutputColumns(
+    concatArgs.mappings
+  );
+
+  const outputColumns: reltab.ConcatCsvOutputColumn[] = [
+    ...matched.map((m) => ({
+      kind: "matched" as const,
+      originalCol: m.originalCol,
+      newCol: m.newCol,
+      castType: m.castType,
+      ...(m.nullString ? { nullString: m.nullString } : {}),
+    })),
+    ...originalOnly.map((o) => ({
+      kind: "originalOnly" as const,
+      originalCol: o.originalCol,
+      originalType: o.originalType,
+    })),
+    ...newOnly.map((n) => ({
+      kind: "newOnly" as const,
+      newCol: n.newCol,
+      newColType: n.newColType,
+      ...(n.nullString ? { nullString: n.nullString } : {}),
+    })),
+  ];
+
+  const reltabArgs: reltab.ConcatCsvArgs = {
+    rightTablePath: concatArgs.csvPath,
+    outputColumns,
+  };
+
+  const rhsSchema: { [colId: string]: { displayName: string; columnType: string } } = {};
+  for (const cid of Object.keys(concatArgs.rightColumns)) {
+    rhsSchema[cid] = {
+      displayName: cid,
+      columnType: concatArgs.rightColumns[cid],
+    };
+  }
+  const rhsColumns = Object.keys(concatArgs.rightColumns);
+
+  // For workbooks (.xlsx), import the selected sheet into the shared DuckDB and
+  // concatenate against that table (the RHS reference is a table name, not a file).
+  if (concatArgs.csvPath.toLowerCase().endsWith(".xlsx")) {
+    if (!importXlsx) {
+      log.error("confirmConcatCsv: xlsx concat requires an import callback");
+      return;
+    }
+    const rhsTableName = await importXlsx(concatArgs.csvPath, concatArgs.sheet);
+    if (!rhsTableName) {
+      log.error("confirmConcatCsv: failed to import xlsx sheet");
+      return;
+    }
+    reltabArgs.rhsTableName = rhsTableName;
+  }
+
+  const fusionQuery = baseQuery.concatCsv(reltabArgs, rhsSchema, rhsColumns);
+
+  // Materialize the fused result into a new DuckDB table so all columns are editable
+  const materializedTableName = `_concat_${Date.now()}`;
+  const fusionSql = await dbc.getSqlForQuery(fusionQuery);
+  const createTableSql = `CREATE TABLE "${materializedTableName}" AS ${fusionSql}`;
+  console.log(`[ConcatCSV] Materializing: ${createTableSql}`);
+  await dbc.execSql(createTableSql);
+
+  // Use a simple tableQuery pointing to the materialized table
+  const newBaseQuery = reltab.tableQuery(materializedTableName);
+  const newBaseSchema = await aggtree.getBaseSchema(
+    dbc,
+    newBaseQuery,
+    appState.showRecordCount
+  );
+
+  const displayColumns = newBaseSchema.columns.filter(
+    (cid) => !cid.startsWith("_") && cid !== "Rec"
+  );
   const openPaths = new PathTree();
   const initialViewParams = new ViewParams({
     displayColumns,

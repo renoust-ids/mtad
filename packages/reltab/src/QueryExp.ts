@@ -27,6 +27,9 @@ import {
   JoinCsvArgs,
   JoinCsvQueryRep,
   CsvJoinType,
+  ConcatCsvArgs,
+  ConcatCsvQueryRep,
+  ConcatCsvOutputColumn,
   MapColumnsByIndexQueryRep,
   MapColumnsQueryRep,
   ProjectQueryRep,
@@ -60,7 +63,8 @@ type QueryOp =
   | "sort"
   | "extend"
   | "join"
-  | "joinCsv";
+  | "joinCsv"
+  | "concatCsv";
 
 /*
  * generate a SQL literal for the given value based on its
@@ -171,6 +175,21 @@ export class QueryExp {
   ): QueryExp {
     return new QueryExp({
       operator: "joinCsv",
+      args,
+      rhsSchema,
+      rhsColumns,
+      from: this._rep,
+    });
+  }
+
+  // concatenate a file's rows onto this query's rows
+  concatCsv(
+    args: ConcatCsvArgs,
+    rhsSchema: { [colId: string]: { displayName: string; columnType: string } },
+    rhsColumns: string[]
+  ): QueryExp {
+    return new QueryExp({
+      operator: "concatCsv",
       args,
       rhsSchema,
       rhsColumns,
@@ -596,6 +615,20 @@ const joinCsvQueryToJSAux = (
   return depth;
 };
 
+const concatCsvQueryToJSAux = (
+  dst: StringBuffer,
+  depth: number,
+  query: ConcatCsvQueryRep
+): number => {
+  depth = queryToJSAux(dst, depth, query.from);
+  dst.push("\n");
+  ppOut(dst, depth, `.concatCsv(\n`);
+  ppOut(dst, depth + 1, `${JSON.stringify(query.args)},\n`);
+  ppOut(dst, depth + 1, `${JSON.stringify(query.rhsSchema)},\n`);
+  ppOut(dst, depth + 1, `${JSON.stringify(query.rhsColumns)})`);
+  return depth;
+};
+
 const queryToJSAux = (
   dst: StringBuffer,
   depth: number,
@@ -626,6 +659,8 @@ const queryToJSAux = (
       return joinQueryToJSAux(dst, depth, query);
     case "joinCsv":
       return joinCsvQueryToJSAux(dst, depth, query);
+    case "concatCsv":
+      return concatCsvQueryToJSAux(dst, depth, query);
     default:
       const invalidQuery: never = query;
       throw new Error("queryToJSAux: No implementation for operator: " + query);
@@ -665,6 +700,9 @@ const queryGetLeafDepsAux = (acc: QueryLeafDepsMap, query: QueryRep) => {
       queryGetLeafDepsAux(acc, query.rhs);
       break;
     case "joinCsv":
+      queryGetLeafDepsAux(acc, query.from);
+      break;
+    case "concatCsv":
       queryGetLeafDepsAux(acc, query.from);
       break;
     default:

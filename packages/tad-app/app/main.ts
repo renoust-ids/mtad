@@ -131,6 +131,54 @@ const newWindowFromDSPath = async (path: DataSourcePath) => {
   await appWindow.createFromDSPath(path);
 };
 
+/*
+ * Get the column names + inferred SQL types of a CSV/TSV file using DuckDB's
+ * read_csv_auto. Returns a map { colId: sqlTypeName }.
+ */
+const getCsvColumnTypes = async (filePath: string): Promise<Record<string, string>> => {
+  const driver = await reltabFS.getDuckDBDriver();
+  const conn = await driver.db.connect();
+  try {
+    const sql = `DESCRIBE SELECT * FROM read_csv_auto('${filePath}')`;
+    const res = await conn.all(sql);
+    const types: Record<string, string> = {};
+    for (const r of res) {
+      const colName = r["column_name"] as string;
+      const colType = (r["column_type"] as string) ?? "VARCHAR";
+      types[colName] = colType;
+    }
+    return types;
+  } finally {
+    await conn.close();
+  }
+};
+
+/*
+ * Get the column name -> SQL type map for an .xlsx sheet using DuckDB's
+ * read_xlsx type inference.
+ */
+const getXlsxSheetTypes = async (
+  db: any,
+  filePath: string,
+  sheet: string
+): Promise<Record<string, string>> => {
+  const conn = await db.connect();
+  try {
+    const sheetOpt = sheet != null && sheet !== "" ? `, sheet='${sheet}'` : "";
+    const sql = `DESCRIBE SELECT * FROM read_xlsx('${filePath}'${sheetOpt})`;
+    const res = await conn.all(sql);
+    const types: Record<string, string> = {};
+    for (const r of res) {
+      const colName = r["column_name"] as string;
+      const colType = (r["column_type"] as string) ?? "VARCHAR";
+      types[colName] = colType;
+    }
+    return types;
+  } finally {
+    await conn.close();
+  }
+};
+
 const remotableNewWindowFromDSPath = (
   dsPathStr: string,
   cb: (res: any, err: any) => void
@@ -152,7 +200,7 @@ const appInit = (options: any) => {
   );
   ipcMain.handle("dialog:selectCsvForJoin", async (event) => {
     const result = await dialog.showOpenDialog({
-      title: "Select file to Join",
+      title: "Select data file",
       properties: ["openFile"],
       filters: [
         { name: "Data Files", extensions: ["csv", "tsv", "xlsx"] },
@@ -175,7 +223,9 @@ const appInit = (options: any) => {
           path,
           target
         );
-        return { columns, types: {}, sheets };
+        // get types for xlsx too
+        const types = await getXlsxSheetTypes(driver.db, path, target);
+        return { columns, types, sheets };
       }
       const content = fs.readFileSync(path, "utf-8");
       const firstLine = content.split("\n")[0];
@@ -184,7 +234,9 @@ const appInit = (options: any) => {
         .split(delimiter)
         .map((h) => h.trim().replace(/^"|"$/g, ""))
         .filter((h) => h.length > 0);
-      return { columns: headers, types: {} };
+      // Use DuckDB to infer column types from the CSV
+      const types = await getCsvColumnTypes(path);
+      return { columns: headers, types };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       throw new Error(`Failed to read file headers: ${msg}`);

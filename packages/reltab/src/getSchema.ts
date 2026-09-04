@@ -14,6 +14,7 @@ import {
   ExtendQueryRep,
   JoinQueryRep,
   JoinCsvQueryRep,
+  ConcatCsvQueryRep,
   SqlQueryRep,
 } from "./QueryRep";
 import { Schema, ColumnMetadata, ColumnMetaMap } from "./Schema";
@@ -338,6 +339,36 @@ const joinCsvGetSchema = (
   return new Schema(dialect, joinCols, joinMeta);
 };
 
+const concatCsvGetSchema = (
+  dialect: SQLDialect,
+  tableMap: LeafSchemaMap,
+  { args }: ConcatCsvQueryRep
+): Schema => {
+  const cols: string[] = [];
+  const meta: ColumnMetaMap = {};
+
+  for (const oc of args.outputColumns) {
+    let resultName: string;
+    let resultType: string;
+    if (oc.kind === "matched") {
+      resultName = oc.originalCol;
+      resultType = oc.castType;
+    } else if (oc.kind === "originalOnly") {
+      resultName = oc.originalCol;
+      resultType = oc.originalType;
+    } else {
+      resultName = oc.newCol;
+      resultType = oc.newColType;
+    }
+    if (!meta[resultName]) {
+      cols.push(resultName);
+      meta[resultName] = { displayName: resultName, columnType: resultType };
+    }
+  }
+
+  return new Schema(dialect, cols, meta);
+};
+
 export const queryGetSchema = (
   dialect: SQLDialect,
   tableMap: LeafSchemaMap,
@@ -368,6 +399,8 @@ export const queryGetSchema = (
       return joinGetSchema(dialect, tableMap, query);
     case "joinCsv":
       return joinCsvGetSchema(dialect, tableMap, query);
+    case "concatCsv":
+      return concatCsvGetSchema(dialect, tableMap, query);
     default:
       const invalidQuery: never = query;
       throw new Error(
