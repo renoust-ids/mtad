@@ -1180,6 +1180,52 @@ export async function loadCorrelationMatrixData(
   return { data, constantOrNullColIds };
 }
 
+// --- Knowledge Graph Dialog Actions ---
+
+// Open / close the "Analytics > Knowledge Graph" dialog (state lives in
+// AppState so it can be opened from the app menu).
+export const openKnowledgeGraph = (stateRef: StateRef<AppState>) => {
+  const app = mutableGet(stateRef);
+  if (app.viewState == null) {
+    return;
+  }
+  update(
+    stateRef,
+    (s) => s.set("knowledgeGraphDialogOpen", true) as AppState
+  );
+};
+
+export const closeKnowledgeGraph = (stateRef: StateRef<AppState>) => {
+  update(
+    stateRef,
+    (s) => s.set("knowledgeGraphDialogOpen", false) as AppState
+  );
+};
+
+// Data backing the knowledge-graph dialog: the bipartite key×property graph.
+export interface KnowledgeGraphViewData {
+  data: reltab.KnowledgeGraphData;
+}
+
+export async function loadKnowledgeGraphData(
+  dbc: DataSourceConnection,
+  query: reltab.QueryExp,
+  schema: reltab.Schema,
+  keyColIds: string[],
+  propColIds: string[],
+  opts: reltab.KnowledgeGraphOptions
+): Promise<KnowledgeGraphViewData> {
+  const data = await reltab.getKnowledgeGraphData(
+    dbc,
+    query,
+    schema,
+    keyColIds,
+    propColIds,
+    opts
+  );
+  return { data };
+}
+
 // --- Join CSV Dialog Actions ---
 
 export const openJoinCsvDialog = (

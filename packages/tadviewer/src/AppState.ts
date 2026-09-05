@@ -133,6 +133,8 @@ export interface AppStateProps {
 
   correlationMatrixDialogOpen: boolean;
 
+  knowledgeGraphDialogOpen: boolean;
+
   appLoadingTimer: Timer;
   activity: Activity;
   showRecordCount: boolean;
@@ -162,6 +164,7 @@ const defaultAppStateProps: AppStateProps = {
   scatterYColId: null,
   confusionMatrixDialogOpen: false,
   correlationMatrixDialogOpen: false,
+  knowledgeGraphDialogOpen: false,
   appLoadingTimer: new Timer(),
   activity: "None",
   showRecordCount: true,
@@ -194,6 +197,7 @@ export class AppState extends Immutable.Record(defaultAppStateProps) {
   public readonly scatterYColId!: string | null;
   public readonly confusionMatrixDialogOpen!: boolean;
   public readonly correlationMatrixDialogOpen!: boolean;
+  public readonly knowledgeGraphDialogOpen!: boolean;
   public readonly appLoadingTimer!: Timer;
   public readonly activity!: Activity;
   public readonly showRecordCount!: boolean;
