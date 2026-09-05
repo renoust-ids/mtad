@@ -1,0 +1,11 @@
+k1,k2,p1,p2,n
+Sales,2023,red,east,1
+Sales,2023,red,north,2
+Sales,2023,blue,east,3
+Sales,,blue,west,4
+Sales,2024,red,east,5
+Eng,,red,west,6
+Eng,2024,green,east,7
+,2023,green,north,8
+,,green,west,9
+Support,,,east,10

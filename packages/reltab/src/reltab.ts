@@ -6,6 +6,7 @@ export * from "./defs";
 export * from "./histogram";
 export * from "./splom";
 export * from "./confusionMatrix";
+export * from "./knowledgeGraph";
 export * from "./FilterExp";
 export * from "./QueryExp";
 export * from "./ColumnStats";
