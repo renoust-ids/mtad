@@ -34,15 +34,31 @@ Branch: `kgraph` (Feature: Knowledge Graph, version app 0.0.10, release cible 0.
 
 **Commands** : `git add packages/reltab/src/knowledgeGraph.ts ...` → `6ad7e80` ; `git add packages/reltab/src/reltab.ts packages/reltab-duckdb/...` → `61056f4`.
 
+## Step 3 — AppState + actions (DONE)
+- `packages/tadviewer/src/AppState.ts`: added `knowledgeGraphDialogOpen: boolean` (interface + default `false` + class property).
+- `packages/tadviewer/src/actions.ts`: Knowledge Graph block before Join CSV — `openKnowledgeGraph`/`closeKnowledgeGraph` (pattern openCorrelationMatrix, guard viewState), `KnowledgeGraphViewData { data: reltab.KnowledgeGraphData }`, `loadKnowledgeGraphData(dbc, query, schema, keyColIds, propColIds, opts)`.
+- **Command** : commit `f4c31bf`.
+
+## Step 4 — Dialog + assemblage graphology + ForceAtlas2 + rendu Sigma (DONE)
+- **`packages/tadviewer/src/components/KnowledgeGraphDialog.tsx`** (nouveau, commit `faacb79`) :
+  - 2 MultiSelect react-select (Key columns / Property columns, `MAX_KG_COLS=24` chacun, CheckboxOption, Select all/Clear), toggle **Composite key** (sur la rangée des clés), contrôles : sliders+NumericInput **Min node occurrence** / **Min edge co-occurrence**, slider **Sample 500–20000** (recomputed at release uniquement) + **Use all rows** + **Apply Table Filters**, HTMLSelect **Size** = Occurrence/Centrality + sous-sélecteur **Degree/Betweenness**, switch **Show isolated nodes**.
+  - Stats line : `N nodes · M edges (sample of X) · T total rows`.
+  - **Filtres min occurrences côté front uniquement** (`filterKGData` pur) → ajuster les sliders ne re-queried pas (exploration instantanée) ; le reload backend ne dépend que de key/prop cols + composite + sample + filters.
+  - Assemblage : `new Graph()` (undirected simple), garde `hasEdge()` doublons, seed positions aléatoires `(rand-0.5)*10` (**FA2 → NaN sinon**), `forceAtlas2.assign({ iterations adaptatives 200/400/600, settings { ...inferSettings, edgeWeightInfluence:1 }, getEdgeWeight:"weight" })`, `degreeCentrality.assign` + `betweennessCentrality.assign` (seulement si betweenness choisi), `makeSizeScale` min-max → nœuds [2,26], arêtes [0.5,4], couleurs key `#137cbd` / prop `#d9822b`.
+  - Rendu : `GraphView` (React.memo) → `new Sigma(graph, container, { renderLabels:false, renderEdgeLabels:false })`, `enterNode`/`leaveNode` → tooltip (label + Key/Property + occurrence + degré brut via `graph.degree(n)`), cleanup `off()`+`kill()`, `container.innerHTML=""` avant re-création. Message "No graph to display" si 0 nœuds.
+  - Deps ajoutées à `packages/tadviewer/package.json` (deps runtime, indentation 2 espaces) : `sigma@^3.0.3`, `graphology@^0.26.0`, `graphology-layout-forceatlas2@^0.10.1`, `graphology-metrics@^2.4.2`.
+- **Env réparé** : un `npm install` à la racine avait purgé le `node_modules` racine hoisté (oneref/immutable/react/webpack…). Restauré via `npm run bootstrap` (lerna bootstrap --hoist). Vérifié : react/oneref/immutable/loglevel/webpack/sigma/graphology/… de retour à la racine + tadviewer `tsc` **0 erreur** + tadviewer `build-dev` **compiled** (4.9s, 14 warnings sass pré-existants).
+  - **Note** : les 2 erreurs TS7006 `actions.ts:160/1677` relevées au handover étaient un artefact de ce env cassé (deps manquantes) — avec les deps restaurées, plus aucune erreur.
+- **Command** : commit `faacb79`.
+
 ## PROCHAINES ÉTAPES (implémentation TDD, à exécuter)
 1. ~~Backend `packages/reltab/src/knowledgeGraph.ts` + tests~~ DONE (6ad7e80).
 2. ~~Export `reltab.ts` + tests reltab verts~~ DONE (61056f4).
-3. AppState (`knowledgeGraphDialogOpen`) + actions (`open/closeKnowledgeGraph`, `loadKnowledgeGraphData`).
-4. Dialog `KnowledgeGraphDialog.tsx` (2 MultiSelect key/prop + controls : composite, sample, min occ, min edge, size by occ/centrality degré/betweenness, show isolated).
-5. Rendu Sigma + ForceAtlas2 + sizing centralité.
-6. Wiring menu (`open-knowledge-graph`) + IPC + GridPane.
-7. Build/typecheck tadviewer + tad-app, tests reltab, commits atomiques, revue.
-8. **Release 0.0.11** (docs + bump 3 fichiers + CHANGELOG + tag `v0.0.11` + push → CI).
+3. ~~AppState + actions~~ DONE (f4c31bf).
+4. ~~Dialog `KnowledgeGraphDialog.tsx` + contribute graphology + FA2 + rendu Sigma~~ DONE (faacb79).
+5. Wiring menu (`open-knowledge-graph`) + IPC + GridPane.
+6. Build/typecheck tadviewer + tad-app, tests reltab, commits atomiques, revue.
+7. **Release 0.0.11** (docs + bump 3 fichiers + CHANGELOG + tag `v0.0.11` + push → CI).
 
 ---
 

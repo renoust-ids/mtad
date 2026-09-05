@@ -18,29 +18,31 @@ Implémenter la vue analytique **Knowledge Graph** (menu Analytics → Knowledge
 - Recherche + recommandation lib finalisée → **Sigma.js + graphology** confirmé.
 - **Design 100 % validé** (structure par-colonne + option composite, poids, centralité degré/betweenness, nœuds isolés, filtres min occurrences séparés, perf ~10k/50k). Plus de points de design en suspens.
 - Plan écrit : `vibe/kgraph/KNOWLEDGE_GRAPH_PLAN.md`.
-- **Step 1 DONE (commit `6ad7e80`)** : `packages/reltab/src/knowledgeGraph.ts` (module complet) + `packages/reltab/test/knowledgeGraph.test.ts` (10 tests mock). `cd packages/reltab && npm test` → **85 pass** (75 + 10), build OK.
-- **Step 2 DONE (commit `61056f4`)** : export `reltab.ts` (+1 ligne `export * from "./knowledgeGraph"`) + intégration DuckDB `packages/reltab-duckdb/test/knowledgeGraph.auto.test.ts` (5 tests) + fixture `packages/reltab-duckdb/test/support/knowledge_graph.csv` → **verts**.
-  - Note : `reltab-duckdb` tests nécessitent la résolution du package `reltab` (lerna bootstrap/temp symlink `packages/reltab-duckdb/node_modules/reltab` → `../../reltab`, gitignored). Snapshot `histo.auto` pré-existant qui flakke en run complet — ignoré (workflow release : `2>/dev/null || true`).
+- **Step 3 DONE (commit `f4c31bf`)** : `AppState.ts` (`knowledgeGraphDialogOpen` aux 3 endroits) + `actions.ts` (`openKnowledgeGraph`, `closeKnowledgeGraph`, `KnowledgeGraphViewData`, `loadKnowledgeGraphData`, pattern Correlation Matrix : `getViewQueryAndSchema`, `DataSourceConnection`, `StateRef`).
+- **Step 4 DONE (commit `faacb79`)** : `packages/tadviewer/src/components/KnowledgeGraphDialog.tsx` (840 lignes) + deps `sigma@3.0.3`, `graphology@0.26.0`, `graphology-layout-forceatlas2@0.10.1`, `graphology-metrics@2.4.2` dans `packages/tadviewer/package.json`. `npm run tsc` ✓ (0 erreur), `npm run build-dev` ✓ (4.9s, 14 warnings sass pré-existants).
 
-## Décisions d'implémentation backend (issues en cours de route)
-- IDs nœuds : `k:<colId>:<value>` / `p:<propColId>:<value>` (per-column) ; `k:<composite>` (composite). Label composite = parties jointes par `, ` ; séparateur interne id = `\u001f`.
-- `concat_ws(chr(31), NULLIF(CAST("k" AS VARCHAR), ''), ...)` — parts non-null + empty-string exclusion. Ligne sans aucune clé non-null → pas de nœud (`WHERE k1 IS NOT NULL OR k2 ...`).
-- Edge composite : ajouté `__pcol` au SELECT (target doit matcher `p:<colId>:<value>`).
-- Filtres backend : `minNodeOccurrence` (drop nœuds + arêtes incidentes), `minEdgeWeight` (drop arêtes) — le front ré-applique les mêmes seuils sans re-query.
-- Échantillonnage : `SELECT * FROM ( base ) AS __kg ORDER BY random() LIMIT n` avant comptes. `totalRows` = rowCount(full baseQuery).
+## Décisions d'implémentation frontend (issues en cours de route)
+- **Env cassé réparé** : un `npm install` à la racine avait purgé le `node_modules` hoisté (oneref/immutable/react/etc. disparus). Restauré via `npm run bootstrap` (lerna bootstrap --hoist) → deps app + graph deps re-hoistées à la racine. Ne pas rejouer `npm install` à la racine au hasard.
+- Dialog : 2 MultiSelect react-select (Key columns / Property columns), toggle "Composite key", sliders min node occurrence / min edge co-occurrence (NumericInput + Slider), slider sample 500–20000 + "Use all rows" + "Apply Table Filters", "Size" HTMLSelect occurrence/centrality (+ sous-sélecteur Degree/Betweenness), switch "Show isolated nodes". Stats line : nodes · edges · total rows.
+- **Filtres min occurrences appliqués côté front uniquement** (pas dans la requête) → ajuster les sliders ne re-queried pas (exploration instantanée). `filterKGData()` pur + `useMemo counts`.
+- **FA2 a besoin de positions initiales** (`Float32Array` NaN sinon) : nœuds seedés `x/y = (rand-0.5)*10` avant `forceAtlas2.assign(graph, { iterations, settings: { ...inferSettings(graph), edgeWeightInfluence: 1 }, getEdgeWeight: "weight" })`. Iterations adaptatives : 200 (>5000 nœuds) / 400 (>2000) / 600.
+- Centralité : `degreeCentrality.assign` (normalisé, stocké en attr `degree` — tooltip affiche le degré brut via `graph.degree(n)`) ; `betweennessCentrality.assign` avec `getEdgeWeight: "weight"` seulement si sizeBy=centrality & betweenness.
+- Graph : `new Graph()` (undirected simple), garde `hasEdge()` contre doublons, taille nœuds ∝ occurrence (`makeSizeScale` min-max → [2,26]), épaisseur arêtes ∝ co-occurrence → [0.5,4], couleurs key=`#137cbd` / prop=`#d9822b`, arêtes grises.
+- Rendu : sous-composant `GraphView` (React.memo) — `new Sigma(graph, container, { renderLabels:false, renderEdgeLabels:false })`, listen `enterNode`/`leaveNode` → tooltip, cleanup `off()` + `kill()`, `container.innerHTML=""` avant re-création. Pas de rendu quand `graph.order === 0` (message "No graph to display").
+- `viewSettings` mémoïsé (useMemo sur ses 5 valeurs) sinon le memo GraphView casse à chaque render parent.
+- Typecheck des composants : `include` tsconfig tadviewer (`./src/*`) ne couvre pas `src/components/` ; le vrai gate est ts-loader dans le build webpack (le build dev passe). Les 2 erreurs TS7006 "pré-existantes" de `actions.ts` mentionnées au handover étaient un artefact du env cassé — avec les deps restaurées, `npm run tsc` est **0 erreur**.
 
 ## En cours / Bloqué
-- Aucun blocage. Prochaine étape : **Step 3 — AppState + actions** (`knowledgeGraphDialogOpen`, `open/closeKnowledgeGraph`, `loadKnowledgeGraphData`).
+- Aucun blocage. Prochaine étape : **Step 5 — wiring** : menu "Knowledge Graph" dans Analytics (`appMenu.ts` → `open-knowledge-graph`), IPC `electronRenderMain.tsx`, montage + `handleCloseKnowledgeGraph` dans `GridPane.tsx`.
 
 ## Prochaines étapes (ordre)
 1. ~~Step 1 : backend reltab~~ DONE.
 2. ~~Step 2 : export + tests~~ DONE.
-3. Step 3 : AppState + actions (`knowledgeGraphDialogOpen`, `loadKnowledgeGraphData`).
-4. Step 4 : Dialog (pickers colonnes + contrôles) — UI seule.
-5. Step 5 : rendu Sigma + ForceAtlas2 + sizing centralité (degré/betweenness).
-6. Step 6 : wiring menu + IPC + GridPane.
-7. Step 7 : build/typecheck tadviewer + tad-app, tests reltab verts, commits atomiques, revue.
-8. Release 0.0.11 (docs, bump, build, tag `v0.0.11`, push → CI publie GitHub release).
+3. ~~Step 3 : AppState + actions~~ DONE (`f4c31bf`).
+4. ~~Step 4 : Dialog (pickers + contrôles + assemblage graphology + FA2 + rendu Sigma)~~ DONE (`faacb79`) — inclut le rendu Sigma/FA2/centralité.
+5. Step 5 : wiring menu + IPC + GridPane.
+6. Step 6 : build/typecheck tadviewer + tad-app, tests reltab verts, commits atomiques, revue.
+7. Release 0.0.11 (docs, bump, build, tag `v0.0.11`, push → CI publie GitHub release).
 
 ## Références de fichiers
 - Pattern backend : `packages/reltab/src/splom.ts` (`sampleQuery`, `constantOrNullColIds`, `getCorrelationMatrix`) et `packages/reltab/src/confusionMatrix.ts` (comptes retournés, composés côté front).
