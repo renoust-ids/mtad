@@ -1,6 +1,6 @@
 # Data Exploration with MTad
 
-This guide walks through the interactive data-exploration features MTad adds on top of the classic Tad pivot-table viewer: the **Distribution dialog**, the **Scatter Plot Matrix (SPLOM)**, **Scatter Plot**, **Confusion Matrix**, and **Correlation Matrix** views, and the split **Table / Analytics filters**. The examples use the included [`examples/histogram_test.csv`](../examples/histogram_test.csv) (1,000 rows with numeric, categorical and temporal columns).
+This guide walks through the interactive data-exploration features MTad adds on top of the classic Tad pivot-table viewer: the **Distribution dialog**, the **Scatter Plot Matrix (SPLOM)**, **Scatter Plot**, **Confusion Matrix**, **Correlation Matrix**, and **Knowledge Graph** views, and the split **Table / Analytics filters**. The examples use the included [`examples/histogram_test.csv`](../examples/histogram_test.csv) (1,000 rows with numeric, categorical and temporal columns).
 
 ## Opening a Distribution
 
@@ -83,6 +83,17 @@ The **Analytics ▸ Correlation Matrix** menu opens an N×N matrix of pairwise a
 - **Remove a column** — right-click a row/column heading and choose **Remove** from the context menu. The matrix is **read-only** (no cell-click filtering).
 - **Apply Table Filters** (default on) computes the matrix over the table-filtered subset; on pivoted views it follows the aggregated view query.
 
+## Knowledge Graph
+
+The **Analytics ▸ Knowledge Graph** menu opens a **bipartite force-directed graph** between the distinct non-null values of the **key columns** you pick (key nodes) and those of the **property columns** (property nodes), with a weighted edge between a key and a property for every row where both are non-null. The counts come from the database; graphology runs a ForceAtlas2 layout and Sigma.js renders it in WebGL (pan/zoom; hover a node for its label, occurrence and degree).
+
+- **Pick columns** — two searchable multi-selects select the **key columns** and the **property columns** (up to 24 each), with **Select all** / **Clear**; a graph needs at least one of each.
+- **Composite key** — merges the key columns into **one key node per row** (non-null parts only), to explore whole-row key signatures.
+- **Weights** — node **size ∝ occurrence** (non-null rows) and edge **thickness ∝ co-occurrence**; a **Centrality** size mode sizes nodes by **degree** or **betweenness** instead.
+- **Filters** — separate **min node occurrence** and **min edge co-occurrence** controls drop weak nodes/edges and re-filter the loaded graph instantly (no re-query); **isolated nodes** are hidden unless **Show isolated nodes** is checked.
+- **Sampling** — an optional random **sample** (slider 500–20 000, recomputed on release) bounds the rows counted; **Use all rows** disables it.
+- **Apply Table Filters** (default on) computes the graph over the table-filtered subset; on pivoted views it follows the aggregated view query.
+
 ## Table vs Analytics Filters
 
 The footer separates the view's filter from exploratory filters, in two strictly-separated tabs with their own editors:
@@ -108,4 +119,5 @@ Each tab shows a live SQL summary of its filter. Hovering a tab, or editing a fi
 - Category frequencies come from a `GROUP BY ... ORDER BY COUNT(*) DESC LIMIT 20` query.
 - Confusion-matrix cells come from a `GROUP BY rowBin, colBin` count over per-row derived bin/class expressions; numeric bins use the same "nice" range and `floor((cast(value, DOUBLE) - niceMin) / binWidth)` as the histogram (epoch-converted for temporal columns).
 - Correlation-matrix indices come from the SPLOM measures (`corr(x, y)` for Pearson, the same over `rank() OVER (...)` columns for Spearman, eta / Cramér's V for categorical pairs), each unordered pair computed once with an optional `ORDER BY random() LIMIT n` sample bounding the rows.
+- Knowledge-graph counts are computed in the database: key/property **occurrences** (`GROUP BY` counts of `IS NOT NULL` values, cast to `VARCHAR`) and key↔property **co-occurrence** edges, batched over the chosen columns; composite keys concatenate the non-null parts with `concat_ws(chr(31), NULLIF(CAST(...) AS VARCHAR), ...)`. The result is laid out with a ForceAtlas2 layout (graphology) and rendered with Sigma.js.
 - Brush filters stay on the raw column with typed literals (`salary >= 31666.67 AND salary <= 183333.33`, `birth_date BETWEEN '2024-01-15' AND '2024-02-19'`), so they survive editing and DuckDB casts them implicitly.

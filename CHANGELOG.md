@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.11] - 2026-09-05
+
+### Added
+
+- **Knowledge Graph** — **Analytics ▸ Knowledge Graph** renders a **bipartite force-directed graph** between the distinct non-null values of the **key columns** you pick (key nodes) and those of the **property columns** (property nodes), with a weighted edge for every row where a key and a property are both non-null.
+  - **Column pickers** — two searchable multi-selects (up to 24 columns each) choose the key and property columns; **Composite key** merges the key columns into one key node per row (non-null parts concatenated).
+  - **Weights** — node size ∝ **occurrence** (non-null rows), edge thickness ∝ **co-occurrence**; a **Centrality** sizing mode sizes nodes by **degree** or **betweenness** (selectable, graphology metrics).
+  - **Min occurrence thresholds** — separate **min node occurrence** / **min edge co-occurrence** controls re-filter the loaded graph instantly without re-querying; **isolated nodes** are hidden by default (**Show isolated nodes** reveals them).
+  - **Sampling** — an optional random sample bounds the counted rows (**Sample** slider 500–20 000, recomputed on release); **Use all rows** disables it; **Apply Table Filters** and pivot-aware computation mirror the other analytics dialogs.
+  - **Rendering** — counts computed in the database, laid out with a **ForceAtlas2** layout (graphology) and rendered in **WebGL with Sigma.js** (pan/zoom, hover tooltips).
+- **reltab knowledge-graph layer** — `getKnowledgeGraphData()` with per-column and composite key modes, occurrence / co-occurrence SQL (batched over the chosen columns, `IS NOT NULL`, `CAST(... AS VARCHAR)`, `concat_ws(chr(31), NULLIF(...))`), sampling, and min threshold options, with unit tests.
+
 ## [0.0.10] - 2026-09-04
 
 ### Added
@@ -111,7 +123,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CSV join materialization** — join CSV files and materialize the result as a DuckDB table.
 - **Cell context menu** — edit / edit-all options on right-click; improved date/time display formatting.
 
-[Unreleased]: https://github.com/renoust-ids/mtad/compare/v0.0.10...HEAD
+[Unreleased]: https://github.com/renoust-ids/mtad/compare/v0.0.11...HEAD
+[0.0.11]: https://github.com/renoust-ids/mtad/compare/v0.0.10...v0.0.11
 [0.0.10]: https://github.com/renoust-ids/mtad/compare/v0.0.9...v0.0.10
 [0.0.9]: https://github.com/renoust-ids/mtad/compare/v0.0.8...v0.0.9
 [0.0.8]: https://github.com/renoust-ids/mtad/compare/v0.0.7...v0.0.8

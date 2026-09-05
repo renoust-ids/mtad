@@ -89,6 +89,16 @@ MTad supports editing cell values directly in the data grid:
 - **Apply Table Filters / Use all rows** switches and pivot-aware computation
 - See [doc/features.md](doc/features.md) and [doc/analytics.md](doc/analytics.md)
 
+### Knowledge Graph
+
+- **Analytics ▸ Knowledge Graph** opens a **bipartite force-directed graph** between the distinct non-null values of the **key columns** you pick and those of the **property columns** — a weighted edge joins a key and a property for every row where both are non-null, so the counts reveal how keys and properties co-occur
+- Two searchable multi-selects pick the **key / property columns**; a **Composite key** option merges the key columns into **one key node per row** (non-null parts concatenated)
+- Node **size ∝ occurrence** and edge **thickness ∝ co-occurrence**, with a **Centrality** size mode (degree or **betweenness**, selectable, via graphology metrics)
+- Separate **min node occurrence** and **min edge co-occurrence** controls re-filter the loaded graph instantly; **isolated nodes** are hidden by default
+- An optional **sample** bounds the counted rows (slider 500–20 000, released to recompute); **Apply Table Filters / Use all rows** switches and pivot-aware computation
+- Rendered with **graphology + Sigma.js** (WebGL, ForceAtlas2 layout), pan/zoom and hover tooltips
+- See [doc/features.md](doc/features.md) and [doc/analytics.md](doc/analytics.md)
+
 ### Table & Analytics Filters
 
 MTad distinguishes between the query filter of the view and ad-hoc exploration filters:
@@ -231,7 +241,7 @@ used to build the MTad desktop application:
   - Pivot-aware editing (aggregate rows vs leaf rows)
   - Multi-cell selections preserved on right-click; hover draws a thick border highlight
   - Interactive Distribution dialog (binned histograms, categorical bars, temporal columns) with brush-to-filter
-  - Scatter Plot Matrix, Scatter Plot, Confusion Matrix and Correlation Matrix analytics dialogs (the correlation matrix with Pearson/Spearman rank, sampling, and ID-column exclusion)
+  - Scatter Plot Matrix, Scatter Plot, Confusion Matrix, Correlation Matrix and Knowledge Graph analytics dialogs (correlation with Pearson/Spearman + ID-column exclusion; a bipartite key↔property graph rendered with Sigma.js/graphology)
   - Join File and Concatenate File dialogs with auto column matching and type casting
   - Split Table / Analytics filters with live SQL summaries and apply toggles
 - [**tad-app**](./packages/tad-app/) - The MTad desktop application, built with Electron

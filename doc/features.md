@@ -101,6 +101,19 @@ The **Correlation Matrix** dialog (**Analytics ▸ Correlation Matrix**) renders
 - **Remove on right-click** — right-click any row/column header and choose **Remove** to drop that column from the matrix. The matrix itself is **read-only** (no cell-click filtering).
 - **Apply Table Filters** (default on) and **pivot-aware** computation, mirroring the other analytics dialogs.
 
+## Knowledge Graph
+
+The **Knowledge Graph** dialog (**Analytics ▸ Knowledge Graph**) renders a **bipartite force-directed graph** between **key** values and **property** values of the rows you pick: each distinct non-null value of a **key column** becomes a "key" node, each distinct non-null value of a **property column** becomes a "property" node, and each row links each of its key values to each of its property values. The counts are computed in the database; the graph is laid out and rendered client-side with **graphology** and **Sigma.js** (WebGL).
+
+- **Column pickers** — two searchable multi-selects choose the **key columns** and the **property columns** (up to 24 each); a graph needs at least one column of each kind.
+- **Composite key** — an option that merges the key columns into **one key node per row** (the non-null parts concatenated), to explore whole-row key signatures instead of per-column values.
+- **Weights** — a node's size reflects its **occurrence** (rows where the value is non-null); edge thickness reflects the **co-occurrence** count (rows where key and property are both non-null). NULL values never create nodes or edges.
+- **Size by centrality** — a **Centrality** sizing mode sizes nodes by **degree** or **betweenness** (selectable) instead of occurrence.
+- **Min occurrence thresholds** — separate controls drop nodes below a **min node occurrence** and edges below a **min edge co-occurrence**; they re-filter the already-loaded graph instantly without re-querying.
+- **Sampling** — an optional random sample bounds the rows used for the counts (**Sample** slider, 500–20 000, recomputed on release); **Use all rows** disables it.
+- **Isolated nodes** — nodes left without edges are hidden by default; **Show isolated nodes** reveals them.
+- **Apply Table Filters** (default on) and **pivot-aware** computation, mirroring the other analytics dialogs. Pan/zoom the WebGL canvas; hover a node for its label, occurrence and degree.
+
 ## Table & Analytics Filters
 
 The footer splits filtering into two independent concepts:
