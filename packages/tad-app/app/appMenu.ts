@@ -171,6 +171,12 @@ export const createMenu = () => {
       focusedWindow?.webContents.send("open-correlation-matrix", {});
     },
   },
+  {
+    label: "Knowledge Graph",
+    click: (item: MenuItem, focusedWindow: BrowserWindow | undefined) => {
+      focusedWindow?.webContents.send("open-knowledge-graph", {});
+    },
+  },
 ];
   const debugSubmenu: MenuItemConstructorOptions[] = [
     {

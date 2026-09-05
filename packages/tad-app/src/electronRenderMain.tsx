@@ -344,6 +344,10 @@ const init = async () => {
       actions.openCorrelationMatrix(stateRef);
     });
 
+    ipcRenderer.on("open-knowledge-graph", () => {
+      actions.openKnowledgeGraph(stateRef);
+    });
+
     document.addEventListener("copy", function (e) {});
 
     ipcRenderer.send("render-init-complete");

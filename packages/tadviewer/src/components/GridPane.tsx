@@ -16,6 +16,7 @@ import SplomDialog from "./SplomDialog";
 import ScatterPlotDialog from "./ScatterPlotDialog";
 import ConfusionMatrixDialog from "./ConfusionMatrixDialog";
 import CorrelationMatrixDialog from "./CorrelationMatrixDialog";
+import KnowledgeGraphDialog from "./KnowledgeGraphDialog";
 import { ScatterAxisFilterArg } from "./categoricalAxis";
 import { SimpleClipboard } from "./SimpleClipboard";
 
@@ -368,6 +369,11 @@ const GridPaneInternal: React.FunctionComponent<GridPaneProps> = ({
     [stateRef]
   );
 
+  const handleCloseKnowledgeGraph = React.useCallback(
+    () => actions.closeKnowledgeGraph(stateRef),
+    [stateRef]
+  );
+
   // A non-diagonal SPLOM cell was clicked: open that XY pair as a standalone
   // Scatter Plot dialog (closing the SPLOM).
   const handleOpenScatterPlotForPair = React.useCallback(
@@ -699,6 +705,11 @@ const GridPaneInternal: React.FunctionComponent<GridPaneProps> = ({
         stateRef={stateRef}
         onClose={handleCloseCorrelationMatrix}
       />
+      <KnowledgeGraphDialog
+        appState={appState}
+        stateRef={stateRef}
+        onClose={handleCloseKnowledgeGraph}
+      />
     </>
   );
 };
@@ -727,7 +738,9 @@ const gridPanePropsEqual = (oldProps: any, nextProps: any): boolean => {
     oldProps.appState.confusionMatrixDialogOpen ===
       nextProps.appState.confusionMatrixDialogOpen &&
     oldProps.appState.correlationMatrixDialogOpen ===
-      nextProps.appState.correlationMatrixDialogOpen;
+      nextProps.appState.correlationMatrixDialogOpen &&
+    oldProps.appState.knowledgeGraphDialogOpen ===
+      nextProps.appState.knowledgeGraphDialogOpen;
   return ret;
 };
 
