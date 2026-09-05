@@ -58,14 +58,22 @@ Branch: `kgraph` (Feature: Knowledge Graph, version app 0.0.10, release cible 0.
 - **Vérif** : tadviewer `npm run tsc` **0 erreur** → `cp src/slickgrid.scss dist/slickgrid.scss` (tsc vide dist) → tadviewer `build-prod` **compiled** (6.8s, 17 warnings) → tad-app `npx tsc --noEmit` **0 erreur** → tad-app `build-prod` **compiled successfully** (2.5s + 14.8s). reltab `npm test` → **85 pass**.
 - **Command** : commit `3aa6c3e`.
 
-## PROCHAINES ÉTAPES (implémentation TDD, à exécuter)
+## Step 6 — Validation finale + RELEASE 0.0.11 (DONE)
+- **Validation finale** : tadviewer `npm run tsc` **0 erreur** → `cp src/slickgrid.scss dist/slickgrid.scss` → tadviewer `build-prod` **compiled** (6.3s, 17 warnings) → tad-app `npx tsc --noEmit` **0 erreur** → tad-app `build-prod` **compiled successfully** (14.4s) → reltab `npm test` **85 pass**. Tout vert.
+- **Docs release** : `README.md` (section "Knowledge Graph" après Correlation Matrix + bullet packages), `doc/features.md` (section "Knowledge Graph"), `doc/analytics.md` (section "Knowledge Graph" + intro + bullet "Under the hood"), `doc/site/index.html` (carte feature + news 0.0.11 + release notes 0.0.11), `CHANGELOG.md` (`## [0.0.11] - 2026-09-05` Added + liens compare, `[Unreleased]` → `v0.0.11...HEAD`).
+- **Bump** : `package.json` racine, `package-lock.json` (2 lignes "version" du haut), `packages/tad-app/package.json` → `0.0.11` (même diff que le bump 0.0.10).
+- **Commits** : `a79233a` docs(kgraph) release notes ; `6da7f7e` chore: bump version to 0.0.11.
+- **Push + tag** : branche `kgraph` poussée + tag **`v0.0.11`** créé sur `6da7f7e` et poussé → CI (`.github/workflows/build.yml`) déclenché (build-mac/windows/linux) ; le job `release` (déclenché par tag `v*`) extrait `## [0.0.11]` de CHANGELOG.md et publie la GitHub release (`make_latest`). Le push du tag a aussi propagé les tags legacy `v0.6.4…v0.14.0` absents du remote (non bloquant). Pas de `gh` CLI → publication = push du tag. `examples/Buddha Face*.xlsx` reste untracked (non commité).
+- **Branche** : reste sur `kgraph` ; une PR vers `master` peut être ouverte à la discrétion de l'utilisateur.
+
+## PROCHAINES ÉTAPES (TERMINÉ — mission Knowledge Graph + release 0.0.11)
 1. ~~Backend `packages/reltab/src/knowledgeGraph.ts` + tests~~ DONE (6ad7e80).
 2. ~~Export `reltab.ts` + tests reltab verts~~ DONE (61056f4).
 3. ~~AppState + actions~~ DONE (f4c31bf).
 4. ~~Dialog `KnowledgeGraphDialog.tsx` + contribute graphology + FA2 + rendu Sigma~~ DONE (faacb79).
 5. ~~Wiring menu (`open-knowledge-graph`) + IPC + GridPane~~ DONE (3aa6c3e).
-6. Build/typecheck tadviewer + tad-app, tests reltab, commits atomiques, revue.
-7. **Release 0.0.11** (docs + bump 3 fichiers + CHANGELOG + tag `v0.0.11` + push → CI).
+6. ~~Build/typecheck tadviewer + tad-app, tests reltab, commits atomiques, revue~~ DONE.
+7. ~~**Release 0.0.11** (docs + bump 3 fichiers + CHANGELOG + tag `v0.0.11` + push → CI)~~ DONE (commits `a79233a`,`6da7f7e`, tag `v0.0.11` poussé).
 
 ---
 

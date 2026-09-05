@@ -1,6 +1,6 @@
 # KGraph - State Handoff
 
-Branche : `kgraph` (créée depuis `master` @ `648b03e`, version app 0.0.10). Date : 2026-09-04.
+Branche : `kgraph` (créée depuis `master` @ `648b03e`, version app 0.0.10). Date : 2026-09-04. **Mission TERMINÉE — release 0.0.11 publiée le 2026-09-05.**
 
 ## Mission
 Implémenter la vue analytique **Knowledge Graph** (menu Analytics → Knowledge Graph) : graphe bipartite clé↔propriété, sélection de colonnes type Correlation Matrix, échantillonnage, occurrences min (nœuds + arêtes), poids nœuds/arêtes, layout ForceAtlas2 + rendu WebGL (Sigma.js/graphology), TDD + commits atomiques. Publier ensuite la release **0.0.11**.
@@ -35,7 +35,7 @@ Implémenter la vue analytique **Knowledge Graph** (menu Analytics → Knowledge
 - Typecheck des composants : `include` tsconfig tadviewer (`./src/*`) ne couvre pas `src/components/` ; le vrai gate est ts-loader dans le build webpack (le build dev passe). Les 2 erreurs TS7006 "pré-existantes" de `actions.ts` mentionnées au handover étaient un artefact du env cassé — avec les deps restaurées, `npm run tsc` est **0 erreur**.
 
 ## En cours / Bloqué
-- Aucun blocage. Prochaine étape : **Step 6 — re-vérification finale + revue** : builds/typecheck tadviewer + tad-app, tests reltab verts (déjà ✓ ci-dessus), commits atomiques, revue du code, puis **release 0.0.11**.
+- Aucun blocage. **Prochaine étape : Step 6 — re-vérification finale + revue** : builds/typecheck tadviewer + tad-app, tests reltab verts (déjà ✓ ci-dessus), commits atomiques, revue du code, puis **release 0.0.11**.
 
 ## Prochaines étapes (ordre)
 1. ~~Step 1 : backend reltab~~ DONE.
@@ -43,8 +43,8 @@ Implémenter la vue analytique **Knowledge Graph** (menu Analytics → Knowledge
 3. ~~Step 3 : AppState + actions~~ DONE (`f4c31bf`).
 4. ~~Step 4 : Dialog (pickers + contrôles + assemblage graphology + FA2 + rendu Sigma)~~ DONE (`faacb79`) — inclut le rendu Sigma/FA2/centralité.
 5. ~~Step 5 : wiring menu + IPC + GridPane~~ DONE (`3aa6c3e`).
-6. Step 6 : build/typecheck tadviewer + tad-app, tests reltab verts, commits atomiques, revue.
-7. Release 0.0.11 (docs, bump, build, tag `v0.0.11`, push → CI publie GitHub release).
+6. ~~Step 6 : build/typecheck tadviewer + tad-app, tests reltab verts, commits atomiques, revue~~ DONE — toutes vérifs vertes : tadviewer `tsc` 0 erreur + `build-prod` ✓ (6.3s), tad-app `tsc --noEmit` 0 erreur + `build-prod` ✓ **compiled successfully** (14.4s), reltab `npm test` **85 pass**.
+7. ~~Release 0.0.11~~ DONE — commits `a79233a` (docs) + `6da7f7e` (bump version → 0.0.11), tag **`v0.0.11`** poussé sur `kgraph`, CI déclenché par le tag (build-mac/windows/linux → `softprops/action-gh-release` publie la GitHub release avec les notes extraites de CHANGELOG.md). Branche `kgraph` poussée (PR vers `master` restant à la discrétion de l'utilisateur).
 
 ## Références de fichiers
 - Pattern backend : `packages/reltab/src/splom.ts` (`sampleQuery`, `constantOrNullColIds`, `getCorrelationMatrix`) et `packages/reltab/src/confusionMatrix.ts` (comptes retournés, composés côté front).

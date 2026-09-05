@@ -44,17 +44,10 @@ Avant de commencer, crée un fichier `AGENT_DEV_LOG.md` à la racine. Pour **cha
 3. Ne fais jamais de commit global (`git commit -am "wip"`). Ne groupe pas le backend et l'UI dans le même commit.
 
 # MISSION ACTUELLE
-Intégrer la fonctionnalité **"Knowledge Graph"** (branche `kgraph`), une vue analytique ouverte via Analytics → Knowledge Graph qui affiche un **graphe bipartite** entre **nœuds clés** (clé composite sur une ou plusieurs colonnes) et **nœuds propriétés** (valeurs distinctes de colonnes propriétés), avec un rendu **force-directed** (ForceAtlas2 via graphology, rendu WebGL via Sigma.js) :
-- **Clé composite par ligne** : le tuple des valeurs non-null des colonnes clés forme UN nœud clé. Une ligne n'a de nœud clé que si toutes ses colonnes clés sont non-null.
-- **Poids** : nœud = **occurrence** (nb de lignes où la valeur est non-null) ; arête = **co-occurrence**. Taille des nœuds ∝ occurrence, avec toggle occurrence/centralité (degré).
-- **NULL** ne créent pas de nœuds.
-- **Sélection de colonnes** : deux MultiSelect react-select (Key columns / Property columns), pattern Correlation Matrix.
-- **Échantillonnage optionnel** (slider 500–20000, "Use all rows"), min node occurrence + min edge weight (seuils séparés), "Show isolated nodes" (défaut off), "Apply Table Filters".
-- **Biblio** : **Sigma.js + graphology** (MIT) — layout ForceAtlas2, metrics de degré.
-
-> **Statut** : plan rédigé dans `vibe/kgraph/KNOWLEDGE_GRAPH_PLAN.md` ; `vibe/kgraph/STATE_HANDOFF.md` trace l'état et les décisions. **Implémentation à commencer** (TDD backend reltab → UI tadviewer → wiring). Release cible : `v0.0.11` (voir PROTOCOLE DE RELEASE ci-dessous).
+Aucune mission en cours. La mission **Knowledge Graph** (branche `kgraph`) est **terminée** : release `v0.0.11` publiée le 2026-09-05.
 
 ## Missions terminées (archivées dans vibe/<feature>/)
+- **Knowledge Graph** (branche `kgraph`) — release `v0.0.11` : vue analytique Analytics ▸ Knowledge Graph — graphe bipartite clé↔propriété (nœuds = valeurs distinctes non-null ; clé par-colonne ou clé composite par ligne), arêtes pondérées par co-occurrence, taille ∝ occurrence ou centralité (degré/betweenness), filtres min occurrences nœuds/arêtes, nœuds isolés, échantillonnage, rendu force-directed **graphology ForceAtlas2 + Sigma.js** (WebGL). Plan : `vibe/kgraph/KNOWLEDGE_GRAPH_PLAN.md`.
 - **Correlation Matrix** (branche `correlation`) — release `v0.0.10` : matrice N×N des corrélations, mode Pearson/Spearman, échantillonnage, avis colonnes exclues. Plan : `vibe/correlation/CORRELATION_MATRIX_PLAN.md`.
 
 # PROTOCOLE DE RELEASE (MTad)
@@ -62,7 +55,7 @@ Intégrer la fonctionnalité **"Knowledge Graph"** (branche `kgraph`), une vue a
 ## Informations sur le projet
 - **Nom du produit** : MTad (application Electron)
 - **App ID** : `com.mtad.app`
-- **Version actuelle** : `0.0.10` (release suivante visée : `0.0.11`)
+- **Version actuelle** : `0.0.11` (release suivante visée : `0.0.12`)
 - **Dépôt** : https://github.com/renoust-ids/mtad
 - **Branche principale** : `master`
 - **Auteur** : Benjamin Renoust (from Antony Courtney)
@@ -165,5 +158,4 @@ Le workflow `.github/workflows/build.yml` :
 ## Mission
 - La mission courante est décrite dans le fichier `AGENT_DEV_LOG.md` à la racine.
 - Le journal de bord (traceability) est maintenu dans `AGENT_DEV_LOG.md`.
-- Le plan d'implémentation de la mission Knowledge Graph est dans `vibe/kgraph/KNOWLEDGE_GRAPH_PLAN.md` et `vibe/kgraph/STATE_HANDOFF.md`.
-- Les missions terminées sont archivées dans `vibe/<feature>/` (ex: `vibe/histogram/`, `vibe/excel/`, `vibe/splom/`, `vibe/concatenate/`, `vibe/correlation/`).
+- Les missions terminées sont archivées dans `vibe/<feature>/` (ex: `vibe/histogram/`, `vibe/excel/`, `vibe/splom/`, `vibe/concatenate/`, `vibe/correlation/`, `vibe/kgraph/`).
