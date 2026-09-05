@@ -51,12 +51,19 @@ Branch: `kgraph` (Feature: Knowledge Graph, version app 0.0.10, release cible 0.
   - **Note** : les 2 erreurs TS7006 `actions.ts:160/1677` relevées au handover étaient un artefact de ce env cassé (deps manquantes) — avec les deps restaurées, plus aucune erreur.
 - **Command** : commit `faacb79`.
 
+## Step 5 — Wiring menu + IPC + GridPane (DONE)
+- `packages/tad-app/app/appMenu.ts` : item "Knowledge Graph" dans `analyticsSubmenu` (après "Correlation Matrix") → `focusedWindow?.webContents.send("open-knowledge-graph", {})`.
+- `packages/tad-app/src/electronRenderMain.tsx` : `ipcRenderer.on("open-knowledge-graph", () => actions.openKnowledgeGraph(stateRef))` (après open-correlation-matrix).
+- `packages/tadviewer/src/components/GridPane.tsx` : import `KnowledgeGraphDialog` (l.19), `handleCloseKnowledgeGraph` (useCallback → `actions.closeKnowledgeGraph`), montage `<KnowledgeGraphDialog appState stateRef onClose>` (après CorrelationMatrixDialog), prédicat `gridPanePropsEqual` + `knowledgeGraphDialogOpen`.
+- **Vérif** : tadviewer `npm run tsc` **0 erreur** → `cp src/slickgrid.scss dist/slickgrid.scss` (tsc vide dist) → tadviewer `build-prod` **compiled** (6.8s, 17 warnings) → tad-app `npx tsc --noEmit` **0 erreur** → tad-app `build-prod` **compiled successfully** (2.5s + 14.8s). reltab `npm test` → **85 pass**.
+- **Command** : commit `3aa6c3e`.
+
 ## PROCHAINES ÉTAPES (implémentation TDD, à exécuter)
 1. ~~Backend `packages/reltab/src/knowledgeGraph.ts` + tests~~ DONE (6ad7e80).
 2. ~~Export `reltab.ts` + tests reltab verts~~ DONE (61056f4).
 3. ~~AppState + actions~~ DONE (f4c31bf).
 4. ~~Dialog `KnowledgeGraphDialog.tsx` + contribute graphology + FA2 + rendu Sigma~~ DONE (faacb79).
-5. Wiring menu (`open-knowledge-graph`) + IPC + GridPane.
+5. ~~Wiring menu (`open-knowledge-graph`) + IPC + GridPane~~ DONE (3aa6c3e).
 6. Build/typecheck tadviewer + tad-app, tests reltab, commits atomiques, revue.
 7. **Release 0.0.11** (docs + bump 3 fichiers + CHANGELOG + tag `v0.0.11` + push → CI).
 

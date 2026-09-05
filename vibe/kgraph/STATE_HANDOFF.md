@@ -20,6 +20,8 @@ Implémenter la vue analytique **Knowledge Graph** (menu Analytics → Knowledge
 - Plan écrit : `vibe/kgraph/KNOWLEDGE_GRAPH_PLAN.md`.
 - **Step 3 DONE (commit `f4c31bf`)** : `AppState.ts` (`knowledgeGraphDialogOpen` aux 3 endroits) + `actions.ts` (`openKnowledgeGraph`, `closeKnowledgeGraph`, `KnowledgeGraphViewData`, `loadKnowledgeGraphData`, pattern Correlation Matrix : `getViewQueryAndSchema`, `DataSourceConnection`, `StateRef`).
 - **Step 4 DONE (commit `faacb79`)** : `packages/tadviewer/src/components/KnowledgeGraphDialog.tsx` (840 lignes) + deps `sigma@3.0.3`, `graphology@0.26.0`, `graphology-layout-forceatlas2@0.10.1`, `graphology-metrics@2.4.2` dans `packages/tadviewer/package.json`. `npm run tsc` ✓ (0 erreur), `npm run build-dev` ✓ (4.9s, 14 warnings sass pré-existants).
+- **Step 5 DONE (commit `3aa6c3e`)** : wiring — menu "Knowledge Graph" dans `packages/tad-app/app/appMenu.ts` (analyticsSubmenu, après Correlation Matrix → `open-knowledge-graph`), IPC `packages/tad-app/src/electronRenderMain.tsx` (`ipcRenderer.on("open-knowledge-graph")` → `actions.openKnowledgeGraph(stateRef)`), `packages/tadviewer/src/components/GridPane.tsx` (import + `handleCloseKnowledgeGraph` + montage `<KnowledgeGraphDialog>` + prédicat memo `knowledgeGraphDialogOpen`).
+  - Vérifs : tadviewer `npm run tsc` ✓ 0 erreur → `cp src/slickgrid.scss dist/slickgrid.scss` (tsc vide dist) → tadviewer `build-prod` ✓ (6.8s) → tad-app `npx tsc --noEmit` ✓ 0 erreur → tad-app `build-prod` ✓ **compiled successfully** (2.5s + 14.8s). `cd packages/reltab && npm test` → **85 pass**.
 
 ## Décisions d'implémentation frontend (issues en cours de route)
 - **Env cassé réparé** : un `npm install` à la racine avait purgé le `node_modules` hoisté (oneref/immutable/react/etc. disparus). Restauré via `npm run bootstrap` (lerna bootstrap --hoist) → deps app + graph deps re-hoistées à la racine. Ne pas rejouer `npm install` à la racine au hasard.
@@ -33,14 +35,14 @@ Implémenter la vue analytique **Knowledge Graph** (menu Analytics → Knowledge
 - Typecheck des composants : `include` tsconfig tadviewer (`./src/*`) ne couvre pas `src/components/` ; le vrai gate est ts-loader dans le build webpack (le build dev passe). Les 2 erreurs TS7006 "pré-existantes" de `actions.ts` mentionnées au handover étaient un artefact du env cassé — avec les deps restaurées, `npm run tsc` est **0 erreur**.
 
 ## En cours / Bloqué
-- Aucun blocage. Prochaine étape : **Step 5 — wiring** : menu "Knowledge Graph" dans Analytics (`appMenu.ts` → `open-knowledge-graph`), IPC `electronRenderMain.tsx`, montage + `handleCloseKnowledgeGraph` dans `GridPane.tsx`.
+- Aucun blocage. Prochaine étape : **Step 6 — re-vérification finale + revue** : builds/typecheck tadviewer + tad-app, tests reltab verts (déjà ✓ ci-dessus), commits atomiques, revue du code, puis **release 0.0.11**.
 
 ## Prochaines étapes (ordre)
 1. ~~Step 1 : backend reltab~~ DONE.
 2. ~~Step 2 : export + tests~~ DONE.
 3. ~~Step 3 : AppState + actions~~ DONE (`f4c31bf`).
 4. ~~Step 4 : Dialog (pickers + contrôles + assemblage graphology + FA2 + rendu Sigma)~~ DONE (`faacb79`) — inclut le rendu Sigma/FA2/centralité.
-5. Step 5 : wiring menu + IPC + GridPane.
+5. ~~Step 5 : wiring menu + IPC + GridPane~~ DONE (`3aa6c3e`).
 6. Step 6 : build/typecheck tadviewer + tad-app, tests reltab verts, commits atomiques, revue.
 7. Release 0.0.11 (docs, bump, build, tag `v0.0.11`, push → CI publie GitHub release).
 
