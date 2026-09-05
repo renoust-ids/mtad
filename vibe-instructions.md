@@ -44,22 +44,25 @@ Avant de commencer, crée un fichier `AGENT_DEV_LOG.md` à la racine. Pour **cha
 3. Ne fais jamais de commit global (`git commit -am "wip"`). Ne groupe pas le backend et l'UI dans le même commit.
 
 # MISSION ACTUELLE
-Intégrer la fonctionnalité **"Correlation Matrix"** (branche `correlation`), une vue analytique ouverte via Analytics → Correlation Matrix qui affiche une matrice N×N des indices de corrélation entre les colonnes de la table :
-- **Grille** : chaque ligne/colonne = une colonne de la table (diagonale = 1). Valeurs = indices de corrélation heat-map, cases cliquables (architecture de la Confusion Matrix, en-têtes de colonnes type SPLOM).
-- **Mesures** : identiques à la SPLOM — Pearson `r` (num×num), `eta` (cat×num), Cramér's `V` (cat×cat), plus un **mode toggle Pearson / Spearman** (corrélation de rang pour les paires num/temporal).
-- **Échantillonnage optionnel** : borne les lignes utilisées pour le calcul de corrélation (sauf "Use all rows"=non).
-- **Min non-null occurrence** : les paires avec trop peu de lignes co-observées sont blanquées.
-- **Colonnes toujours-nulles / à valeur unique (+ ID-like)** : exclues du picker de colonnes et affichées dans une liste d'avis dans le dialog.
-- **Column picker** : MultiSelect react-select réutilisé depuis la SPLOM.
+Intégrer la fonctionnalité **"Knowledge Graph"** (branche `kgraph`), une vue analytique ouverte via Analytics → Knowledge Graph qui affiche un **graphe bipartite** entre **nœuds clés** (clé composite sur une ou plusieurs colonnes) et **nœuds propriétés** (valeurs distinctes de colonnes propriétés), avec un rendu **force-directed** (ForceAtlas2 via graphology, rendu WebGL via Sigma.js) :
+- **Clé composite par ligne** : le tuple des valeurs non-null des colonnes clés forme UN nœud clé. Une ligne n'a de nœud clé que si toutes ses colonnes clés sont non-null.
+- **Poids** : nœud = **occurrence** (nb de lignes où la valeur est non-null) ; arête = **co-occurrence**. Taille des nœuds ∝ occurrence, avec toggle occurrence/centralité (degré).
+- **NULL** ne créent pas de nœuds.
+- **Sélection de colonnes** : deux MultiSelect react-select (Key columns / Property columns), pattern Correlation Matrix.
+- **Échantillonnage optionnel** (slider 500–20000, "Use all rows"), min node occurrence + min edge weight (seuils séparés), "Show isolated nodes" (défaut off), "Apply Table Filters".
+- **Biblio** : **Sigma.js + graphology** (MIT) — layout ForceAtlas2, metrics de degré.
 
-> **Statut** : implémentée, tests verts (75 reltab), typecheck + build-prod OK. **Release en cours** → `v0.0.10` (voir PROTOCOLE DE RELEASE ci-dessous). Le plan est dans `vibe/correlation/CORRELATION_MATRIX_PLAN.md` ; `vibe/correlation/STATE_HANDOFF.md` trace l'état et les décisions.
+> **Statut** : plan rédigé dans `vibe/kgraph/KNOWLEDGE_GRAPH_PLAN.md` ; `vibe/kgraph/STATE_HANDOFF.md` trace l'état et les décisions. **Implémentation à commencer** (TDD backend reltab → UI tadviewer → wiring). Release cible : `v0.0.11` (voir PROTOCOLE DE RELEASE ci-dessous).
+
+## Missions terminées (archivées dans vibe/<feature>/)
+- **Correlation Matrix** (branche `correlation`) — release `v0.0.10` : matrice N×N des corrélations, mode Pearson/Spearman, échantillonnage, avis colonnes exclues. Plan : `vibe/correlation/CORRELATION_MATRIX_PLAN.md`.
 
 # PROTOCOLE DE RELEASE (MTad)
 
 ## Informations sur le projet
 - **Nom du produit** : MTad (application Electron)
 - **App ID** : `com.mtad.app`
-- **Version actuelle** : `0.0.10`
+- **Version actuelle** : `0.0.10` (release suivante visée : `0.0.11`)
 - **Dépôt** : https://github.com/renoust-ids/mtad
 - **Branche principale** : `master`
 - **Auteur** : Benjamin Renoust (from Antony Courtney)
@@ -162,5 +165,5 @@ Le workflow `.github/workflows/build.yml` :
 ## Mission
 - La mission courante est décrite dans le fichier `AGENT_DEV_LOG.md` à la racine.
 - Le journal de bord (traceability) est maintenu dans `AGENT_DEV_LOG.md`.
-- Le plan d'implémentation de la mission Correlation Matrix est dans `vibe/correlation/CORRELATION_MATRIX_PLAN.md`.
-- Les missions terminées sont archivées dans `vibe/<feature>/` (ex: `vibe/histogram/`, `vibe/excel/`, `vibe/splom/`, `vibe/concatenate/`).
+- Le plan d'implémentation de la mission Knowledge Graph est dans `vibe/kgraph/KNOWLEDGE_GRAPH_PLAN.md` et `vibe/kgraph/STATE_HANDOFF.md`.
+- Les missions terminées sont archivées dans `vibe/<feature>/` (ex: `vibe/histogram/`, `vibe/excel/`, `vibe/splom/`, `vibe/concatenate/`, `vibe/correlation/`).

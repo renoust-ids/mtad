@@ -1,3 +1,51 @@
+# KNOWLEDGE GRAPH (KGraph) — Agent Dev Log
+
+Branch: `kgraph` (Feature: Knowledge Graph, version app 0.0.10, release cible 0.0.11)
+
+## Planning — PLAN + STATE_HANDOFF rédigés (DONE)
+- **Recherche lib graphique** :
+  - **Cosmograph** (`@cosmograph/react`) : GPU très rapide mais **CC-BY-NC-4.0 (non-commercial)** + versions payantes → écarté (app distribuée).
+  - **Sigma.js + graphology** : **MIT**, WebGL, ForceAtlas2, metrics (degré/betweenness), pas de dépendance native → **recommandé + validé par l'utilisateur**.
+  - d3-force/custom SVG : écarté (flexible mais lent à grande échelle).
+- **Décisions design validées (2 vagues de questions)** :
+  1. Lib = **Sigma.js + graphology** (MIT).
+  2. **Structure des nœuds (rÉVISÉE)** : **DEFAULT = par-colonne** — chaque colonne clé est source de nœuds (chaque valeur distincte non-null = un nœud), chaque colonne prop pareil. **OPTION "Composite key"** = un nœud clé par ligne = concat des **parties non-null** (labels joints par ", "). NULL ne créent jamais de nœud.
+  3. **Poids** = nœud: occurrence, arête: co-occurrence (par ligne). Taille occ + toggle occ/centralité.
+  4. **Centralité** : **degré OU betweenness (les deux, sélectionnable)** via graphology-metrics.
+  5. **Nœuds isolés** : masqués par défaut, rendu optionnel.
+  6. **Filtres min occurrences séparés** nœuds / arêtes (min edge weight = seuil co-occurrence).
+  7. **Perf cible** : ~10k nœuds / ~50k arêtes (échantillonnage + seuils sous plafond).
+- **Fichiers créés** : `vibe/kgraph/KNOWLEDGE_GRAPH_PLAN.md` (plan complet, design révisé), `vibe/kgraph/STATE_HANDOFF.md` (état + décisions + prochaines étapes).
+- **`vibe-instructions.md`** : MISSION ACTUELLE → Knowledge Graph (branche `kgraph`), missions archivées (Correlation Matrix `v0.0.10`), version release visée 0.0.11.
+- **Deps prévues (MIT, à installer root via Lerna hoisting)** : `sigma`, `graphology`, `graphology-layout-forceatlas2`, `graphology-metrics`.
+
+## Step 1-2 — Backend reltab + export + intégration DuckDB (DONE)
+- **`packages/reltab/src/knowledgeGraph.ts`** (nouveau, commit `6ad7e80`) :
+  - Types : `KnowledgeGraphNode {id, group: "key"|"prop", label, colId?, occurrence}`, `KnowledgeGraphEdge {source, target, weight}`, `KnowledgeGraphData {nodes, edges, totalRows}`, `KnowledgeGraphOptions {keyMode, sampleLimit, minNodeOccurrence, minEdgeWeight}`, `KGKeyMode = "per-column"|"composite"`.
+  - `getKnowledgeGraphData(dsConn, baseQuery, schema, keyColIds, propColIds, opts?)` — SQL raw via `sqlQuery()` (pattern splom) :
+    - per-column : occurrence clés (`SELECT 'k' AS __group, 'cid' AS __colid, "k" AS __v, count(*) ... WHERE "k" IS NOT NULL GROUP BY "k"`, batched UNION ALL), occurrence props (`CAST("p" AS VARCHAR)`), co-occurrence par paire (`GROUP BY "k", CAST("p" AS VARCHAR)`).
+    - composite : `concat_ws(chr(31), NULLIF(CAST("k" AS VARCHAR), ''), ...)` — partie non-null uniquement (empty-string exclue), `WHERE k1 IS NOT NULL OR k2 ...` (pas de nœud si toutes clés nulles), co-occurrence avec `__pcol` ajouté au SELECT.
+    - échantillonnage `SELECT * FROM ( base ) AS __kg ORDER BY random() LIMIT n` ; `totalRows` = rowCount(base) ; filtres backend minNodeOccurrence (drop nœuds + arêtes incidentes) / minEdgeWeight.
+- **Export** (commit `61056f4`) : `packages/reltab/src/reltab.ts` + `export * from "./knowledgeGraph";`.
+- **Tests** : `packages/reltab/test/knowledgeGraph.test.ts` (10 tests mock : SQL généré per-column/composite, NULL/IS NOT NULL, GROUP BY, CAST VARCHAR, comptes, sampling, seuils, agrégation ids) → **`cd packages/reltab && npm test` = 85 pass** (75+10), `npm run build` OK.
+- **Intégration DuckDB** : `packages/reltab-duckdb/test/knowledgeGraph.auto.test.ts` (5 tests) + fixture `test/support/knowledge_graph.csv` (10 lignes, clés partiellement nulles, toutes nulles) → **verts** (per-column / null / composite partiellement nul / sampling / seuils).
+- **Note résolution reltab** : `import ... from "reltab"` dans les auto tests nécessite le package lié (lerna bootstrap). Temp local gitignored : symlink `packages/reltab-duckdb/node_modules/reltab` → `../../reltab`. Snapshot `histo.auto` flaky pré-existant en run complet (indépendant de mes changements, vérifié) — workflow reltab-duckdb options `2>/dev/null || true`.
+- **Bug corrigé en course** : composite edge target manquait `__pcol` → ajouté au SELECT (`AS __pcol`) et à l'assemblage `p:<colId>:<v>`.
+
+**Commands** : `git add packages/reltab/src/knowledgeGraph.ts ...` → `6ad7e80` ; `git add packages/reltab/src/reltab.ts packages/reltab-duckdb/...` → `61056f4`.
+
+## PROCHAINES ÉTAPES (implémentation TDD, à exécuter)
+1. ~~Backend `packages/reltab/src/knowledgeGraph.ts` + tests~~ DONE (6ad7e80).
+2. ~~Export `reltab.ts` + tests reltab verts~~ DONE (61056f4).
+3. AppState (`knowledgeGraphDialogOpen`) + actions (`open/closeKnowledgeGraph`, `loadKnowledgeGraphData`).
+4. Dialog `KnowledgeGraphDialog.tsx` (2 MultiSelect key/prop + controls : composite, sample, min occ, min edge, size by occ/centrality degré/betweenness, show isolated).
+5. Rendu Sigma + ForceAtlas2 + sizing centralité.
+6. Wiring menu (`open-knowledge-graph`) + IPC + GridPane.
+7. Build/typecheck tadviewer + tad-app, tests reltab, commits atomiques, revue.
+8. **Release 0.0.11** (docs + bump 3 fichiers + CHANGELOG + tag `v0.0.11` + push → CI).
+
+---
+
 # CORRELATION MATRIX — Agent Dev Log
 
 Branch: `correlation` (Feature: Correlation Matrix, version app 0.0.9)
